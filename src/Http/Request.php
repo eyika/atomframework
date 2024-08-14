@@ -2,8 +2,6 @@
 
 namespace Eyika\Atom\Http;
 
-use Basttyy\FxDataServer\Models\User;
-
 class Request
 {
     protected $query;

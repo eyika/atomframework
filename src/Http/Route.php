@@ -2,9 +2,7 @@
 
 namespace Eyika\Atom\Http;
 
-use Basttyy\FxDataServer\Exceptions\NotFoundException;
-
-class Router
+class Route
 {
     protected static $routes = [];
     protected static $middlewares = [];
