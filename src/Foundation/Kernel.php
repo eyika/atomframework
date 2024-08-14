@@ -2,9 +2,9 @@
 
 namespace Eyika\Atom\Framework\Foundation;
 
-use Eyika\Atom\Framework\Foundation\Contracts\HttpKernel;
+use Eyika\Atom\Framework\Foundation\Contracts\Kernel as ContractsKernel;
 
-class Kernel implements Kernel
+class Kernel implements ContractsKernel
 {
     /**
      * The application's global HTTP middleware stack.
