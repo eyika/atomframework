@@ -2,9 +2,9 @@
 
 namespace Basttyy\FxDataServer\Exceptions;
 
-use RuntimeException;
+use Eyika\Atom\Exceptions\BaseException;
 
-final class NotFoundException extends RuntimeException
+final class NotFoundException extends BaseException
 {
     public function __construct($message = 'model not found')
     {

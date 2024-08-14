@@ -1,6 +1,6 @@
 <?php
 
-namespace Basttyy\FxDataServer\libs\LogViewer;
+namespace Eyika\Atom\Support\LogViewer;
 
 class Pattern
 {

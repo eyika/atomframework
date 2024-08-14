@@ -1,11 +1,10 @@
 <?php 
 
-namespace Eyika\Atom\Exceptions\Http;
+namespace Eyika\Atom\Exceptions;
 
-use Eyika\Atom\Exceptions\BaseHttpException;
 use Throwable;
 
-class ResponseException extends BaseHttpException
+class NotImplementedException extends BaseException
 {
     public function __construct(string $message = '', int $code = 0, Throwable|null $previous = null)
     {

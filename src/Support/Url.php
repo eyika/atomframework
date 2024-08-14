@@ -1,6 +1,6 @@
 <?php
 
-namespace Basttyy\FxDataServer\libs;
+namespace Eyika\Atom\Support;
 
 class Url
 {

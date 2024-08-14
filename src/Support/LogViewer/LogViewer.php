@@ -1,8 +1,8 @@
 <?php
 
-namespace Basttyy\FxDataServer\libs\LogViewer;
+namespace Eyika\Atom\Support\LogViewer;
 
-use Basttyy\FxDataServer\libs\Storage\DbCache;
+use Eyika\Atom\Support\Storage\DbCache;
 
 class LogViewer
 {

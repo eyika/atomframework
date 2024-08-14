@@ -2,6 +2,9 @@
 
 namespace Eyika\Atom\Http;
 
+use Basttyy\FxDataServer\Exceptions\NotFoundException;
+use Eyika\Atom\Support\Session\MysqlSessionHandler;
+
 class Route
 {
     protected static $routes = [];

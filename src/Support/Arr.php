@@ -3,6 +3,7 @@
 namespace Eyika\Atom\Support;
 
 use ArrayAccess;
+use Eyika\Atom\Support\Concerns\Macroable;
 use InvalidArgumentException;
 
 Class Arr

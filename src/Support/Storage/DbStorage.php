@@ -1,17 +1,9 @@
 <?php
-/*!
-* Hybridauth
-* https://hybridauth.github.io | https://github.com/hybridauth/hybridauth
-*  (c) 2017 Hybridauth authors | https://hybridauth.github.io/license.html
-*/
+namespace Eyika\Atom\Support\Storage;
 
-namespace Basttyy\FxDataServer\libs\Storage;
-
-// use Basttyy\FxDataServer\libs\Interfaces\StorageInterface;
-
-use Basttyy\FxDataServer\libs\mysqly;
+use Eyika\Atom\Support\Database\mysqly;
+use Eyika\Atom\Support\Storage\Contracts\StorageInterface;
 use Hybridauth\Exception\RuntimeException;
-use Hybridauth\Storage\StorageInterface;
 
 /**
  * Hybridauth storage manager

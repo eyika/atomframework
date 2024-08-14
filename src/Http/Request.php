@@ -2,6 +2,9 @@
 
 namespace Eyika\Atom\Http;
 
+use Eyika\Atom\Support\Database\Contracts\UserModelInterface;
+use Eyika\Atom\Support\Database\Model;
+
 class Request
 {
     protected $query;
@@ -12,7 +15,7 @@ class Request
     protected $server;
     protected $headers;
 
-    public User $auth_user;
+    public Model & UserModelInterface $auth_user;
 
     public function __construct()
     {

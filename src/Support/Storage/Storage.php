@@ -1,9 +1,10 @@
 <?php
 
-namespace Basttyy\FxDataServer\libs\Storage;
+namespace Eyika\Atom\Support\Storage;
 
 use Aws\S3\S3Client;
-use Basttyy\FxDataServer\libs\Interfaces\CacheInterface;
+use Eyika\Atom\Support\Cache\Contracts\CacheInterface;
+use Eyika\Atom\Support\Cache\RedisCache;
 use stdClass;
 
 class Storage

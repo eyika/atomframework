@@ -1,10 +1,10 @@
 <?php
 
-namespace Basttyy\FxDataServer\libs;
+namespace Eyika\Atom\Support;
 
-use Basttyy\FxDataServer\libs\Str;
+use Eyika\Atom\Support\Str;
 use Closure;
-use Basttyy\FxDataServer\libs\Traits\Macroable;
+use Eyika\Atom\Support\Concerns\Macroable;
 
 class Stringable
 {

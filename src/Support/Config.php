@@ -1,10 +1,10 @@
 <?php
 
-namespace Basttyy\FxDataServer\libs;
+namespace Eyika\Atom\Support;
 
-use Basttyy\FxDataServer\libs\Interfaces\CacheInterface;
-use Basttyy\FxDataServer\libs\Storage\DbCache;
-use Hybridauth\Exception\NotImplementedException;
+use Eyika\Atom\Exceptions\NotImplementedException;
+use Eyika\Atom\Support\Cache\Contracts\CacheInterface;
+use Eyika\Atom\Support\Cache\DbCache;
 use InvalidArgumentException;
 
 class Config

@@ -3,6 +3,7 @@
 namespace Eyika\Atom\Http;
 
 use Exception;
+use Eyika\Atom\Support\View;
 
 class Response
 {
@@ -41,7 +42,7 @@ class Response
     {
         $path ="/../Resources/views/";
         header("Content-Type: text/html; charset=utf-8", self::STATUS_OK);
-        echo Templater::view("$file_name.blade.php", $path, $data, true);
+        echo View::make("$file_name.blade.php", $path, $data, true);
 
         return true;
     }

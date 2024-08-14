@@ -2,9 +2,8 @@
 
 namespace Basttyy\FxDataServer\Exceptions;
 
-use Basttyy\FxDataServer\libs\Str;
+use Eyika\Atom\Support\Str;
 use PDOException;
-// use React\MySQL\Exception;
 use Throwable;
 
 class QueryException extends PDOException

@@ -1,9 +1,9 @@
 <?php
 
-namespace Basttyy\FxDataServer\libs;
+namespace Eyika\Atom\Support;
 
-use Basttyy\FxDataServer\libs\Arr;
-use Basttyy\FxDataServer\libs\Traits\Macroable;
+use Eyika\Atom\Support\Arr;
+use Eyika\Atom\Support\Concerns\Macroable;
 // use Ramsey\Uuid\Codec\TimestampFirstCombCodec;
 // use Ramsey\Uuid\Generator\CombGenerator;
 // use Ramsey\Uuid\Uuid;
@@ -53,7 +53,7 @@ class Str
      * Get a new stringable object from the given string.
      *
      * @param  string  $string
-     * @return \Basttyy\FxDataServer\libs\Stringable
+     * @return \Eyika\Atom\Support\Stringable
      */
     public static function of($string)
     {

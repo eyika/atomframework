@@ -1,5 +1,16 @@
 <?php
 
+use Eyika\Atom\Http\Request;
+use Eyika\Atom\Http\Response;
+use Eyika\Atom\Support\Cache\Contracts\CacheInterface;
+use Eyika\Atom\Support\Database\DB;
+use Eyika\Atom\Support\Encrypter;
+use Eyika\Atom\Support\Storage\Storage;
+use Eyika\Atom\Support\Url;
+use Monolog\Formatter\LineFormatter;
+use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
+
 if (! function_exists('json_response')) {
     /**
      * Returns a json response for PHP http request
@@ -184,7 +195,7 @@ if (!function_exists('is_windows')) {
 }
 
 if (! function_exists('logger')) {
-    function logger($path = null, $level = Logger::DEBUG, $bubble = true, $filePermission = 0664, $useLocking = false)
+    function logger(string $path = null, int $level = Monolog\Level::Debug, $bubble = true, $filePermission = 0664, $useLocking = false)
     {
         $logger_path = strtolower(PHP_OS_FAMILY) === "windows" ? "logs\\custom.log" : "logs/custom.log";
         $path = is_null($path) ? storage_path().$logger_path : $path;

@@ -1,8 +1,8 @@
 <?php
 
-namespace Basttyy\FxDataServer\libs;
+namespace Eyika\Atom\Support;
 
-use Basttyy\FxDataServer\libs\Str;
+use Eyika\Atom\Support\Str;
 
 class Validator {
     private static array $req_obj;
