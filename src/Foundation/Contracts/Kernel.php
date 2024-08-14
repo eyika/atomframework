@@ -2,7 +2,7 @@
 
 namespace Eyika\Atom\Framework\Foundation\Contracts;
 
-interface HttpKernel
+interface Kernel
 {
     /**
      * The application's global HTTP middleware stack.
