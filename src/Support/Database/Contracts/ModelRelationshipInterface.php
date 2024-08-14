@@ -1,6 +1,6 @@
 <?php
 
-namespace Eyika\Atom\Support\Database\Contracts;
+namespace Eyika\Atom\Framework\Support\Database\Contracts;
 
 interface ModelRelationshipInterface extends ModelInterface
 {

@@ -5,7 +5,7 @@
 *  (c) 2017 Hybridauth authors | https://hybridauth.github.io/license.html
 */
 
-namespace Eyika\Atom\Support\Storage\Contracts;
+namespace Eyika\Atom\Framework\Support\Storage\Contracts;
 
 /**
  * Hybridauth storage manager interface

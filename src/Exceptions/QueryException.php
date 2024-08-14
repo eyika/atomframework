@@ -2,7 +2,7 @@
 
 namespace Basttyy\FxDataServer\Exceptions;
 
-use Eyika\Atom\Support\Str;
+use Eyika\Atom\Framework\Support\Str;
 use PDOException;
 use Throwable;
 

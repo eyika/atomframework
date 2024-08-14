@@ -1,6 +1,6 @@
 <?php
 
-namespace Eyika\Atom\Support\LogViewer;
+namespace Eyika\Atom\Framework\Support\LogViewer;
 
 /**
  * Class Level

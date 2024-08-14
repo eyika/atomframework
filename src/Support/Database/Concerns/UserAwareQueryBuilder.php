@@ -1,10 +1,10 @@
 <?php
 
-namespace Eyika\Atom\Support\Database\Concerns;
+namespace Eyika\Atom\Framework\Support\Database\Concerns;
 
-use Eyika\Atom\Support\Database\Contracts\ModelInterface;
-use Eyika\Atom\Support\Database\Contracts\UserModelInterface;
-use Eyika\Atom\Support\Database\mysqly;
+use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
+use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
+use Eyika\Atom\Framework\Support\Database\mysqly;
 
 trait UserAwareQueryBuilder
 {

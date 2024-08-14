@@ -1,10 +1,10 @@
 <?php
 
-namespace Eyika\Atom\Support\Database\Concerns;
+namespace Eyika\Atom\Framework\Support\Database\Concerns;
 
-use Eyika\Atom\Support\Str;
+use Eyika\Atom\Framework\Support\Str;
 use Exception;
-use Eyika\Atom\Support\Database\Contracts\ModelRelationshipInterface;
+use Eyika\Atom\Framework\Support\Database\Contracts\ModelRelationshipInterface;
 
 trait HasRelationships
 {

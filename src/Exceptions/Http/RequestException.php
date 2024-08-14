@@ -1,6 +1,6 @@
 <?php 
 
-namespace Eyika\Atom\Exceptions;
+namespace Eyika\Atom\Framework\Exceptions;
 
 use Throwable;
 

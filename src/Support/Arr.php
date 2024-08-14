@@ -1,9 +1,9 @@
 <?php
 
-namespace Eyika\Atom\Support;
+namespace Eyika\Atom\Framework\Support;
 
 use ArrayAccess;
-use Eyika\Atom\Support\Concerns\Macroable;
+use Eyika\Atom\Framework\Support\Concerns\Macroable;
 use InvalidArgumentException;
 
 Class Arr

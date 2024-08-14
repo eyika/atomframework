@@ -1,12 +1,12 @@
 <?php
 
-use Eyika\Atom\Http\Request;
-use Eyika\Atom\Http\Response;
-use Eyika\Atom\Support\Cache\Contracts\CacheInterface;
-use Eyika\Atom\Support\Database\DB;
-use Eyika\Atom\Support\Encrypter;
-use Eyika\Atom\Support\Storage\Storage;
-use Eyika\Atom\Support\Url;
+use Eyika\Atom\Framework\Http\Request;
+use Eyika\Atom\Framework\Http\Response;
+use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
+use Eyika\Atom\Framework\Support\Database\DB;
+use Eyika\Atom\Framework\Support\Encrypter;
+use Eyika\Atom\Framework\Support\Storage\Storage;
+use Eyika\Atom\Framework\Support\Url;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;

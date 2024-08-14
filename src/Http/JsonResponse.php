@@ -1,6 +1,6 @@
 <?php
 
-namespace Eyika\Atom\Http;
+namespace Eyika\Atom\Framework\Http;
 
 use Exception;
 

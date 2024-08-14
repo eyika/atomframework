@@ -1,6 +1,6 @@
 <?php
 
-namespace Eyika\Atom\Support\Database;
+namespace Eyika\Atom\Framework\Support\Database;
 
 class DB
 {

@@ -1,9 +1,9 @@
 <?php
 
-namespace Eyika\Atom\Support\Cache;
+namespace Eyika\Atom\Framework\Support\Cache;
 
-use Eyika\Atom\Support\Cache\Contracts\CacheInterface;
-use Eyika\Atom\Support\Str;
+use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
+use Eyika\Atom\Framework\Support\Str;
 use Predis\Client;
 
 class RedisCache implements CacheInterface

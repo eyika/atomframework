@@ -1,6 +1,6 @@
 {
-    "name": "eyika/atom",
-    "description": "An MVC microframework for PHP. Quite heavily inspired by Laravel",
+    "name": "eyika/atom-framework",
+    "description": "Core Libraries of Atom, An MVC microframework for PHP. Quite heavily inspired by Laravel",
     "type": "library",
     "require": {
     },
@@ -14,7 +14,7 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Eyika\\Atom\\": "src/"
+            "Eyika\\Atom\\Framework\\": "src/"
         }
     },
     "authors": [

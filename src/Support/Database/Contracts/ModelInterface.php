@@ -1,8 +1,8 @@
 <?php
 
-namespace Eyika\Atom\Support\Database\Contracts;
+namespace Eyika\Atom\Framework\Support\Database\Contracts;
 
-use Eyika\Atom\Support\PaginatedData;
+use Eyika\Atom\Framework\Support\PaginatedData;
 
 interface ModelInterface extends ModelEventsInterface
 {

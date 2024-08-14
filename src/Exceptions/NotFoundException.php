@@ -2,7 +2,7 @@
 
 namespace Basttyy\FxDataServer\Exceptions;
 
-use Eyika\Atom\Exceptions\BaseException;
+use Eyika\Atom\Framework\Exceptions\BaseException;
 
 final class NotFoundException extends BaseException
 {

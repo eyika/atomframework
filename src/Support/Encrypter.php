@@ -1,6 +1,6 @@
 <?php
 
-namespace Eyika\Atom\Support;
+namespace Eyika\Atom\Framework\Support;
 
 use Exception;
 

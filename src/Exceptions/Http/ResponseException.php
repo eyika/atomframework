@@ -1,8 +1,8 @@
 <?php 
 
-namespace Eyika\Atom\Exceptions\Http;
+namespace Eyika\Atom\Framework\Exceptions\Http;
 
-use Eyika\Atom\Exceptions\BaseHttpException;
+use Eyika\Atom\Framework\Exceptions\BaseHttpException;
 use Throwable;
 
 class ResponseException extends BaseHttpException

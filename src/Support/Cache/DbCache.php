@@ -1,9 +1,9 @@
 <?php
 
-namespace Eyika\Atom\Support\Cache;
+namespace Eyika\Atom\Framework\Support\Cache;
 
-use Eyika\Atom\Support\Cache\Contracts\CacheInterface;
-use Eyika\Atom\Support\Database\mysqly;
+use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
+use Eyika\Atom\Framework\Support\Database\mysqly;
 
 class DbCache implements CacheInterface
 {

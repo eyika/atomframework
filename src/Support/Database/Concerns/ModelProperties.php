@@ -1,9 +1,9 @@
 <?php
 
-namespace Eyika\Atom\Support\Database\Concerns;
+namespace Eyika\Atom\Framework\Support\Database\Concerns;
 
-use Eyika\Atom\Support\Database\Model;
-use Eyika\Atom\Support\Database\Contracts\UserModelInterface;
+use Eyika\Atom\Framework\Support\Database\Model;
+use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
 
 trait ModelProperties
 {

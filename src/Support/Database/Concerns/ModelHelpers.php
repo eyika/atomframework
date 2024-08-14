@@ -1,6 +1,6 @@
 <?php
 
-namespace Eyika\Atom\Support\Database\Concerns;
+namespace Eyika\Atom\Framework\Support\Database\Concerns;
 
 trait ModelHelpers
 {

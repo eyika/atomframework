@@ -1,6 +1,6 @@
 <?php
 
-namespace Eyika\Atom\Support\Concerns;
+namespace Eyika\Atom\Framework\Support\Concerns;
 
 use BadMethodCallException;
 use Closure;

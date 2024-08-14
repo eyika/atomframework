@@ -1,10 +1,10 @@
 <?php
 
-namespace Eyika\Atom\Support\Storage;
+namespace Eyika\Atom\Framework\Support\Storage;
 
 use Aws\S3\S3Client;
-use Eyika\Atom\Support\Cache\Contracts\CacheInterface;
-use Eyika\Atom\Support\Cache\RedisCache;
+use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
+use Eyika\Atom\Framework\Support\Cache\RedisCache;
 use stdClass;
 
 class Storage

@@ -1,9 +1,9 @@
 <?php
 
-namespace Eyika\Atom\Http;
+namespace Eyika\Atom\Framework\Http;
 
 use Exception;
-use Eyika\Atom\Support\View;
+use Eyika\Atom\Framework\Support\View;
 
 class Response
 {

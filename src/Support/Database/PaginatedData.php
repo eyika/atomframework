@@ -1,8 +1,8 @@
 <?php
 
-namespace Eyika\Atom\Support\Database;
+namespace Eyika\Atom\Framework\Support\Database;
 
-use Eyika\Atom\Http\Route;
+use Eyika\Atom\Framework\Http\Route;
 
 class PaginatedData
 {

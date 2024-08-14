@@ -1,8 +1,8 @@
 <?php
 
-namespace Eyika\Atom\Support;
+namespace Eyika\Atom\Framework\Support;
 
-use Eyika\Atom\Support\Str;
+use Eyika\Atom\Framework\Support\Str;
 
 class Validator {
     private static array $req_obj;

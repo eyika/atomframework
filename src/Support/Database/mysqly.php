@@ -1,7 +1,7 @@
 <?php
-namespace Eyika\Atom\Support\Database;
+namespace Eyika\Atom\Framework\Support\Database;
 
-use Eyika\Atom\Support\Arr;
+use Eyika\Atom\Framework\Support\Arr;
 use PDO;
 use PDOException;
 

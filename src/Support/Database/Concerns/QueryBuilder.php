@@ -1,12 +1,12 @@
 <?php
 
-namespace Eyika\Atom\Support\Database\Concerns;
+namespace Eyika\Atom\Framework\Support\Database\Concerns;
 
 use Exception;
-use Eyika\Atom\Exceptions\NotImplementedException;
-use Eyika\Atom\Support\Arr;
-use Eyika\Atom\Support\Database\mysqly;
-use Eyika\Atom\Support\Database\PaginatedData;
+use Eyika\Atom\Framework\Exceptions\NotImplementedException;
+use Eyika\Atom\Framework\Support\Arr;
+use Eyika\Atom\Framework\Support\Database\mysqly;
+use Eyika\Atom\Framework\Support\Database\PaginatedData;
 
 trait QueryBuilder
 {

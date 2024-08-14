@@ -1,10 +1,10 @@
 <?php
 
-namespace Eyika\Atom\Support;
+namespace Eyika\Atom\Framework\Support;
 
-use Eyika\Atom\Support\Str;
+use Eyika\Atom\Framework\Support\Str;
 use Closure;
-use Eyika\Atom\Support\Concerns\Macroable;
+use Eyika\Atom\Framework\Support\Concerns\Macroable;
 
 class Stringable
 {

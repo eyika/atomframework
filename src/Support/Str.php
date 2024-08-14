@@ -1,9 +1,9 @@
 <?php
 
-namespace Eyika\Atom\Support;
+namespace Eyika\Atom\Framework\Support;
 
-use Eyika\Atom\Support\Arr;
-use Eyika\Atom\Support\Concerns\Macroable;
+use Eyika\Atom\Framework\Support\Arr;
+use Eyika\Atom\Framework\Support\Concerns\Macroable;
 // use Ramsey\Uuid\Codec\TimestampFirstCombCodec;
 // use Ramsey\Uuid\Generator\CombGenerator;
 // use Ramsey\Uuid\Uuid;
@@ -53,7 +53,7 @@ class Str
      * Get a new stringable object from the given string.
      *
      * @param  string  $string
-     * @return \Eyika\Atom\Support\Stringable
+     * @return \Eyika\Atom\Framework\Support\Stringable
      */
     public static function of($string)
     {

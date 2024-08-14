@@ -1,10 +1,10 @@
 <?php
 
-namespace Eyika\Atom\Support;
+namespace Eyika\Atom\Framework\Support;
 
-use Eyika\Atom\Exceptions\NotImplementedException;
-use Eyika\Atom\Support\Cache\Contracts\CacheInterface;
-use Eyika\Atom\Support\Cache\DbCache;
+use Eyika\Atom\Framework\Exceptions\NotImplementedException;
+use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
+use Eyika\Atom\Framework\Support\Cache\DbCache;
 use InvalidArgumentException;
 
 class Config

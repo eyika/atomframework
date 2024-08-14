@@ -1,8 +1,8 @@
 <?php
 
-namespace Eyika\Atom\Support\Interfaces;
+namespace Eyika\Atom\Framework\Support\Interfaces;
 
-use Eyika\Atom\Http\Request;
+use Eyika\Atom\Framework\Http\Request;
 
 interface MiddlewareInterface
 {

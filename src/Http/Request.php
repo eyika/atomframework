@@ -1,9 +1,9 @@
 <?php
 
-namespace Eyika\Atom\Http;
+namespace Eyika\Atom\Framework\Http;
 
-use Eyika\Atom\Support\Database\Contracts\UserModelInterface;
-use Eyika\Atom\Support\Database\Model;
+use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
+use Eyika\Atom\Framework\Support\Database\Model;
 
 class Request
 {

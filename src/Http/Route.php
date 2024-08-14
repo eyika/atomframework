@@ -1,9 +1,9 @@
 <?php
 
-namespace Eyika\Atom\Http;
+namespace Eyika\Atom\Framework\Http;
 
 use Basttyy\FxDataServer\Exceptions\NotFoundException;
-use Eyika\Atom\Support\Session\MysqlSessionHandler;
+use Eyika\Atom\Framework\Support\Session\MysqlSessionHandler;
 
 class Route
 {

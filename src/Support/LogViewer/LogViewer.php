@@ -1,8 +1,8 @@
 <?php
 
-namespace Eyika\Atom\Support\LogViewer;
+namespace Eyika\Atom\Framework\Support\LogViewer;
 
-use Eyika\Atom\Support\Storage\DbCache;
+use Eyika\Atom\Framework\Support\Storage\DbCache;
 
 class LogViewer
 {

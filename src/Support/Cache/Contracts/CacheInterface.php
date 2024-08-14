@@ -1,6 +1,6 @@
 <?php
 
-namespace Eyika\Atom\Support\Cache\Contracts;
+namespace Eyika\Atom\Framework\Support\Cache\Contracts;
 
 interface CacheInterface
 {

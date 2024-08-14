@@ -1,6 +1,6 @@
 <?php
 
-namespace Eyika\Atom\Support\Session;
+namespace Eyika\Atom\Framework\Support\Session;
 
 use PDO;
 use PDOException;

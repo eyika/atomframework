@@ -1,8 +1,8 @@
 <?php
-namespace Eyika\Atom\Support\Storage;
+namespace Eyika\Atom\Framework\Support\Storage;
 
-use Eyika\Atom\Support\Database\mysqly;
-use Eyika\Atom\Support\Storage\Contracts\StorageInterface;
+use Eyika\Atom\Framework\Support\Database\mysqly;
+use Eyika\Atom\Framework\Support\Storage\Contracts\StorageInterface;
 use Hybridauth\Exception\RuntimeException;
 
 /**
