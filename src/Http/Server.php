@@ -3,9 +3,16 @@
 namespace Eyika\Atom\Framework\Http;
 
 use Dotenv\Dotenv;
+use Eyika\Atom\Framework\Foundation\Application;
 
 class Server
 {
+    protected static Application $app;
+
+    public function __construct(Application $app)
+    {
+        $this->$app = $app;
+    }
     public static function handle(string $basepath): bool
     {
         $GLOBALS['basepath'] = $basepath;
