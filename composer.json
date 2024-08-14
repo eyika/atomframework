@@ -1,0 +1,27 @@
+{
+    "name": "eyika/atom",
+    "description": "An MVC microframework for PHP. Quite heavily inspired by Laravel",
+    "type": "library",
+    "require": {
+    },
+    "require-dev": {
+        "nesbot/carbon": "^3.7",
+        "vlucas/phpdotenv": "^5.6",
+        "monolog/monolog": "^3.7",
+        "phpunit/phpunit": "^11.3",
+        "predis/predis": "^2.2"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Eyika\\Atom\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Abdulbasit",
+            "email": "basttyy@gmail.com"
+        }
+    ],
+    "minimum-stability": "beta"
+}

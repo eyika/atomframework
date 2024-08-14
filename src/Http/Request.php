@@ -1,6 +1,6 @@
 <?php
 
-namespace Atom\Http;
+namespace Eyika\Atom\Http;
 
 use Basttyy\FxDataServer\Models\User;
 
