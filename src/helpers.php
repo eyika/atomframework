@@ -99,7 +99,7 @@ if (! function_exists('config')) {
         $config_name = array_shift($parts);
 
         $config = [];
-        $data = include_once __DIR__."/../../config/$config_name.php";
+        $data = include_once base_path()."/config/$config_name.php";
 
         $config = (array)$data;
 
@@ -124,8 +124,6 @@ if (! function_exists('env')) {
      */
     function env($key, $default = null)
     {
-        //$dotenv = Dotenv::createImmutable(__DIR__);
-        //$dotenv->load();
         return $_ENV[$key] ?? $default;
     }
 }
@@ -144,7 +142,6 @@ if (! function_exists('sanitize_data')) {
                 $data[$key] = is_string($dat) ? htmlspecialchars(strip_tags($dat)) : $dat;
             }
         } else {
-            // is_int($data) || is_float($data) || is_double($data) || is_null($data) || is_bool($data)
             $data = is_string($data) ? htmlspecialchars(strip_tags($data)) : $data;
         }
 
@@ -177,14 +174,19 @@ if (!function_exists("consoleLog")) {
     }
 }
 
+if (! function_exists('base_path')) {
+    function base_path(): string
+    {
+        return $GLOBALS['basepath'] ?? $_SERVER['DOCUMENT_ROOT'];
+    }
+}
+
 if (! function_exists('storage_path')) {
     function storage_path(string $folder = '')
     {
         $is_windows = strtolower(PHP_OS_FAMILY) === "windows";
 
-        // if ($folder != '')
-        //     $folder = $is_windows ? "$folder\\" : "$folder/";
-        return $is_windows ? __DIR__."\\..\\..\\storage\\$folder" : __DIR__."/../../storage/$folder";
+        return base_path() . $is_windows ? "\\storage\\$folder" : "/storage/$folder";
     }
 }
 
