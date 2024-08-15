@@ -2,17 +2,11 @@
 
 namespace Eyika\Atom\Framework\Foundation\Contracts;
 
-use Eyika\Atom\Framwork\Foundation\Console\Contracts\QueueInterface;
+use Eyika\Atom\Framwork\Foundation\Console\Command;
 
 interface ConsoleKernel
 {
-    /**
-     * Define the application's command schedule.
-     */
-    public function schedule(QueueInterface $schedule): void;
+    public function register(string $name, Command $command);
 
-    /**
-     * Register the commands for the application.
-     */
-    public function commands(): void;
+    public function run(string $name, array $arguments = []);
 }
