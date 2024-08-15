@@ -7,7 +7,8 @@ use PDO;
 use Exception;
 use SQLite3;
 
-class Job_Queue {
+class Job_Queue
+{
 
 	const QUEUE_TYPE_MYSQL = 'mysql';
 	const QUEUE_TYPE_SQLITE = 'sqlite';
