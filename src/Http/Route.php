@@ -2,7 +2,7 @@
 
 namespace Eyika\Atom\Framework\Http;
 
-use Basttyy\FxDataServer\Exceptions\NotFoundException;
+use Eyika\Atom\Framework\Exceptions\NotFoundException;
 use Eyika\Atom\Framework\Support\Session\MysqlSessionHandler;
 
 class Route

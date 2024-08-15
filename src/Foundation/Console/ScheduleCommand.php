@@ -1,6 +1,6 @@
 <?php
 
-namespace Basttyy\FxDataServer\Console\Commands;
+namespace Eyika\Atom\Framework\Foundation\Console;
 
 use Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel;
 use Eyika\Atom\Framwork\Foundation\Console\Command;

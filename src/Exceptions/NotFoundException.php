@@ -1,6 +1,6 @@
 <?php
 
-namespace Basttyy\FxDataServer\Exceptions;
+namespace Eyika\Atom\Framework\Exceptions;
 
 use Eyika\Atom\Framework\Exceptions\BaseException;
 

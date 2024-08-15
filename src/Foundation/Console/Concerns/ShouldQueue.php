@@ -1,5 +1,5 @@
 <?php
-namespace Basttyy\FxDataServer\Console\Concerns;
+namespace Eyika\Atom\Framework\Foundation\Console\Concerns;
 
 use Eyika\Atom\Framwork\Foundation\Console\Job_Queue;
 use PDO;

@@ -2,9 +2,11 @@
 
 namespace Eyika\Atom\Framework\Foundation;
 
-use Eyika\Atom\Framework\Exceptions\NotImplementedException;
+use Exception;
 use Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel as ContractsConsoleKernel;
-use Eyika\Atom\Framwork\Foundation\Console\Contracts\QueueInterface;
+use Eyika\Atom\Framework\Support\NamespaceHelper;
+use Eyika\Atom\Framework\Support\Str;
+use Eyika\Atom\Framwork\Foundation\Console\Command;
 use SplFileInfo;
 
 class ConsoleKernel implements ContractsConsoleKernel
@@ -14,66 +16,58 @@ class ConsoleKernel implements ContractsConsoleKernel
      *
      * @var array
      */
-    protected $commands = [
-    ];
+    protected $commands = [];
 
-    /**
-     * Define the application's command schedule.
-     */
-    public function schedule(QueueInterface $schedule): void
+    protected $status = false;
+
+    public function register(string $name, Command $command)
     {
-        throw new NotImplementedException('this feature is not yet implemented');
+        $this->commands[$name] = $command;
+    }
+
+    public function run(string $name, array $arguments = [])
+    {
+        if (isset($this->commands[$name])) {
+            $this->commands[$name]->handle($arguments);
+        } else {
+            echo "Error: Command '$name' not found." . PHP_EOL;
+        }
+    }
+
+    public function terminate($inputs = [])
+    {
+        return intval($this->status);
     }
 
     /**
-     * Register the commands for the application.
+     * Load all the defined commands into console kernel registry
      */
-    public function commands(): void
+    protected function load()
     {
-        throw new NotImplementedException('this feature is not yet implemented');
+        try {
+            $fullPath = $GLOBALS['base_path'] . 'app/Console/Commands';
+            $listObject = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::CHILD_FIRST
+            );
+    
+            $namespace = NamespaceHelper::getBaseNamespace();
+    
+            foreach ($listObject as $fileinfo) {
+                if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1])
+                    $command = $this->commandClassFromFile($fileinfo, $namespace);
+                    // $files[] = $basename ? basename($fileinfo->getRealPath()) : $fileinfo->getRealPath();
+    
+                    $namespace = $namespace."\/$command";
+                    $command_obj = new $namespace;
+    
+                    $this->register($command_obj->signature, $command_obj);
+            }
+        } catch (Exception $e) {
+            logger()->info("INTERNAL: ".$e->getMessage(), $e->getTrace());
+            ///TODO handle exception
+        }
     }
-
-    /**
-     * Register all of the commands in the given directory.
-     *
-     * @param  array|string  $paths
-     * @return void
-     */
-    // protected function load($paths)
-    // {
-        // $paths = array_unique(Arr::wrap($paths));
-
-        // $paths = array_filter($paths, function ($path) {
-        //     return is_dir($path);
-        // });
-
-        // if (empty($paths)) {
-        //     return;
-        // }
-
-        // $namespace = $this->app->getNamespace();
-
-        // $listObject = new \RecursiveIteratorIterator(
-        //     new \RecursiveDirectoryIterator($path, \RecursiveDirectoryIterator::SKIP_DOTS),
-        //     \RecursiveIteratorIterator::CHILD_FIRST
-        // );
-
-        // foreach ($listObject as $fileinfo) {
-        //     if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1]) {
-        //         // $file = basename($fileinfo->getRealPath()); // : $fileinfo->getRealPath();
-        //         $command = $this->commandClassFromFile($fileinfo, $namespace);
-
-        //         $this->commands[]
-
-        //         // if (is_subclass_of($command, Command::class) &&
-        //         //     ! (new ReflectionClass($command))->isAbstract()) {
-        //         //     Artisan::starting(function ($artisan) use ($command) {
-        //         //         $artisan->resolve($command);
-        //         //     });
-        //         // }
-        //     }
-        // }
-    // }
 
     /**
      * Extract the command class name from the given file path.
@@ -82,12 +76,12 @@ class ConsoleKernel implements ContractsConsoleKernel
      * @param  string  $namespace
      * @return string
      */
-    // protected function commandClassFromFile(SplFileInfo $file, string $namespace): string
-    // {
-    //     return $namespace.str_replace(
-    //         ['/', '.php'],
-    //         ['\\', ''],
-    //         Str::after($file->getRealPath(), realpath(base_path()).DIRECTORY_SEPARATOR)
-    //     );
-    // }
+    protected function commandClassFromFile(SplFileInfo $file, string $namespace): string
+    {
+        return $namespace.str_replace(
+            ['/', '.php'],
+            ['\\', ''],
+            Str::after($file->getRealPath(), realpath(base_path()).DIRECTORY_SEPARATOR)
+        );
+    }
 }

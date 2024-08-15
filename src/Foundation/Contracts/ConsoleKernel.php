@@ -9,4 +9,6 @@ interface ConsoleKernel
     public function register(string $name, Command $command);
 
     public function run(string $name, array $arguments = []);
+
+    public function terminate($inputs = []);
 }

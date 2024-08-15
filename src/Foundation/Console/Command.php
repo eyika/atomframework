@@ -2,13 +2,12 @@
 
 namespace Eyika\Atom\Framwork\Foundation\Console;
 
-use Basttyy\FxDataServer\Console\Concerns\ShouldQueue;
-use Eyika\Atom\Framework\Exceptions\NotImplementedException;
-use Eyika\Atom\Framwork\Foundation\Console\Contracts\QueueInterface;
 use Monolog\Level;
 
 abstract class Command
 {
+    public string $signature = '';
+
     abstract public function handle(array $arguments = []);
 
     // public function handle()
