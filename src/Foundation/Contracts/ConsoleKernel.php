@@ -2,7 +2,7 @@
 
 namespace Eyika\Atom\Framework\Foundation\Contracts;
 
-use Eyika\Atom\Framwork\Foundation\Console\Command;
+use Eyika\Atom\Framework\Foundation\Console\Command;
 
 interface ConsoleKernel
 {

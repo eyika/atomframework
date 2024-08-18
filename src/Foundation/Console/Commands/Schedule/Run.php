@@ -1,12 +1,12 @@
 <?php
 
-namespace Eyika\Atom\Framwork\Foundation\Console\Commands\Schedule;
+namespace Eyika\Atom\Framework\Foundation\Console\Commands\Schedule;
 
 use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
 use Eyika\Atom\Framework\Foundation\Console\Concerns\RunsOnConsole;
-use Eyika\Atom\Framwork\Foundation\Console\BurriedJobRunner;
-use Eyika\Atom\Framwork\Foundation\Console\Command;
-use Eyika\Atom\Framwork\Foundation\Console\JobRunner;
+use Eyika\Atom\Framework\Foundation\Console\BurriedJobRunner;
+use Eyika\Atom\Framework\Foundation\Console\Command;
+use Eyika\Atom\Framework\Foundation\Console\JobRunner;
 
 class Run extends Command
 {

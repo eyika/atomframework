@@ -11,6 +11,6 @@ class Application implements ApplicationInterface
 
     public function __construct(string $basepath)
     {
-        $GLOBALS['basepath'] = $basepath;
+        $GLOBALS['base_path'] = $basepath;
     }
 }

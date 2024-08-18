@@ -1,14 +1,16 @@
 <?php
 
-namespace Eyika\Atom\Framwork\Foundation\Console\Commands\Db;
+namespace Eyika\Atom\Framework\Foundation\Console\Commands\Db;
 
 use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
 use Eyika\Atom\Framework\Foundation\Console\Concerns\RunsOnConsole;
-use Eyika\Atom\Framwork\Foundation\Console\Command;
+use Eyika\Atom\Framework\Foundation\Console\Command;
 
 class Seed extends Command
 {
     use RunsOnConsole;
+
+    public string $signature = 'db:seed';
 
     public function handle(array $arguments = []): int
     {

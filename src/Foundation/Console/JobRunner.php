@@ -1,9 +1,9 @@
 <?php
-namespace Eyika\Atom\Framwork\Foundation\Console;
+namespace Eyika\Atom\Framework\Foundation\Console;
 
 use Dotenv\Dotenv;
 use Exception;
-use Eyika\Atom\Framwork\Foundation\Console\Contracts\QueueInterface;
+use Eyika\Atom\Framework\Foundation\Console\Contracts\QueueInterface;
 use PDO;
 
 class JobRunner {
@@ -51,7 +51,7 @@ class JobRunner {
             try {
                 $job_obj = unserialize($payload);
 
-                if ($job_obj instanceof QueueInterface) {
+                if ($job_obj instanceof ContractsQueueInterface) {
                     $job_obj->setJob($job);
                     $job_obj->setQueue($job_Queue);
                     $resp = $job_obj->handle();

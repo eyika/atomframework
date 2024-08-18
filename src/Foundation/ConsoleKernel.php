@@ -7,7 +7,7 @@ use Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel as ContractsConsoleK
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\NamespaceHelper;
 use Eyika\Atom\Framework\Support\Str;
-use Eyika\Atom\Framwork\Foundation\Console\Command;
+use Eyika\Atom\Framework\Foundation\Console\Command;
 
 class ConsoleKernel implements ContractsConsoleKernel
 {
@@ -42,26 +42,27 @@ class ConsoleKernel implements ContractsConsoleKernel
     /**
      * Load all the defined commands into console kernel registry
      */
-    protected function load()
+    protected function loadCommands()
     {
         try {
             $ds = DIRECTORY_SEPARATOR;
-            $fullPath = $GLOBALS['base_path'] . 'app'. $ds. 'Console'. $ds. 'Commands';
+            $fullPath = base_path() . $ds. "vendor". $ds. "eyika". $ds. "atom-framework". $ds. "src". $ds. 'Foundation'. $ds. 'Console'. $ds. 'Commands';
             $listObject = new \RecursiveIteratorIterator(
                 new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
                 \RecursiveIteratorIterator::CHILD_FIRST
             );
-    
             $namespace = NamespaceHelper::getBaseNamespace();
-    
+            echo "$namespace\n";
+
             foreach ($listObject as $fileinfo) {
                 if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1])
                     $command = classFromFile($fileinfo, $namespace);
+                    echo "$command\n";
                     // $files[] = $basename ? basename($fileinfo->getRealPath()) : $fileinfo->getRealPath();
+
+                    $command_obj = new $command;
     
-                    $namespace = $namespace."\/$command";
-                    $command_obj = new $namespace;
-    
+                    logger()->info("loading command $command into memory", (array)$command_obj);
                     $this->register($command_obj->signature, $command_obj);
             }
         } catch (Exception $e) {
@@ -70,7 +71,37 @@ class ConsoleKernel implements ContractsConsoleKernel
         }
     }
 
+    /**
+     * Load all the defined commands into console kernel registry
+     */
+    protected function loadThirdPartyCommands()
+    {
+        try {
+            $ds = DIRECTORY_SEPARATOR;
+            $fullPath = base_path() . 'app'. $ds. 'Console'. $ds. 'Commands';
+            $listObject = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::CHILD_FIRST
+            );
+            $namespace = NamespaceHelper::getBaseNamespace();
+            echo "$namespace\n";
 
+            foreach ($listObject as $fileinfo) {
+                if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1])
+                    $command = classFromFile($fileinfo, $namespace);
+                    echo "$command\n";
+                    // $files[] = $basename ? basename($fileinfo->getRealPath()) : $fileinfo->getRealPath();
+
+                    $command_obj = new $command;
+    
+                    logger()->info("loading command $command into memory", (array)$command_obj);
+                    $this->register($command_obj->signature, $command_obj);
+            }
+        } catch (Exception $e) {
+            logger()->info("INTERNAL: ".$e->getMessage(), $e->getTrace());
+            ///TODO handle exception
+        }
+    }
 
     /**
      * Load all the needed facades into memory

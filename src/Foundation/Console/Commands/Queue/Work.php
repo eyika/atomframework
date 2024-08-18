@@ -1,12 +1,12 @@
 <?php
 
-namespace Eyika\Atom\Framwork\Foundation\Console\Commands\Queue;
+namespace Eyika\Atom\Framework\Foundation\Console\Commands\Queue;
 
 use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
 use Eyika\Atom\Framework\Foundation\Console\Concerns\RunsOnConsole;
-use Eyika\Atom\Framwork\Foundation\Console\BurriedJobRunner;
-use Eyika\Atom\Framwork\Foundation\Console\Command;
-use Eyika\Atom\Framwork\Foundation\Console\JobRunner;
+use Eyika\Atom\Framework\Foundation\Console\BurriedJobRunner;
+use Eyika\Atom\Framework\Foundation\Console\Command;
+use Eyika\Atom\Framework\Foundation\Console\JobRunner;
 
 class work extends Command
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Eyika\Atom\Framwork\Foundation\Console;
+namespace Eyika\Atom\Framework\Foundation\Console;
 
 use Cake\Database\Driver\Sqlite;
 use PDO;

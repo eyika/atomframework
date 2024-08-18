@@ -1,11 +1,11 @@
 <?php
 
-namespace Eyika\Atom\Framwork\Foundation\Console\Commands\Make;
+namespace Eyika\Atom\Framework\Foundation\Console\Commands\Make;
 
 use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
 use Eyika\Atom\Framework\Exceptions\Console\InvalidInputException;
 use Eyika\Atom\Framework\Foundation\Console\Concerns\RunsOnConsole;
-use Eyika\Atom\Framwork\Foundation\Console\Command;
+use Eyika\Atom\Framework\Foundation\Console\Command;
 
 class Seed extends Command
 {

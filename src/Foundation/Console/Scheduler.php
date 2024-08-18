@@ -1,6 +1,6 @@
 <?php
 
-namespace Eyika\Atom\Framwork\Foundation\Console;
+namespace Eyika\Atom\Framework\Foundation\Console;
 
 use Cron\CronExpression;
 use Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel;

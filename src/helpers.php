@@ -26,7 +26,7 @@ if (! function_exists('classFromFile')) {
         return $namespace.str_replace(
             ['/', '.php'],
             ['\\', ''],
-            Str::after($file->getRealPath(), realpath(base_path()).DIRECTORY_SEPARATOR)  //may trigger cyclic reference error
+            Str::after($file->getRealPath(), 'src')  //may trigger cyclic reference error
         );
     }
 }
@@ -203,16 +203,17 @@ if (!function_exists("consoleLog")) {
 if (! function_exists('base_path')) {
     function base_path(): string
     {
-        return $GLOBALS['basepath'] ?? $_SERVER['DOCUMENT_ROOT'];
+        $ds = DIRECTORY_SEPARATOR;
+        return $GLOBALS['base_path'].$ds ?? $_SERVER['DOCUMENT_ROOT'].$ds;
     }
 }
 
 if (! function_exists('storage_path')) {
     function storage_path(string $folder = '')
     {
-        $is_windows = strtolower(PHP_OS_FAMILY) === "windows";
-
-        return base_path() . $is_windows ? "\\storage\\$folder" : "/storage/$folder";
+        $ds = DIRECTORY_SEPARATOR;
+        $end_ds = empty($folder) ? '' : $ds;
+        return base_path() . $ds. "storage". $ds. $folder. $end_ds;
     }
 }
 
@@ -223,9 +224,10 @@ if (!function_exists('is_windows')) {
 }
 
 if (! function_exists('logger')) {
-    function logger(string $path = null, int $level = Monolog\Level::Debug, $bubble = true, $filePermission = 0664, $useLocking = false)
+    function logger(string $path = null, Monolog\Level $level = Monolog\Level::Debug, $bubble = true, $filePermission = 0664, $useLocking = false)
     {
-        $logger_path = strtolower(PHP_OS_FAMILY) === "windows" ? "logs\\custom.log" : "logs/custom.log";
+        $ds = DIRECTORY_SEPARATOR;
+        $logger_path = "logs". $ds. "custom.log";
         $path = is_null($path) ? storage_path().$logger_path : $path;
         $log = new Logger('tradingio');
         // Define the date format to match Laravel's

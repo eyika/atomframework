@@ -1,12 +1,12 @@
 <?php
 
-namespace Eyika\Atom\Framwork\Foundation\Console\Commands\Make;
+namespace Eyika\Atom\Framework\Foundation\Console\Commands\Make;
 
 use Exception;
 use Eyika\Atom\Framework\Exceptions\Console\InvalidInputException;
 use Eyika\Atom\Framework\Exceptions\Console\RuntimeException;
 use Eyika\Atom\Framework\Support\Str;
-use Eyika\Atom\Framwork\Foundation\Console\Command;
+use Eyika\Atom\Framework\Foundation\Console\Command;
 
 class Controller extends Command
 {

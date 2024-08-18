@@ -6,7 +6,7 @@ use Exception;
 use Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\Facade\Scheduler;
-use Eyika\Atom\Framwork\Foundation\Console\Command;
+use Eyika\Atom\Framework\Foundation\Console\Command;
 
 class ScheduleRunner extends Command
 {

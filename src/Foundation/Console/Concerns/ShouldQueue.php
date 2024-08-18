@@ -1,7 +1,7 @@
 <?php
 namespace Eyika\Atom\Framework\Foundation\Console\Concerns;
 
-use Eyika\Atom\Framwork\Foundation\Console\Job_Queue;
+use Eyika\Atom\Framework\Foundation\Console\Job_Queue;
 use PDO;
 use SQLite3;
 

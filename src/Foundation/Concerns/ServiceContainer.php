@@ -23,7 +23,7 @@ trait ServiceContainer
             static $instance;
 
             if ($instance === null) {
-                $instance = $resolver();
+                $instance = is_callable($resolver) ? $resolver() : new $resolver;
             }
 
             return $instance;

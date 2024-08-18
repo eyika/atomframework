@@ -1,9 +1,9 @@
 <?php
+namespace Eyika\Atom\Framework\Foundation\Console;
 
-namespace Eyika\Atom\Framwork\Foundation\Console;
 use Dotenv\Dotenv;
 use Exception;
-use Eyika\Atom\Framwork\Foundation\Console\Contracts\QueueInterface;
+use Eyika\Atom\Framework\Foundation\Console\Contracts\QueueInterface;
 use PDO;
 
 class BurriedJobRunner
