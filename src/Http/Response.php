@@ -3,7 +3,8 @@
 namespace Eyika\Atom\Framework\Http;
 
 use Exception;
-use Eyika\Atom\Framework\Support\View;
+use Eyika\Atom\Framework\Support\View\BasicView;
+use Eyika\Atom\Framework\Support\View\View;
 
 class Response
 {
@@ -41,9 +42,20 @@ class Response
     public static function view(string $file_name, $data = [])
     {
         $path = base_path()."/resources/views/";
+        try {
+            if (config('view.use_advance_engine')) {
+                $view = new View("{$path}$file_name.blade.php");
+                $code = $view->run(variables: $data);
+            } else {
+                $code = BasicView::make("$file_name.blade.php", $path, $data, true);
+            }
+        } catch (Exception $e) {
+            header("Content-Type: text/html; charset=utf-8", self::STATUS_INTERNAL_SERVER_ERROR);
+            echo "Server Error";
+            return true;
+        }
         header("Content-Type: text/html; charset=utf-8", self::STATUS_OK);
-        echo View::make("$file_name.blade.php", $path, $data, true);
-
+        echo $code;
         return true;
     }
 
@@ -83,76 +95,4 @@ class Response
         exit;
         return true;
     }
-
-    // public static function ok($message = "", $data = null): bool
-    // {
-    //     try {
-    //         new self(self::STATUS_OK, ['message' => $message, 'data' => $data]);
-    //         return true;
-    //     } catch (Exception $ex) {
-    //     }
-    // }
-
-    // public static function noContent(): bool
-    // {
-    //     try {
-    //         new self(self::STATUS_NO_CONTENT);
-    //         return true;
-    //     } catch (Exception $ex) {
-    //     }
-    // }
-
-    // public static function created(string $message = '', $data = []): bool
-    // {
-    //     try {
-    //         new self(self::STATUS_CREATED, ['message' => $message, 'data' => $data]);
-    //         return true;
-    //     } catch (Exception $ex) {
-    //     }
-    // }
-
-    // public static function badRequest(string $message="", string|array $error = ""): bool
-    // {
-    //     try {
-    //         new self(self::STATUS_BAD_REQUEST, ['message' => $message, 'error' => $error]);
-    //         return true;
-    //     } catch (Exception $ex) {
-    //     }
-    // }
-
-    // public static function notFound(string $error): bool
-    // {
-    //     try {
-    //         new self(self::STATUS_NOT_FOUND, ['message' => $error]);
-    //         return true;
-    //     } catch (Exception $ex) {
-    //     }
-    // }
-
-    // public static function unauthorized(string $message = "unauthorized request"): bool
-    // {
-    //     try {
-    //         new self(self::STATUS_UNAUTHORIZED, ['message' => $message]);
-    //         return true;
-    //     } catch (Exception $ex) {
-    //     }
-    // }
-
-    // public static function serverError(string $message=""): bool
-    // {
-    //     try {
-    //         new self(self::STATUS_INTERNAL_SERVER_ERROR, ['message' => $message]);
-    //         return true;
-    //     } catch (Exception $ex) {
-    //     }
-    // }
-
-    // private function respond(int $statusCode, $body = null)
-    // {
-    //     try {
-    //         return self::json($body)->withStatus($statusCode);
-    //     } catch (Exception $ex) {
-    //     }
-
-    // }
 }

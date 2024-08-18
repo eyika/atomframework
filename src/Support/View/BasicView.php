@@ -11,7 +11,7 @@ class BasicView {
 
 	static function make($file, $path = "/", $data = array(), $get_output = false) {
         self::$path = $path;
-		self::$cache_path = storage_path(). 'cache/';
+		self::$cache_path = config('view.compiled');
 		$cached_file = self::cache($file);
 	    extract($data, EXTR_SKIP);
         if (!$get_output) {
