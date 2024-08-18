@@ -13,9 +13,6 @@ interface ApplicationInterface
     // Resolve a service and its dependencies
     public function make(string $key): mixed;
 
-    // Resolve the dependencies of a class constructor
-    public function resolveDependencies(array $parameters): array;
-
     // Swap or set an instance
     public function instance(string $accessor, mixed $instance): mixed;
 }
