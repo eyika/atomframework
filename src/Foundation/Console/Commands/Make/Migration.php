@@ -20,10 +20,11 @@ class Migration extends Command
     
             array_unshift($arguments, 'create');
 
-            return $this->executeCommand($arguments);
+            $code = $this->executeCommand($arguments);
         } catch (BaseConsoleException $e) {
             $this->error($e->getMessage());
             return $e->getCode();
         }
+        return $code;
     }
 }

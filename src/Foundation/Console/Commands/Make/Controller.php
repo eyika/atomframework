@@ -187,10 +187,10 @@ class Controller extends Command
             }
             file_put_contents($controller_folder.$name.'Controller.php', $controller_template);
             $this->info("controller with name $name created successfully");
-            return 0;
         } catch (Exception $e) {
             $this->error($e->getMessage());
             return $e->getCode();
         }
+        return 0;
     }
 }
