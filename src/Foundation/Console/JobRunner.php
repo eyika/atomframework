@@ -51,7 +51,7 @@ class JobRunner {
             try {
                 $job_obj = unserialize($payload);
 
-                if ($job_obj instanceof ContractsQueueInterface) {
+                if ($job_obj instanceof QueueInterface) {
                     $job_obj->setJob($job);
                     $job_obj->setQueue($job_Queue);
                     $resp = $job_obj->handle();

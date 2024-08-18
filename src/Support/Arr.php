@@ -625,6 +625,7 @@ Class Arr
     /**
      * Run a map over each of the items.
      *
+     * @param array $array
      * @param  callable  $callback
      * @return array
      */
@@ -635,6 +636,20 @@ Class Arr
         $items = array_map($callback, $array, $keys);
 
         return array_combine($keys, $items);
+    }
+
+    /**
+     * Run a callback on each items of the array
+     * 
+     * @param array $array
+     * @param callable $callback
+     * @return void
+     */
+    public static function each($array, $callback)
+    {
+        foreach ($array as $key => $value) {
+            $callback($key, $value);
+        }
     }
 
     /**

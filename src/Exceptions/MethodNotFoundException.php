@@ -4,9 +4,9 @@ namespace Eyika\Atom\Framework\Exceptions;
 
 use Eyika\Atom\Framework\Exceptions\BaseException;
 
-final class NotFoundException extends BaseException
+final class MethodNotFoundException extends BaseException
 {
-    public function __construct($message = 'not found')
+    public function __construct($message = 'method not found')
     {
        parent::__construct($message);
     }
