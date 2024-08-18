@@ -9,6 +9,8 @@ use Eyika\Atom\Framework\Foundation\Console\JobRunner;
 
 class work extends Command
 {
+    public string $signature = 'queue:work';
+
     public function handle(array $arguments = []): int
     {
         try {

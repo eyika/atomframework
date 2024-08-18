@@ -10,6 +10,8 @@ use Eyika\Atom\Framework\Foundation\Console\Command;
 
 class Controller extends Command
 {
+    public string $signature = 'make:controller';
+
     public function handle(array $arguments = []): int
     {
         try {

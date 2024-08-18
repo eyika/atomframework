@@ -10,6 +10,8 @@ class Test extends Command
 {
     use RunsOnConsole;
 
+    public string $signature = 'test';
+
     public function handle(array $arguments = []): int
     {
         try {

@@ -8,6 +8,8 @@ use Eyika\Atom\Framework\Foundation\Console\Command;
 
 class Publish extends Command
 {
+    public string $signature = 'vendor:publish';
+
     public function handle(array $arguments = []): int
     {
         try {

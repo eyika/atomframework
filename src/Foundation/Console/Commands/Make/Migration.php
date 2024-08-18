@@ -9,6 +9,8 @@ use Eyika\Atom\Framework\Foundation\Console\Command;
 
 class Migration extends Command
 {
+    public string $signature = 'make:migration';
+
     use RunsOnConsole;
 
     public function handle(array $arguments = []): int

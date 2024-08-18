@@ -9,6 +9,8 @@ use Eyika\Atom\Framework\Foundation\Console\Command;
 
 class Seed extends Command
 {
+    public string $signature = 'make:seed';
+
     use RunsOnConsole;
 
     public function handle(array $arguments = []): int

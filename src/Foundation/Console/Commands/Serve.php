@@ -10,6 +10,8 @@ class Serve extends Command
 {
     use RunsOnConsole;
 
+    public string $signature = 'serve';
+
     public function handle(array $arguments = []): int
     {
         try {

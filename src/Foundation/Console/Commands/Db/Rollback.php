@@ -10,6 +10,8 @@ class Rollback extends Command
 {
     use RunsOnConsole;
 
+    public string $signature = 'db:rollback';
+
     public function handle(array $arguments = []): int
     {
         try {

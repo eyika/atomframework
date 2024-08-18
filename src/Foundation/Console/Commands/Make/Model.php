@@ -9,6 +9,8 @@ use Eyika\Atom\Framework\Foundation\Console\Command;
 
 class Model extends Command
 {
+    public string $signature = 'make:model';
+
     public function handle(array $arguments = []): int
     {
         try {

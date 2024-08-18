@@ -9,6 +9,8 @@ use Eyika\Atom\Framework\Foundation\Console\JobRunner;
 
 class Run extends Command
 {
+    public string $signature = 'schedule:run';
+
     public function handle(array $arguments = []): int
     {
         try {
