@@ -65,7 +65,6 @@ trait RunsOnConsole
     {
         $kv_options = [];
         $found = [];
-        array_shift($options);
 
         Arr::each($options, function ($key, $option) use (&$found, &$kv_options) {
             if (str_contains($option, '=')) {
