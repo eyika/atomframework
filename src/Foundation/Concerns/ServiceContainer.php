@@ -11,13 +11,13 @@ trait ServiceContainer
     protected $instances = [];
 
     // Bind a service to the container
-    public function bind(string $key, $resolver)
+    public function bind(string $key, $resolver): void
     {
         $this->bindings[$key] = $resolver;
     }
 
     // Bind a singleton service to the container
-    public function singleton(string $key, $resolver)
+    public function singleton(string $key, $resolver): void
     {
         $this->bindings[$key] = function() use ($resolver) {
             static $instance;
@@ -30,7 +30,7 @@ trait ServiceContainer
         };
     }
 
-    public function instance(string $accessor, mixed $instance)
+    public function instance(string $accessor, mixed $instance): mixed
     {
         $this->instances[$accessor] = $instance;
 
@@ -38,7 +38,7 @@ trait ServiceContainer
     }
 
     // Resolve a service and its dependencies
-    public function make($key)
+    public function make(string $key): mixed
     {
         if (isset($this->instances[$key])) {
             return $this->instances[$key];
@@ -56,7 +56,7 @@ trait ServiceContainer
     }
 
     // Automatically resolve class dependencies
-    protected function resolve($class)
+    protected function resolve(string $class): mixed
     {
         $reflectionClass = new ReflectionClass($class);
 
@@ -77,7 +77,7 @@ trait ServiceContainer
     }
 
     // Resolve the dependencies of a class constructor
-    protected function resolveDependencies($parameters)
+    protected function resolveDependencies(array $parameters): array
     {
         $dependencies = [];
 

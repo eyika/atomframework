@@ -8,17 +8,17 @@ interface ApplicationInterface
     public function bind(string $key, $resolver): void;
 
     // Bind a singleton service to the container
-    public function singleton(string $key, $resolver): mixed;
+    public function singleton(string $key, $resolver): void;
 
     // Resolve a service and its dependencies
-    public function make($key): mixed;
+    public function make(string $key): mixed;
 
     // Automatically resolve class dependencies
-    public function resolve($class): mixed;
+    public function resolve(string $class): mixed;
 
     // Resolve the dependencies of a class constructor
     public function resolveDependencies(array $parameters): array;
 
     // Swap or set an instance
-    public function instance(string $accessor, mixed $instance);
+    public function instance(string $accessor, mixed $instance): mixed;
 }
