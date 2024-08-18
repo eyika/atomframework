@@ -13,9 +13,6 @@ interface ApplicationInterface
     // Resolve a service and its dependencies
     public function make(string $key): mixed;
 
-    // Automatically resolve class dependencies
-    public function resolve(string $class): mixed;
-
     // Resolve the dependencies of a class constructor
     public function resolveDependencies(array $parameters): array;
 
