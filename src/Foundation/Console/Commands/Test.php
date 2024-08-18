@@ -1,6 +1,6 @@
 <?php
 
-namespace Eyika\Atom\Framework\Foundation\Console\Commands\Vendor;
+namespace Eyika\Atom\Framework\Foundation\Console\Commands;
 
 use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
 use Eyika\Atom\Framework\Foundation\Console\Command;
