@@ -188,7 +188,7 @@ class Request
  
 //  // Capture the current request
 //  $request = Request::capture();
- 
+
 //  // Retrieve query parameter
 //  $userId = $request->query('user_id');
  

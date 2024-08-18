@@ -34,9 +34,11 @@ class Server
         if (preg_match('/^.*$/i', $request->getRequestUri())) {
             //register controllers
             if (strpos($request->getPathInfo(), '/api') === false) {
+                ///TODO: load all default web middlewares
                 require_once base_path().'/routes/web.php';
             } else {
                 Route::isApiRequest(true);
+                ///TODO: load all default api middlewares
                 require_once base_path().'/routes/api.php';
             }
             return Route::dispatch($request);
