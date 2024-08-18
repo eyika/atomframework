@@ -1,9 +1,9 @@
 <?php
-namespace Eyika\Atom\Framework\Support;
+namespace Eyika\Atom\Framework\Support\View;
 
 use Exception;
 
-class View {
+class BasicView {
 	static $blocks = array();
 	static $cache_path;
 	static $cache_enabled = FALSE;

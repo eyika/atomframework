@@ -203,6 +203,21 @@ Class Arr
     }
 
     /**
+     * Return the last key in an array.
+     *
+     * @param  array  $array
+     * @return mixed
+     */
+    public static function lastKey($array)
+    {
+        if (!is_array($array) || empty($array)) {
+            return NULL;
+        }
+
+        return array_keys($array)[count($array)-1];
+    }
+
+    /**
      * Flatten a multi-dimensional array into a single level.
      *
      * @param  iterable  $array
