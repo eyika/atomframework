@@ -4,10 +4,10 @@ namespace Eyika\Atom\Framework\Foundation;
 
 use Exception;
 use Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel as ContractsConsoleKernel;
+use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\NamespaceHelper;
 use Eyika\Atom\Framework\Support\Str;
 use Eyika\Atom\Framwork\Foundation\Console\Command;
-use SplFileInfo;
 
 class ConsoleKernel implements ContractsConsoleKernel
 {
@@ -28,13 +28,13 @@ class ConsoleKernel implements ContractsConsoleKernel
     public function run(string $name, array $arguments = [])
     {
         if (isset($this->commands[$name])) {
-            $this->commands[$name]->handle($arguments);
+            $this->status = $this->commands[$name]->handle($arguments);
         } else {
             echo "Error: Command '$name' not found." . PHP_EOL;
         }
     }
 
-    public function terminate($inputs = [])
+    public function terminate($inputs = []): int
     {
         return intval($this->status);
     }
@@ -45,7 +45,8 @@ class ConsoleKernel implements ContractsConsoleKernel
     protected function load()
     {
         try {
-            $fullPath = $GLOBALS['base_path'] . 'app/Console/Commands';
+            $ds = DIRECTORY_SEPARATOR;
+            $fullPath = $GLOBALS['base_path'] . 'app'. $ds. 'Console'. $ds. 'Commands';
             $listObject = new \RecursiveIteratorIterator(
                 new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
                 \RecursiveIteratorIterator::CHILD_FIRST
@@ -55,7 +56,7 @@ class ConsoleKernel implements ContractsConsoleKernel
     
             foreach ($listObject as $fileinfo) {
                 if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1])
-                    $command = $this->commandClassFromFile($fileinfo, $namespace);
+                    $command = classFromFile($fileinfo, $namespace);
                     // $files[] = $basename ? basename($fileinfo->getRealPath()) : $fileinfo->getRealPath();
     
                     $namespace = $namespace."\/$command";
@@ -69,19 +70,36 @@ class ConsoleKernel implements ContractsConsoleKernel
         }
     }
 
+
+
     /**
-     * Extract the command class name from the given file path.
-     *
-     * @param  \SplFileInfo  $file
-     * @param  string  $namespace
-     * @return string
+     * Load all the needed facades into memory
      */
-    protected function commandClassFromFile(SplFileInfo $file, string $namespace): string
+    protected function loadFacades()
     {
-        return $namespace.str_replace(
-            ['/', '.php'],
-            ['\\', ''],
-            Str::after($file->getRealPath(), realpath(base_path()).DIRECTORY_SEPARATOR)
-        );
+        try {
+            $ds = DIRECTORY_SEPARATOR;
+            $fullPath = base_path() . $ds. "vendor". $ds. "eyika". $ds. "atom-framework". $ds. "src". $ds. "Support". $ds. "Facade";
+            $listObject = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
+                \RecursiveIteratorIterator::CHILD_FIRST
+            );
+    
+            $namespace = NamespaceHelper::getBaseNamespace();
+            $app = Facade::getFacadeApplication();
+    
+            foreach ($listObject as $fileinfo) {
+                if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1]) {
+                    $facade = classFromFile($fileinfo, $namespace);
+    
+                    $facade_obj = new $namespace."\/$facade";
+    
+                    $app->instance(Str::camel($facade), $facade_obj);
+                }
+            }
+        } catch (Exception $e) {
+            logger()->info("INTERNAL: ".$e->getMessage(), $e->getTrace());
+            ///TODO handle exception
+        }
     }
 }

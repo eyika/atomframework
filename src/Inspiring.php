@@ -2,7 +2,7 @@
 
 namespace Illuminate\Foundation;
 
-use Illuminate\Support\Collection;
+use Eyika\Atom\Framework\Support\Arr;
 
 /*
                                                    .~))>>
@@ -50,24 +50,26 @@ class Inspiring
      * May McGinnis always control the board. #LaraconUS2015
      *
      * RIP Charlie - Feb 6, 2018
+     * 
+     * Taken From Laravel Framework
+     * 
+     * Basttyy Made Minor Changes For Atom
      *
      * @return string
      */
     public static function quote()
     {
-        return static::quotes()
-            ->map(fn ($quote) => static::formatForConsole($quote))
-            ->random();
+        return static::formatForConsole(Arr::random(static::quotes()));
     }
 
     /**
      * Get the collection of inspiring quotes.
      *
-     * @return \Illuminate\Support\Collection
+     * @return array
      */
     public static function quotes()
     {
-        return Collection::make([
+        return [
             'Act only according to that maxim whereby you can, at the same time, will that it should become a universal law. - Immanuel Kant',
             'An unexamined life is not worth living. - Socrates',
             'Be present above all else. - Naval Ravikant',
@@ -107,7 +109,7 @@ class Inspiring
             'The biggest battle is the war against ignorance. - Mustafa Kemal Atatürk',
             'Always remember that you are absolutely unique. Just like everyone else. - Margaret Mead',
             'You must be the change you wish to see in the world. - Mahatma Gandhi',
-        ]);
+        ];
     }
 
     /**

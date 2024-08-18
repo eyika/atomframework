@@ -6,10 +6,30 @@ use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
 use Eyika\Atom\Framework\Support\Database\DB;
 use Eyika\Atom\Framework\Support\Encrypter;
 use Eyika\Atom\Framework\Support\Storage\Storage;
+use Eyika\Atom\Framework\Support\Str;
+use Eyika\Atom\Framework\Support\Stringable;
 use Eyika\Atom\Framework\Support\Url;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
+
+if (! function_exists('classFromFile')) {
+        /**
+     * Extract the class name from the given file path.
+     *
+     * @param  \SplFileInfo  $file
+     * @param  string  $namespace
+     * @return string
+     */
+    function classFromFile(SplFileInfo $file, string $namespace): string
+    {
+        return $namespace.str_replace(
+            ['/', '.php'],
+            ['\\', ''],
+            Str::after($file->getRealPath(), realpath(base_path()).DIRECTORY_SEPARATOR)  //may trigger cyclic reference error
+        );
+    }
+}
 
 if (! function_exists('json_response')) {
     /**
@@ -81,6 +101,12 @@ if (!function_exists('decrypt')) {
 if (!function_exists('url')) {
     function url() {
         return new Url;
+    }
+}
+
+if (!function_exists('str')) {
+    function str(string $value) {
+        return new Stringable($value);
     }
 }
 

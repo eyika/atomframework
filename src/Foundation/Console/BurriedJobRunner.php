@@ -1,12 +1,13 @@
 <?php
-namespace Eyika\Atom\Framwork\Foundation\Console;
 
+namespace Eyika\Atom\Framwork\Foundation\Console;
 use Dotenv\Dotenv;
 use Exception;
 use Eyika\Atom\Framwork\Foundation\Console\Contracts\QueueInterface;
 use PDO;
 
-class BurriedJobRunner {
+class BurriedJobRunner
+{
     public function __invoke()
     {
         $dotenv = Dotenv::createImmutable(__DIR__."/../../");

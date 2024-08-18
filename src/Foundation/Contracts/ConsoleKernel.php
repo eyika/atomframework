@@ -10,5 +10,5 @@ interface ConsoleKernel
 
     public function run(string $name, array $arguments = []);
 
-    public function terminate($inputs = []);
+    public function terminate($inputs = []): int;
 }

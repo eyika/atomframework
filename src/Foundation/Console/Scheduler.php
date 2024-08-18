@@ -10,7 +10,7 @@ class Scheduler
     protected $tasks = [];
     protected $current_name = '';
 
-    public function command(string $name, string $expression = null)
+    public function command(string $name, string $expression = null): self
     {
         empty($expression) ?
             $this->current_name = $name :
@@ -22,7 +22,7 @@ class Scheduler
         return $this;
     }
 
-    protected function expression(string $expression)
+    protected function expression(string $expression): self
     {
         $this->tasks[] = [
             'command' => $this->current_name,
@@ -33,42 +33,42 @@ class Scheduler
         return $this;
     }
 
-    public function hourly()
+    public function hourly(): self
     {
         return $this->expression('@hourly');
     }
 
-    public function daily()
+    public function daily(): self
     {
         return $this->expression('@daily');
     }
 
-    public function midnight()
+    public function midnight(): self
     {
         return $this->expression('@midnight');
     }
 
-    public function weekly()
+    public function weekly(): self
     {
         return $this->expression('@weekly');
     }
 
-    public function monthly()
+    public function monthly(): self
     {
         return $this->expression('@monthly');
     }
 
-    public function yearly()
+    public function yearly(): self
     {
         return $this->expression('@yearly');
     }
 
-    public function annually()
+    public function annually(): self
     {
         return $this->yearly();
     }
 
-    public function run(ConsoleKernel $registry)
+    public function run(ConsoleKernel $registry): void
     {
         $now = new \DateTime();
         

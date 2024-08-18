@@ -2,6 +2,7 @@
 
 namespace Eyika\Atom\Framework\Http;
 
+use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
 
 class Request
@@ -130,6 +131,29 @@ class Request
     public function wantsJson()
     {
         return $this->isJson();
+    }
+
+    public function getPathInfo()
+    {
+        return $this->server('PATH_INFO', '');
+    }
+
+    public function getOriginPathInfo()
+    {
+        return $this->server('ORIG_PATH_INFO', '');
+    }
+
+    public function getRequestUri()
+    {
+        return $this->server('REQUEST_URI', '');
+    }
+
+    /**
+     * check if the request is api or web
+     */
+    public function is(string $regex)
+    {
+        throw new NotImplementedException('not yet implemented');
     }
 
     public function url()

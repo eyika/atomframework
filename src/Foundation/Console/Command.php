@@ -8,7 +8,7 @@ abstract class Command
 {
     public string $signature = '';
 
-    abstract public function handle(array $arguments = []);
+    abstract public function handle(array $arguments = []): int;
 
     // public function handle()
     // {

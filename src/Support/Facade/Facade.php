@@ -1,6 +1,6 @@
 <?php
 
-namespace Eyika\Atom\Framework\Support;
+namespace Eyika\Atom\Framework\Support\Facade;
 
 use Eyika\Atom\Framework\Exceptions\BaseException;
 use Eyika\Atom\Framework\Foundation\Application;
@@ -91,7 +91,7 @@ class Facade
      * Clear a resolved facade instance.
      *
      * @param  string  $name
-     * @return void
+     * @return void 
      */
     public static function clearResolvedInstance($name)
     {

@@ -6,7 +6,7 @@ use Exception;
 use Eyika\Atom\Framwork\Foundation\Console\Contracts\QueueInterface;
 use PDO;
 
-class BurriedJobRunner {
+class JobRunner {
     public function __invoke()
     {
         $dotenv = Dotenv::createImmutable(__DIR__."/../../");

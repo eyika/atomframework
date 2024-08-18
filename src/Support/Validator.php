@@ -2,6 +2,7 @@
 
 namespace Eyika\Atom\Framework\Support;
 
+use Eyika\Atom\Framework\Support\Database\mysqly;
 use Eyika\Atom\Framework\Support\Str;
 
 class Validator {
