@@ -132,22 +132,30 @@ if (! function_exists('config')) {
      */
     function config(string $config_name, $default = null) {
         $parts = explode('.', $config_name);
-        $config_name = array_shift($parts);
-
+        $file = array_shift($parts);
+    
         $config = [];
-        $data = include_once base_path()."/config/$config_name.php";
-
-        $config = (array)$data;
-
-        foreach ($parts as $key => $part) {
-            if (!array_key_exists($part, $config)) {
+    
+        // Load the config file
+        $file_path = base_path() . "/config/{$file}.php";
+        
+        if (file_exists($file_path)) {
+            $config = require $file_path;  // or require_once
+        } else {
+            return $default;
+        }
+    
+        // Traverse the config array using the remaining parts
+        foreach ($parts as $part) {
+            if (!is_array($config) || !array_key_exists($part, $config)) {
                 return $default;
             }
             $config = $config[$part];
         }
-
+    
         return $config;
     }
+    
 }
 
 if (! function_exists('env')) {
@@ -213,8 +221,7 @@ if (!function_exists("consoleLog")) {
 if (! function_exists('base_path')) {
     function base_path(): string
     {
-        $ds = DIRECTORY_SEPARATOR;
-        return $GLOBALS['base_path'].$ds ?? $_SERVER['DOCUMENT_ROOT'].$ds;
+        return $GLOBALS['base_path'] ?? $_SERVER['DOCUMENT_ROOT'];
     }
 }
 
@@ -222,8 +229,7 @@ if (! function_exists('storage_path')) {
     function storage_path(string $folder = '')
     {
         $ds = DIRECTORY_SEPARATOR;
-        $end_ds = empty($folder) ? '' : $ds;
-        return base_path() . $ds. "storage". $ds. $folder. $end_ds;
+        return base_path() . "/storage/". $folder;
     }
 }
 
@@ -231,8 +237,7 @@ if (! function_exists('public_path')) {
     function public_path(string $folder = '')
     {
         $ds = DIRECTORY_SEPARATOR;
-        $end_ds = empty($folder) ? '' : $ds;
-        return base_path() . $ds. "public". $ds. $folder. $end_ds;
+        return base_path() . "/public/". $folder;
     }
 }
 
@@ -240,8 +245,7 @@ if (! function_exists('resource_path')) {
     function resource_path(string $folder = '')
     {
         $ds = DIRECTORY_SEPARATOR;
-        $end_ds = empty($folder) ? '' : $ds;
-        return base_path() . $ds. "resources". $ds. $folder. $end_ds;
+        return base_path() . "/resources/". $folder;
     }
 }
 
@@ -254,8 +258,7 @@ if (!function_exists('is_windows')) {
 if (! function_exists('logger')) {
     function logger(string $path = null, Monolog\Level $level = Monolog\Level::Debug, $bubble = true, $filePermission = 0664, $useLocking = false)
     {
-        $ds = DIRECTORY_SEPARATOR;
-        $logger_path = "logs". $ds. "custom.log";
+        $logger_path = "/logs/custom.log";
         $path = is_null($path) ? storage_path().$logger_path : $path;
         $log = new Logger('tradingio');
         // Define the date format to match Laravel's

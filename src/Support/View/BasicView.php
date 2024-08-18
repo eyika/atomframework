@@ -30,9 +30,9 @@ class BasicView {
 
 	static function cache($file) {
 		if (!file_exists(self::$cache_path)) {
-		  	mkdir(self::$cache_path, 0744);
+		  	mkdir(self::$cache_path, 0744, true);
 		}
-	    $cached_file = self::$cache_path . str_replace(array('/', '.html'), array('_', ''), $file . '.php');
+	    $cached_file = self::$cache_path . '/'. str_replace(array('/', '.html'), array('_', ''), $file . '.php');
 	    if (!self::$cache_enabled || !file_exists($cached_file) || filemtime($cached_file) < filemtime($file)) {
 			$code = self::includeFiles($file);
 			$code = self::compileCode($code);

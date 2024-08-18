@@ -41,17 +41,17 @@ class Response
 
     public static function view(string $file_name, $data = [])
     {
-        $path = base_path()."/resources/views/";
+        $path = resource_path('views');
         try {
             if (config('view.use_advance_engine')) {
-                $view = new View("{$path}$file_name.blade.php");
-                $code = $view->run(variables: $data);
+                $view = new View("$path");
+                $code = $view->run("$file_name", $data);
             } else {
-                $code = BasicView::make("$file_name.blade.php", $path, $data, true);
+                $code = BasicView::make("$file_name.blade.php", "$path/", $data, true);
             }
         } catch (Exception $e) {
             header("Content-Type: text/html; charset=utf-8", self::STATUS_INTERNAL_SERVER_ERROR);
-            echo "Server Error";
+            echo "Server Error ". $e->getMessage();
             return true;
         }
         header("Content-Type: text/html; charset=utf-8", self::STATUS_OK);
