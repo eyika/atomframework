@@ -43,7 +43,7 @@ trait RunsOnConsole
     function phinxCommander($options = [])
     {
         $slash = DIRECTORY_SEPARATOR;
-        $config = "-c ". base_path(). "config";
+        $config = "-c ". base_path(). "config/phinx.php";
         if (count($options) > 1) {
             $temp = $options[1];
             $options[1] = $config;
