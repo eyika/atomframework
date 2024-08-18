@@ -12,10 +12,11 @@ use Eyika\Atom\Framework\Support\Str;
 class Server
 {
     public static Application $app;
+    protected const ignore_facades = ['console', 'app', 'application'];
 
     public function __construct(Application $app)
     {
-        $this->$app = $app;
+        static::$app = $app;
 
         Facade::setFacadeApplication($app);
 
@@ -32,10 +33,12 @@ class Server
         $request = Request::capture();
         if (preg_match('/^.*$/i', $request->getRequestUri())) {
             //register controllers
-            if (strpos($request->getPathInfo(), '/api/') == false)
+            if (strpos($request->getPathInfo(), '/api') === false) {
                 require_once base_path().'/routes/web.php';
-            else
+            } else {
+                Route::isApiRequest(true);
                 require_once base_path().'/routes/api.php';
+            }
             return Route::dispatch($request);
         } else {
             return false; // Let php bultin server serve
@@ -57,10 +60,14 @@ class Server
             foreach ($listObject as $fileinfo) {
                 if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1]) {
                     $facade = classFromFile($fileinfo, $namespace);
+                    $class_name = explode("\\", $facade);
+                    $class_name = $class_name[count($class_name) - 1];
+                    if (in_array(strtolower($class_name), static::ignore_facades))
+                        continue;
     
-                    $facade_obj = new $namespace."\/$facade";
+                    $facade_obj = new $facade;
     
-                    static::$app->instance(Str::camel($facade), $facade_obj);
+                    static::$app->instance(Str::camel($class_name), $facade_obj);
                 }
             }
         } catch (Exception $e) {

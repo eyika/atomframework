@@ -135,7 +135,7 @@ class Request
 
     public function getPathInfo()
     {
-        return $this->server('PATH_INFO', '');
+        return $this->server('REQUEST_URI', '');
     }
 
     public function getOriginPathInfo()

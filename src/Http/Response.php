@@ -40,7 +40,7 @@ class Response
 
     public static function view(string $file_name, $data = [])
     {
-        $path ="/../Resources/views/";
+        $path = base_path()."/resources/views/";
         header("Content-Type: text/html; charset=utf-8", self::STATUS_OK);
         echo View::make("$file_name.blade.php", $path, $data, true);
 

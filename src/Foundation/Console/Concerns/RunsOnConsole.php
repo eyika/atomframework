@@ -22,17 +22,23 @@ trait RunsOnConsole
         ], $pipes);
 
         if (is_resource($process)) {
-            while ($line = fgets($pipes[1])) {
-                echo $line;
+            stream_set_blocking($pipes[1], false); // Set stdout to non-blocking mode
+            stream_set_blocking($pipes[2], false); // Set stderr to non-blocking mode
+    
+            while (!feof($pipes[1]) || !feof($pipes[2])) {
+                if ($line = fgets($pipes[1])) {
+                    echo "STDERR: $line";
+                }
+                if ($line = fgets($pipes[2])) {
+                    echo "STDOUT: $line";
+                }
+    
+                usleep(300000); // Sleep for 100ms to prevent high CPU usage
             }
-
-            while ($line = fgets($pipes[2])) {
-                echo $line;
-            }
-
+    
             fclose($pipes[1]);
             fclose($pipes[2]);
-
+    
             $return_value = proc_close($process);
             return $return_value;
         } else {
@@ -59,9 +65,10 @@ trait RunsOnConsole
     {
         $kv_options = [];
         $found = [];
+        array_shift($options);
 
-        Arr::each($options, function ($key, $option) {
-            if (!str_contains($option, '=')) {
+        Arr::each($options, function ($key, $option) use (&$found, &$kv_options) {
+            if (str_contains($option, '=')) {
                 $found[] = $option;
                 $v = explode('=', $option);
                 $kv_options[$v[0]] = $v[1];
@@ -69,10 +76,10 @@ trait RunsOnConsole
         });
         $options = array_diff($options, $found);
 
-        $address = array_key_exists('--address', $kv_options) || array_key_exists('-a', $kv_options) ? $kv_options['--address'] ?? $kv_options['-a'] : 'localhost';
-        $port = array_key_exists('--port', $kv_options) || array_key_exists('-p', $kv_options) ? $kv_options['--port'] ?? $kv_options['-p'] : '80';
+        $address = array_key_exists('--address', $kv_options) || array_key_exists('-a', $kv_options) ? ($kv_options['--address'] ?? $kv_options['-a']) : 'localhost';
+        $port = array_key_exists('--port', $kv_options) || array_key_exists('-p', $kv_options) ? ($kv_options['--port'] ?? $kv_options['-p']) : '80';
 
-        return "php -S {$address}:{$port} -t . " . implode(' ', $options). " server.php";
+        return "php -S {$address}:{$port} -t . " . implode(' ', $options). base_path(). "public/index.php";
     }
 
     function phpUnitCommander($options = [])

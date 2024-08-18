@@ -217,6 +217,24 @@ if (! function_exists('storage_path')) {
     }
 }
 
+if (! function_exists('public_path')) {
+    function public_path(string $folder = '')
+    {
+        $ds = DIRECTORY_SEPARATOR;
+        $end_ds = empty($folder) ? '' : $ds;
+        return base_path() . $ds. "public". $ds. $folder. $end_ds;
+    }
+}
+
+if (! function_exists('resource_path')) {
+    function resource_path(string $folder = '')
+    {
+        $ds = DIRECTORY_SEPARATOR;
+        $end_ds = empty($folder) ? '' : $ds;
+        return base_path() . $ds. "resources". $ds. $folder. $end_ds;
+    }
+}
+
 if (!function_exists('is_windows')) {
     function is_windows () {
         return strtolower(PHP_OS_FAMILY) === "windows";

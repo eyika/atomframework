@@ -58,7 +58,6 @@ class ConsoleKernel implements ContractsConsoleKernel
                     $command = classFromFile($fileinfo, $namespace);
                     $command_obj = new $command;
     
-                    logger()->info("loading command $command into memory", (array)$command_obj);
                     $this->register($command_obj->signature, $command_obj);
             }
         } catch (Exception $e) {
@@ -80,17 +79,12 @@ class ConsoleKernel implements ContractsConsoleKernel
                 \RecursiveIteratorIterator::CHILD_FIRST
             );
             $namespace = NamespaceHelper::getBaseNamespace();
-            echo "$namespace\n";
 
             foreach ($listObject as $fileinfo) {
                 if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1])
-                    $command = classFromFile($fileinfo, $namespace);
-                    echo "$command\n";
-                    // $files[] = $basename ? basename($fileinfo->getRealPath()) : $fileinfo->getRealPath();
 
+                    $command = classFromFile($fileinfo, $namespace);
                     $command_obj = new $command;
-    
-                    logger()->info("loading command $command into memory", (array)$command_obj);
                     $this->register($command_obj->signature, $command_obj);
             }
         } catch (Exception $e) {

@@ -10,7 +10,7 @@ class View {
     static $path;
 
 	static function make($file, $path = "/", $data = array(), $get_output = false) {
-        self::$path = __DIR__. $path;
+        self::$path = $path;
 		self::$cache_path = storage_path(). 'cache/';
 		$cached_file = self::cache($file);
 	    extract($data, EXTR_SKIP);

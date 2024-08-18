@@ -14,6 +14,7 @@ class Route
     protected static $currentRoute = '';
     private static $instantiated = '';
     private static $lastInsertedRouteKeys = '';
+    private static $apiRequest = false;
 
     public function __construct()
     {
@@ -86,7 +87,8 @@ class Route
 
     protected static function addRoute(string $method, string $route, callable|string|array $path_to_include): self
     {
-        $route = self::$groupPrefix . '/' . ltrim($route, '/');
+        $slash = static::$apiRequest ? "/api/" : '/';
+        $route = self::$groupPrefix . $slash . ltrim($route, '/');
         $route = rtrim($route, '/');
         $name = self::$routeName ? self::$routeName : $route;
 
@@ -259,6 +261,11 @@ class Route
             $_SESSION["csrf"] = bin2hex(random_bytes(50));
         }
         echo '<input type="hidden" name="csrf" value="' . $_SESSION["csrf"] . '">';
+    }
+
+    public static function isApiRequest(bool $value)
+    {
+        static::$apiRequest = $value;
     }
 
     public static function is_csrf_valid()
