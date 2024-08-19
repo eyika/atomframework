@@ -23,13 +23,6 @@ class Kernel implements ContractsKernel
      */
     protected $middlewareGroups = [
         'web' => [
-            // StartSession::class,
-            // ShareErrorsFromSession::class,
-            // EncryptCookies::class,
-            // AddQueuedCookiesToResponse::class,
-            // AuthenticateSession::class,
-            // VerifyCsrfToken::class,
-            // SubstituteBindings::class,
         ],
 
         'api' => [
@@ -44,30 +37,6 @@ class Kernel implements ContractsKernel
      * @var array
      */
     protected $middlewareAliases = [
-        // 'auth' => Authenticate::class,
-        // 'auth.basic' => AuthenticateWithBasicAuth::class,
-        // 'bindings' => SubstituteBindings::class,
-        // 'cache.headers' => SetCacheHeaders::class,
-        // 'can' => Authorize::class,
-        // 'guest' => RedirectIfAuthenticated::class,
-        // 'password.confirm' => RequirePassword::class,
-        // 'signed' => ValidateSignature::class,
-        // 'throttle' => ThrottleRequests::class,
-        // 'verified' => EnsureEmailIsVerified::class,
-        // 'role' => RoleMiddleware::class,
-        // 'permission' => PermissionMiddleware::class,
-        // 'role_or_permission' => RoleOrPermissionMiddleware::class,
-        // 'xss' => XSS::class,
-        // 'checkUserStatus' => CheckUserStatus::class,
-        // 'modules' => CheckModule::class,
-        // 'setLanguage' => SetLanguage::class,
-        // 'languageChangeName' => LanguageChangeMiddleware::class,
-        // 'multi_tenant' => MultiTenantMiddleware::class,
-        // 'check_impersonate' => CheckImpersonateUser::class,
-        // 'setTenantFromUsername' => SetTenantFromUsername::class,
-        // 'check_super_admin_role' => CheckSuperAdminRole::class,
-        // 'check_subscription' => CheckSubscription::class,
-        // 'check_menu_access' => CheckMenuAccess::class,
     ];
 
     /**
@@ -78,12 +47,5 @@ class Kernel implements ContractsKernel
      * @var array
      */
     protected $middlewarePriority = [
-        // // StartSession::class,
-        // // ShareErrorsFromSession::class,
-        // Authenticate::class,
-        // ThrottleRequests::class,
-        // // AuthenticateSession::class,
-        // SubstituteBindings::class,
-        // Authorize::class,
     ];
 }
