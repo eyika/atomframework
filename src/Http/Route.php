@@ -3,12 +3,14 @@
 namespace Eyika\Atom\Framework\Http;
 
 use Eyika\Atom\Framework\Exceptions\NotFoundException;
-use Eyika\Atom\Framework\Support\Session\MysqlSessionHandler;
 
 class Route
 {
     protected static $routes = [];
     protected static $middlewares = [];
+    public static $defaultMiddlewares = [];
+    public static $middlewareAliases = [];
+    public static $middlewarePriority = [];
     protected static $groupPrefix = '';
     protected static $routeName = '';
     protected static $currentRoute = '';
@@ -18,12 +20,6 @@ class Route
 
     public function __construct()
     {
-        if (strtolower($_SERVER["REQUEST_METHOD"]) !== "options") {
-            if (session_status() === PHP_SESSION_NONE) {
-                session_set_save_handler(new MysqlSessionHandler, true);
-                session_start();
-            }
-        }
         static::$instantiated = true;
     }
 
@@ -163,16 +159,28 @@ class Route
                     break;
                 }
             }
+            $request->route_params = $parameters;
 
             if ($matched) {
                 self::$currentRoute = $route;
+
+                foreach (static::$defaultMiddlewares as $key => $middleware) {
+                    $middlewareInstance = new $middleware;
+                    if ($middlewareInstance->handle($request)) {
+                        return true;
+                    }
+                }
 
                 foreach ($data['middlewares'] as $key => $middlewares) {
                     $params = null;
                     if (is_array($middlewares) && sizeof($middlewares) > 1) {
                         $middleware = array_shift($middlewares);
                         $params = explode(',', array_shift($middlewares));
-                        $middlewareInstance = new $middleware;
+                        if (array_key_exists($middleware, static::$middlewareAliases)) {
+                            $middlewareInstance = new static::$middlewareAliases[$middleware];
+                        } else {
+                            $middlewareInstance = new $middleware;
+                        }
 
                         if ($middlewareInstance->handle($request, ...$params)) {
                             return true;

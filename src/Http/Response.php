@@ -6,7 +6,7 @@ use Exception;
 use Eyika\Atom\Framework\Support\View\BasicView;
 use Eyika\Atom\Framework\Support\View\View;
 
-class Response
+class Response extends BaseResponse
 {
     public const STATUS_OK = 200;
     public const STATUS_NO_CONTENT = 204;
@@ -25,6 +25,13 @@ class Response
     public function __construct(int $status_code = 200)
     {
 
+    }
+
+    public static function plain(string $message, array|int $method = 200): bool
+    {
+        header("Content-Type: text/plain; charset=utf-8", $method);
+        echo $message;
+        return true;
     }
 
     public static function json(string $message, array|int $data_or_method = 200, $method = null): bool
