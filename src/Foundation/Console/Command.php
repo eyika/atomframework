@@ -68,41 +68,41 @@ abstract class Command
 
     public function info(string $message, array $context = [], $to_log_file = false)
     {
-        $to_log_file ? logger()->info($message, $context) : consoleLog(Level::Info, $message);
+        $to_log_file ? logger()->info($message, $context) : consoleLog(200, $message);
     }
 
     public function error(string $message, array $context = [], $to_log_file = false)
     {
-        $to_log_file ? logger()->error($message, $context) : consoleLog(Level::Error, $message);
+        $to_log_file ? logger()->error($message, $context) : consoleLog(400, $message);
     }
 
     public function notice(string $message, array $context = [], $to_log_file = false)
     {
-        $to_log_file ? logger()->notice($message, $context) : consoleLog(Level::Notice, $message);
+        $to_log_file ? logger()->notice($message, $context) : consoleLog(250, $message);
     }
 
     public function emergency(string $message, array $context = [], $to_log_file = false)
     {
-        $to_log_file ? logger()->emergency($message, $context) : consoleLog(Level::Emergency, $message);
+        $to_log_file ? logger()->emergency($message, $context) : consoleLog(600, $message);
     }
 
     public function warning(string $message, array $context = [], $to_log_file = false)
     {
-        $to_log_file ? logger()->warning($message, $context) : consoleLog(Level::Warning, $message);
+        $to_log_file ? logger()->warning($message, $context) : consoleLog(300, $message);
     }
 
     public function warn(string $message, array $context = [], $to_log_file = false)
     {
-        $to_log_file ? logger()->warning($message, $context) : consoleLog(Level::Warning, $message);
+        $to_log_file ? logger()->warning($message, $context) : consoleLog(300, $message);
     }
 
     public function debug(string $message, array $context = [], $to_log_file = false)
     {
-        $to_log_file ? logger()->debug($message, $context) : consoleLog(Level::Debug, $message);
+        $to_log_file ? logger()->debug($message, $context) : consoleLog(100, $message);
     }
 
     public function critical(string $message, array $context = [], $to_log_file = false)
     {
-        $to_log_file ? logger()->critical($message, $context) : consoleLog(Level::Critical, $message);
+        $to_log_file ? logger()->critical($message, $context) : consoleLog(500, $message);
     }
 }
