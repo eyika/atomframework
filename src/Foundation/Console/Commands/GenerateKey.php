@@ -9,8 +9,8 @@ use Eyika\Atom\Framework\Support\Str;
 
 class GenerateKey extends Command
 {
-    protected $signature = 'key:generate';
-    protected $description = 'Generate an APP_KEY and set it in .env';
+    public string $signature = 'key:generate';
+    public string $description = 'Generate an APP_KEY and set it in .env';
 
     public function handle(array $arguments = []): bool
     {

@@ -9,6 +9,8 @@ use Eyika\Atom\Framework\Support\Storage\File;
 
 class Link extends Command
 {
+    public string $signature = 'key:generate';
+    public string $description = 'link the storage folder to the public folder';
     /**
      * Execute the command to create a symbolic link.
      *

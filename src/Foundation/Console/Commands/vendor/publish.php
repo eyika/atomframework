@@ -8,9 +8,9 @@ use Eyika\Atom\Framework\Support\Storage\File;
 
 class Publish extends Command
 {
-    protected $signature = 'vendor:publish {--tag=} {--provider=} {--force}';
+    public string $signature = 'vendor:publish {--tag=} {--provider=} {--force}';
 
-    protected $description = 'implementation of vendor:publish command';
+    public string $description = 'implementation of vendor:publish command';
 
     public function handle(array $arguments = []): bool
     {
