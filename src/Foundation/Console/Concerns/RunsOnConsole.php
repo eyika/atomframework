@@ -49,7 +49,7 @@ trait RunsOnConsole
     function phinxCommander($options = [])
     {
         $slash = DIRECTORY_SEPARATOR;
-        $config = "-c ". base_path(). "config/phinx.php";
+        $config = "-c ". base_path("config/phinx.php");
         if (count($options) > 1) {
             $temp = $options[1];
             $options[1] = $config;
@@ -58,7 +58,7 @@ trait RunsOnConsole
             $options[] = $config;
         }
 
-        return base_path().$slash.'vendor'.$slash.'bin'.$slash.'phinx ' . implode(' ', $options);
+        return base_path("/vendor/bin/phinx " . implode(' ', $options));
     }
 
     function phpInbuiltServerCommander($options = [])
@@ -78,12 +78,12 @@ trait RunsOnConsole
         $address = array_key_exists('--address', $kv_options) || array_key_exists('-a', $kv_options) ? ($kv_options['--address'] ?? $kv_options['-a']) : 'localhost';
         $port = array_key_exists('--port', $kv_options) || array_key_exists('-p', $kv_options) ? ($kv_options['--port'] ?? $kv_options['-p']) : '80';
 
-        return "php -S {$address}:{$port} -t . " . implode(' ', $options). base_path(). "public/index.php";
+        return "php -S {$address}:{$port} -t . " . implode(' ', $options). base_path("public/index.php");
     }
 
     function phpUnitCommander($options = [])
     {
         $slash = DIRECTORY_SEPARATOR;
-        return base_path().$slash.'vendor'.$slash.'bin'.$slash.'phpunit ' . implode(' ', $options);
+        return base_path("/vendor/bin/phpunit " . implode(' ', $options));
     }
 }
