@@ -13,7 +13,7 @@ class Migration extends Command
 
     use RunsOnConsole;
 
-    public function handle(array $arguments = []): int
+    public function handle(array $arguments = []): bool
     {
         try {
             if (empty($arguments[0] ?? '')) {
@@ -25,8 +25,8 @@ class Migration extends Command
             $code = $this->executeCommand($arguments);
         } catch (BaseConsoleException $e) {
             $this->error($e->getMessage());
-            return $e->getCode();
+            return !(bool)($e->getCode());
         }
-        return $code;
+        return !(bool)($code());
     }
 }

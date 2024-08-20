@@ -219,16 +219,23 @@ if (!function_exists("consoleLog")) {
 }
 
 if (! function_exists('base_path')) {
-    function base_path(): string
+    function base_path(string $folder = ''): string
     {
-        return $GLOBALS['base_path'] ?? $_SERVER['DOCUMENT_ROOT'];
+        $folder = empty($folder) ? '' : "/$folder";
+        return $GLOBALS['base_path'].$folder ?? $_SERVER['DOCUMENT_ROOT'].$folder;
+    }
+}
+
+if (! function_exists('config_path')) {
+    function config_path(string $folder = '')
+    {
+        return base_path() . "/config/". $folder;
     }
 }
 
 if (! function_exists('storage_path')) {
     function storage_path(string $folder = '')
     {
-        $ds = DIRECTORY_SEPARATOR;
         return base_path() . "/storage/". $folder;
     }
 }
@@ -236,7 +243,6 @@ if (! function_exists('storage_path')) {
 if (! function_exists('public_path')) {
     function public_path(string $folder = '')
     {
-        $ds = DIRECTORY_SEPARATOR;
         return base_path() . "/public/". $folder;
     }
 }
@@ -244,8 +250,14 @@ if (! function_exists('public_path')) {
 if (! function_exists('resource_path')) {
     function resource_path(string $folder = '')
     {
-        $ds = DIRECTORY_SEPARATOR;
         return base_path() . "/resources/". $folder;
+    }
+}
+
+if (! function_exists('database_path')) {
+    function database_path(string $folder = '')
+    {
+        return base_path() . "/database/". $folder;
     }
 }
 

@@ -12,7 +12,7 @@ class Controller extends Command
 {
     public string $signature = 'make:controller';
 
-    public function handle(array $arguments = []): int
+    public function handle(array $arguments = []): bool
     {
         try {
             if (empty($name = $arguments[0] ?? '')) {
@@ -191,8 +191,8 @@ class Controller extends Command
             $this->info("controller with name $name created successfully");
         } catch (Exception $e) {
             $this->error($e->getMessage());
-            return $e->getCode();
+            return !(bool)($e->getCode());
         }
-        return 0;
+        return true;
     }
 }

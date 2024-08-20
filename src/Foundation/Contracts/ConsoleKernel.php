@@ -6,7 +6,7 @@ use Eyika\Atom\Framework\Foundation\Console\Command;
 
 interface ConsoleKernel
 {
-    public function register(string $name, Command $command);
+    public function register(string $name, Command $command, array $options);
 
     public function run(string $name, array $arguments = []);
 
