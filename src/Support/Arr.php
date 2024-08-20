@@ -493,6 +493,36 @@ Class Arr
     }
 
     /**
+     * Push an item onto the end of an array.
+     *
+     * @param  array  $array
+     * @param  mixed  $value
+     * @param  mixed  $key
+     * @return array
+     */
+    public static function append($array, $value, $key = null)
+    {
+        if (is_null($key)) {
+            array_push($array, $value);
+        } else {
+            $array = $array + [$key => $value];
+        }
+
+        return $array;
+    }
+
+    public static function merge(array ...$values)
+    {
+        $data = [];
+        foreach ($values as $_values) {
+            if (static::isAssoc($_values)) {
+                return array_merge_recursive($data, $_values);
+            }
+            return array_merge($data, $_values);
+        }
+    }
+
+    /**
      * Get a value from the array, and remove it.
      *
      * @param  array  $array

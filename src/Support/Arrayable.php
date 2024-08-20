@@ -26,6 +26,16 @@ Class Arrayable implements ArrayAccess
         $this->data = $data;
     }
 
+    /**
+     * Get the actual array representation of the instance
+     * 
+     * @return array
+     */
+    public function toArray()
+    {
+        return $this->data;
+    }
+
     public function offsetExists(mixed $offset): bool
     {
         return false;
@@ -305,6 +315,27 @@ Class Arrayable implements ArrayAccess
     public function prepend($value, $key = null)
     {
         Arr::prepend($this->data, $value, $key);
+
+        return $this;
+    }
+
+    /**
+     * Push an item onto the end of an array.
+     *
+     * @param  mixed  $value
+     * @param  mixed  $key
+     * @return self
+     */
+    public function append($value, $key = null)
+    {
+        $this->data = Arr::append($this->data, $value, $key);
+
+        return $this;
+    }
+
+    public function merge(array ...$values)
+    {
+        $this->data = Arr::merge($this->data, $values);
 
         return $this;
     }

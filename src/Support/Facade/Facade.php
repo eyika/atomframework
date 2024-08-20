@@ -4,6 +4,7 @@ namespace Eyika\Atom\Framework\Support\Facade;
 
 use Eyika\Atom\Framework\Exceptions\BaseException;
 use Eyika\Atom\Framework\Foundation\Application;
+use Eyika\Atom\Framework\Support\Arrayable;
 
 class Facade
 {
@@ -27,6 +28,21 @@ class Facade
      * @var bool
      */
     protected static $cached = true;
+
+    /**
+     * Keeps track of the default aliases for resolving classes.
+     */
+    protected Arrayable $defaultAliases;
+
+    /**
+     * Get the facade default aliases store instance
+     * 
+     * @return Arrayable
+     */
+    public static function defaultAliases()
+    {
+        return static::$defaultAliases;
+    }
 
     /**
      * Get the application instance behind the facade.

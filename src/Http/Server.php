@@ -74,7 +74,7 @@ class Server
                 new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
                 \RecursiveIteratorIterator::CHILD_FIRST
             );
-    
+
             $namespace = NamespaceHelper::getBaseNamespace();
     
             foreach ($listObject as $fileinfo) {
