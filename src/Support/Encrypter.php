@@ -15,7 +15,7 @@ class Encrypter
         $this->cipher = $cipher;
     }
 
-    public function encrypt($value, $serialize = true)
+    public function encrypt(mixed $value, bool $serialize = true): string
     {
         $iv = random_bytes(openssl_cipher_iv_length($this->cipher));
 
@@ -41,7 +41,7 @@ class Encrypter
         return base64_encode($json);
     }
 
-    public function decrypt($payload, $unserialize = true)
+    public function decrypt(string $payload, bool $unserialize = true): mixed
     {
         $payload = $this->getJsonPayload($payload);
 
@@ -58,7 +58,7 @@ class Encrypter
         return $unserialize ? unserialize($decrypted) : $decrypted;
     }
 
-    protected function getJsonPayload($payload)
+    protected function getJsonPayload(string $payload)
     {
         $payload = json_decode(base64_decode($payload), true);
 

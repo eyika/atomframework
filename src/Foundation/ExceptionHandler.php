@@ -2,12 +2,12 @@
 
 namespace Eyika\Atom\Framework\Foundation;
 
-use Eyika\Atom\Framework\Foundation\Contracts\ExceptionHandler;
+use Eyika\Atom\Framework\Foundation\Contracts\ExceptionHandler as ContractExceptionHandler;
 
-class Kernel implements ExceptionHandler
+class ExceptionHandler implements ContractExceptionHandler
 {
     public function render()
     {
-        
+
     }
 }

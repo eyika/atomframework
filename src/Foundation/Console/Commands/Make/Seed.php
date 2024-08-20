@@ -13,7 +13,7 @@ class Seed extends Command
 
     use RunsOnConsole;
 
-    public function handle(array $arguments = []): int
+    public function handle(array $arguments = []): bool
     {
         try {
             if (empty($arguments[0] ?? '')) {
@@ -22,10 +22,12 @@ class Seed extends Command
     
             array_unshift($arguments, 'seed:create');
     
-            return $this->executeCommand($arguments);
+            $code = $this->executeCommand($arguments);
         } catch (BaseConsoleException $e) {
-            $this->error($e->getMessage());
-            return $e->getCode();
+            $this->error($e->getMessage(), $e->getTrace());
+            return !(bool)($e->getCode());
         }
+
+        return !(bool)$code;
     }
 }

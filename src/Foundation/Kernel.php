@@ -22,6 +22,11 @@ class Kernel implements ContractsKernel
      * @var array
      */
     protected $middlewareGroups = [
+        'web' => [
+        ],
+
+        'api' => [
+        ],
     ];
 
     /**

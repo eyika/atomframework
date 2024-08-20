@@ -2,11 +2,15 @@
 
 namespace Eyika\Atom\Framework\Http;
 
-use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
 
 class Request
 {
+    public const HEADER_X_FORWARDED_FOR = 'HTTP_X_FORWARDED_FOR';
+    public const HEADER_X_FORWARDED_HOST = 'HTTP_X_FORWARDED_HOST';
+    public const HEADER_X_FORWARDED_PORT = 'HTTP_X_FORWARDED_PORT';
+    public const HEADER_X_FORWARDED_PROTO = 'HTTP_X_FORWARDED_PROTO';
+
     protected $query;
     protected $body;
     protected $attributes;
@@ -14,6 +18,8 @@ class Request
     protected $files;
     protected $server;
     protected $headers;
+    protected $trustedProxies = [];
+    protected Session $session;
 
     public UserModelInterface $auth_user;
 
@@ -37,7 +43,10 @@ class Request
     }
 
     public function __get($name) {
-        $data = array_merge($this->query, $this->body, $this->cookies, $this->files, $this->server, $this->headers, $this->attributes);
+        if ($item = $this->retrieveItem($this->attributes, $name)) {
+            return $item;
+        }
+        $data = array_merge($this->query, $this->body, $this->cookies, $this->files, $this->server, $this->headers);
         return $this->retrieveItem($data, $name);
     }
 
@@ -63,6 +72,16 @@ class Request
         if ($key == null)
             return $this->body;
         return $this->retrieveItem($this->body, $key, $default);
+    }
+
+    public function replaceInput(array $input)
+    {
+        $this->body = $input;
+    }
+
+    public function replaceQuery(array $query)
+    {
+        $this->query = $query;
     }
 
     public function all()
@@ -148,12 +167,28 @@ class Request
         return $this->server('REQUEST_URI', '');
     }
 
+    public function hasSession()
+    {
+        return isset($this->session);
+    }
+
+    public function setSession(Session $session)
+    {
+        $this->session = $session;
+    }
+
+    public function getSession()
+    {
+        return $this->session;
+    }
+
     /**
-     * check if the request is api or web
+     * check if the request uri matches this regex string
      */
     public function is(string $regex)
     {
-        throw new NotImplementedException('not yet implemented');
+        // preg_match($regex, $this->getPathInfo(), $matches);
+        strpos($this->getPathInfo(), $regex) === true;
     }
 
     public function url()
@@ -161,6 +196,50 @@ class Request
         $requestUri = rtrim(filter_var($this->server('REQUEST_URI'), FILTER_SANITIZE_URL), '/');
         $requestUri = strtok($requestUri, '?');
         return $requestUri;
+    }
+
+    public function getScheme()
+    {
+        if ($this->isFromTrustedProxy() && $this->header('X-Forwarded-Proto')) {
+            return $this->headers['X-Forwarded-Proto'];
+        }
+
+        return $this->header('HTTPS') && $this->headers['HTTPS'] === 'on' ? 'https' : 'http';
+    }
+
+    public function getHost()
+    {
+        if ($this->isFromTrustedProxy() && $this->header('X-Forwarded-Host')) {
+            return $this->headers['X-Forwarded-Host'];
+        }
+
+        return $this->headers['HTTP_HOST'] ?? '';
+    }
+
+    public function getSchemeAndHttpHost()
+    {
+        return $this->getScheme() . '://' . $this->getHost();
+    }
+
+    public function setTrustedProxies(array $proxies, array $headers = [])
+    {
+        $this->trustedProxies = $proxies;
+
+        // If headers are provided, merge them with the existing headers
+        if (!empty($headers)) {
+            $this->headers = array_merge($this->headers, $headers);
+        }
+    }
+
+    public function isFromTrustedProxy()
+    {
+        if (empty($this->trustedProxies)) {
+            return false;
+        }
+
+        $clientIp = $this->headers['REMOTE_ADDR'] ?? '';
+
+        return in_array($clientIp, $this->trustedProxies);
     }
 
     protected function retrieveItem($source, $key = null, $default = null)

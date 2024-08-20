@@ -33,7 +33,7 @@ trait RunsOnConsole
                     echo "STDOUT: $line";
                 }
     
-                usleep(300000); // Sleep for 100ms to prevent high CPU usage
+                usleep(10000); // Sleep for 10ms to prevent high CPU usage
             }
     
             fclose($pipes[1]);

@@ -203,6 +203,21 @@ Class Arr
     }
 
     /**
+     * Return the last key in an array.
+     *
+     * @param  array  $array
+     * @return mixed
+     */
+    public static function lastKey($array)
+    {
+        if (!is_array($array) || empty($array)) {
+            return NULL;
+        }
+
+        return array_keys($array)[count($array)-1];
+    }
+
+    /**
      * Flatten a multi-dimensional array into a single level.
      *
      * @param  iterable  $array
@@ -475,6 +490,36 @@ Class Arr
         }
 
         return $array;
+    }
+
+    /**
+     * Push an item onto the end of an array.
+     *
+     * @param  array  $array
+     * @param  mixed  $value
+     * @param  mixed  $key
+     * @return array
+     */
+    public static function append($array, $value, $key = null)
+    {
+        if (is_null($key)) {
+            array_push($array, $value);
+        } else {
+            $array = $array + [$key => $value];
+        }
+
+        return $array;
+    }
+
+    public static function merge(array ...$values)
+    {
+        $data = [];
+        foreach ($values as $_values) {
+            if (static::isAssoc($_values)) {
+                return array_merge_recursive($data, $_values);
+            }
+            return array_merge($data, $_values);
+        }
     }
 
     /**

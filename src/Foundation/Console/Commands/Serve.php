@@ -12,14 +12,14 @@ class Serve extends Command
 
     public string $signature = 'serve';
 
-    public function handle(array $arguments = []): int
+    public function handle(array $arguments = []): bool
     {
         try {
-            return $this->executeCommand($arguments, 'phpInbuiltServer');
+            $code = $this->executeCommand($arguments, 'phpInbuiltServer');
         } catch (BaseConsoleException $e) {
-            $this->error($e->getMessage());
-            return $e->getCode();
+            $this->error($e->getMessage(), $e->getTrace());
+            return !(bool)($e->getCode());
         }
-        return 0;
+        return !(bool)$code;
     }
 }

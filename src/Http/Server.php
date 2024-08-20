@@ -5,6 +5,7 @@ namespace Eyika\Atom\Framework\Http;
 use Dotenv\Dotenv;
 use Exception;
 use Eyika\Atom\Framework\Foundation\Application;
+use Eyika\Atom\Framework\Foundation\Contracts\Kernel;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\NamespaceHelper;
 use Eyika\Atom\Framework\Support\Str;
@@ -22,6 +23,7 @@ class Server
 
         static::loadFacades();
     }
+
     public static function handle(): bool
     {
         $dotenv = strtolower(PHP_OS_FAMILY) === 'windows' ? Dotenv::createImmutable(base_path()."\\") : Dotenv::createImmutable(base_path()."/");
@@ -34,10 +36,12 @@ class Server
         if (preg_match('/^.*$/i', $request->getRequestUri())) {
             //register controllers
             if (strpos($request->getPathInfo(), '/api') === false) {
+                static::loadMiddlewares('web');
                 ///TODO: load all default web middlewares
                 require_once base_path().'/routes/web.php';
             } else {
                 Route::isApiRequest(true);
+                static::loadMiddlewares('api');
                 ///TODO: load all default api middlewares
                 require_once base_path().'/routes/api.php';
             }
@@ -45,6 +49,20 @@ class Server
         } else {
             return false; // Let php bultin server serve
         }
+    }
+
+    private static function loadMiddlewares(string $type)
+    {
+        /** @var Kernel $kernel */
+        $kernel = static::$app->make(Kernel::class);
+
+        Route::$middlewareAliases = $kernel->middlewareAliases;
+        $middlewares = $kernel->middleware;
+
+        array_push($middlewares, $kernel->middlewareGroups[$type]);
+        Route::$defaultMiddlewares = $middlewares;
+
+        Route::$middlewarePriority = $kernel->middlewarePriority;
     }
 
     private static function loadFacades()
@@ -56,7 +74,7 @@ class Server
                 new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
                 \RecursiveIteratorIterator::CHILD_FIRST
             );
-    
+
             $namespace = NamespaceHelper::getBaseNamespace();
     
             foreach ($listObject as $fileinfo) {

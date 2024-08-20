@@ -10,16 +10,16 @@ use Eyika\Atom\Framework\Foundation\Console\Command;
 
 class ScheduleRunner extends Command
 {
-    public function handle(array $arguments = []): int
+    public function handle(array $arguments = []): bool
     {
         $app = Facade::getFacadeApplication();
         $kernel = $app->make(ConsoleKernel::class);
         try {
             Scheduler::run($kernel);
-            return 0;
+            return true;
         } catch (Exception $e) {
             $this->error($e->getMessage());
-            return 1;
+            return false;
         }
     }
 }

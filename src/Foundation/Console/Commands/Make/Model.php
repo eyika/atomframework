@@ -11,7 +11,7 @@ class Model extends Command
 {
     public string $signature = 'make:model';
 
-    public function handle(array $arguments = []): int
+    public function handle(array $arguments = []): bool
     {
         try {
             if (empty($name = $arguments[0] ?? '')) {
@@ -83,10 +83,10 @@ class Model extends Command
     
             file_put_contents($model_folder.$name.'.php', $model_template);
             $this->info("Model with name $name created successfully");
-            return 0;
         } catch (Exception $e) {
             $this->error($e->getMessage());
-            return $e->getCode();
+            return !(bool)($e->getCode());
         }
+        return true;
     }
 }

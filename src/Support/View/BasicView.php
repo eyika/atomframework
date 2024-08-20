@@ -1,9 +1,9 @@
 <?php
-namespace Eyika\Atom\Framework\Support;
+namespace Eyika\Atom\Framework\Support\View;
 
 use Exception;
 
-class View {
+class BasicView {
 	static $blocks = array();
 	static $cache_path;
 	static $cache_enabled = FALSE;
@@ -11,7 +11,7 @@ class View {
 
 	static function make($file, $path = "/", $data = array(), $get_output = false) {
         self::$path = $path;
-		self::$cache_path = storage_path(). 'cache/';
+		self::$cache_path = config('view.compiled');
 		$cached_file = self::cache($file);
 	    extract($data, EXTR_SKIP);
         if (!$get_output) {
@@ -30,9 +30,9 @@ class View {
 
 	static function cache($file) {
 		if (!file_exists(self::$cache_path)) {
-		  	mkdir(self::$cache_path, 0744);
+		  	mkdir(self::$cache_path, 0744, true);
 		}
-	    $cached_file = self::$cache_path . str_replace(array('/', '.html'), array('_', ''), $file . '.php');
+	    $cached_file = self::$cache_path . '/'. str_replace(array('/', '.html'), array('_', ''), $file . '.php');
 	    if (!self::$cache_enabled || !file_exists($cached_file) || filemtime($cached_file) < filemtime($file)) {
 			$code = self::includeFiles($file);
 			$code = self::compileCode($code);

@@ -20,15 +20,16 @@ class ConsoleKernel implements ContractsConsoleKernel
 
     protected $status = false;
 
-    public function register(string $name, Command $command)
+    public function register(string $name, Command $command, array $options = [])
     {
-        $this->commands[$name] = $command;
+        $this->commands[$name] = [ 'command' => $command, 'options' => $options ];
     }
 
     public function run(string $name, array $arguments = [])
     {
         if (isset($this->commands[$name])) {
-            $this->status = $this->commands[$name]->handle($arguments);
+            $this->commands[$name]['command']->setAllowedOptions($this->commands[$name]['options']);
+            $this->status = $this->commands[$name]['command']->handle($arguments);
         } else {
             echo "Error: Command '$name' not found." . PHP_EOL;
         }
@@ -36,17 +37,17 @@ class ConsoleKernel implements ContractsConsoleKernel
 
     public function terminate($inputs = []): int
     {
-        return intval($this->status);
+        return intval(!$this->status);
     }
 
     /**
      * Load all the defined commands into console kernel registry
      */
-    protected function loadCommands()
+    protected function loadCommands(string $fullPath = null)
     {
         try {
             $ds = DIRECTORY_SEPARATOR;
-            $fullPath = base_path() . $ds. "vendor". $ds. "eyika". $ds. "atom-framework". $ds. "src". $ds. 'Foundation'. $ds. 'Console'. $ds. 'Commands';
+            $fullPath = $fullPath ?? base_path("vendor/eyika/atom-framework/src/Foundation/Console/Commands");
             $listObject = new \RecursiveIteratorIterator(
                 new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
                 \RecursiveIteratorIterator::CHILD_FIRST
@@ -58,7 +59,9 @@ class ConsoleKernel implements ContractsConsoleKernel
                     $command = classFromFile($fileinfo, $namespace);
                     $command_obj = new $command;
     
-                    $this->register($command_obj->signature, $command_obj);
+                    $args = explode(' ', $command_obj->signature);
+                    $signature = array_shift($args) ?? '';
+                    $this->register($signature, $command_obj, $args);
             }
         } catch (Exception $e) {
             logger()->info("INTERNAL: ".$e->getMessage(), $e->getTrace());
@@ -67,30 +70,11 @@ class ConsoleKernel implements ContractsConsoleKernel
     }
 
     /**
-     * Load all the defined commands into console kernel registry
+     * Load all the defined third party commands into console kernel registry
      */
     protected function loadThirdPartyCommands()
     {
-        try {
-            $ds = DIRECTORY_SEPARATOR;
-            $fullPath = base_path() . 'app'. $ds. 'Console'. $ds. 'Commands';
-            $listObject = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
-                \RecursiveIteratorIterator::CHILD_FIRST
-            );
-            $namespace = NamespaceHelper::getBaseNamespace();
-
-            foreach ($listObject as $fileinfo) {
-                if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1])
-
-                    $command = classFromFile($fileinfo, $namespace);
-                    $command_obj = new $command;
-                    $this->register($command_obj->signature, $command_obj);
-            }
-        } catch (Exception $e) {
-            logger()->info("INTERNAL: ".$e->getMessage(), $e->getTrace());
-            ///TODO handle exception
-        }
+        $this->loadCommands(base_path() . 'app/Console/Commands');
     }
 
     /**
@@ -100,7 +84,7 @@ class ConsoleKernel implements ContractsConsoleKernel
     {
         try {
             $ds = DIRECTORY_SEPARATOR;
-            $fullPath = base_path() . $ds. "vendor". $ds. "eyika". $ds. "atom-framework". $ds. "src". $ds. "Support". $ds. "Facade";
+            $fullPath = base_path("vendor/eyika/atom-framework/src/Support/Facade");
             $listObject = new \RecursiveIteratorIterator(
                 new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
                 \RecursiveIteratorIterator::CHILD_FIRST

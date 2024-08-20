@@ -12,7 +12,10 @@
         "phpunit/phpunit": "^11.3",
         "predis/predis": "^2.2",
         "dragonmantank/cron-expression": "^3.3",
-        "phpmailer/phpmailer": "^6.9"
+        "phpmailer/phpmailer": "^6.9",
+        "eftec/bladeone": "^4.13",
+        "eftec/bladeonehtml": "^2.4",
+        "eftec/clione": "^1.33"
     },
     "license": "MIT",
     "autoload": {

@@ -11,15 +11,15 @@ class Run extends Command
 {
     public string $signature = 'schedule:run';
 
-    public function handle(array $arguments = []): int
+    public function handle(array $arguments = []): bool
     {
         try {
             call_user_func(new JobRunner);
             call_user_func(new BurriedJobRunner);
         } catch (BaseConsoleException $e) {
             $this->error($e->getMessage());
-            return $e->getCode();
+            return !(bool)($e->getCode());
         }
-        return 0;
+        return true;
     }
 }

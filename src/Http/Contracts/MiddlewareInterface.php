@@ -1,6 +1,6 @@
 <?php
 
-namespace Eyika\Atom\Framework\Support\Interfaces;
+namespace Eyika\Atom\Framework\Http\Contracts;
 
 use Eyika\Atom\Framework\Http\Request;
 
