@@ -56,13 +56,13 @@ class Server
         /** @var Kernel $kernel */
         $kernel = static::$app->make(Kernel::class);
 
-        Route::$middlewareAliases = $kernel->middlewareAliases;
-        $middlewares = $kernel->middleware;
+        Route::$middlewareAliases = $kernel->getMiddlewareAliases();
+        $middlewares = $kernel->getMiddlewares();
 
-        array_push($middlewares, $kernel->middlewareGroups[$type]);
+        array_push($middlewares, $kernel->getMiddlewareGroups()[$type]);
         Route::$defaultMiddlewares = $middlewares;
 
-        Route::$middlewarePriority = $kernel->middlewarePriority;
+        Route::$middlewarePriority = $kernel->getMiddlewarePriority();
     }
 
     private static function loadFacades()
