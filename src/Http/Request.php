@@ -18,6 +18,7 @@ class Request
     protected $files;
     protected $server;
     protected $headers;
+    protected $proxyheader;
     protected $trustedProxies = [];
     protected Session $session;
 
@@ -32,6 +33,7 @@ class Request
         $this->files = $_FILES;
         $this->server = $_SERVER;
         $this->headers = getallheaders();
+        $this->proxyheader = 0;
 
         // Handle JSON payload
         if ($this->isJson()) {
@@ -221,13 +223,13 @@ class Request
         return $this->getScheme() . '://' . $this->getHost();
     }
 
-    public function setTrustedProxies(array $proxies, array $headers = [])
+    public function setTrustedProxies(array $proxies, int $headers)
     {
         $this->trustedProxies = $proxies;
 
         // If headers are provided, merge them with the existing headers
         if (!empty($headers)) {
-            $this->headers = array_merge($this->headers, $headers);
+            $this->proxyheader = $headers;
         }
     }
 

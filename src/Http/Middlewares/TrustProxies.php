@@ -17,11 +17,11 @@ class TrustProxies implements MiddlewareInterface
     /**
      * The headers that should be used to detect proxies.
      *
-     * @var array
+     * @var int
      */
     protected $headers;
 
-    public function __construct($proxies = null, $headers = null)
+    public function __construct(array $proxies = null, int $headers = null)
     {
         $this->proxies = $proxies;
 
