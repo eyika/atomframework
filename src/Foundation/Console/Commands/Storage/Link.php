@@ -9,7 +9,7 @@ use Eyika\Atom\Framework\Support\Storage\File;
 
 class Link extends Command
 {
-    public string $signature = 'key:generate';
+    public string $signature = 'storage:link';
     public string $description = 'link the storage folder to the public folder';
     /**
      * Execute the command to create a symbolic link.
@@ -28,7 +28,8 @@ class Link extends Command
             }
     
             if (!File::exists($storagePath)) {
-                throw new BaseConsoleException("The \"$storagePath\" directory does not exist.");
+                File::makeDirectory($storagePath, 0755, true);
+                $this->info("The \"$storagePath\" directory does not exist, creating it...");
             }
     
             if (File::symlink($storagePath, $publicPath)) {
