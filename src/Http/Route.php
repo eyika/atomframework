@@ -131,6 +131,7 @@ class Route
 
     public static function dispatch(Request $request)
     {
+        url()->setRoutes(self::$routes);
         url()->storeCurrent();
         if (! self::$instantiated)
             new static;

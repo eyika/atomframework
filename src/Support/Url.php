@@ -4,6 +4,16 @@ namespace Eyika\Atom\Framework\Support;
 
 class Url
 {
+    protected static $routes = [];
+
+    /**
+     * Store the application route definitions in Url instance
+     */
+    public static function setRoutes(array $routes)
+    {
+        static::$routes = $routes;
+    }
+
     /**
      * Generate an absolute URL.
      *
@@ -45,7 +55,6 @@ class Url
      */
     public static function storeCurrent()
     {
-        // session_start();
         $_SESSION['previous_url'] = self::current();
     }
 
@@ -54,10 +63,74 @@ class Url
      *
      * @return string|null
      */
-    public static function previous()
+    public static function previous(bool $store = false)
     {
-        // session_start();
+        if ($store) {
+            $_SESSION['previous_url'] = self::current();
+            return;
+        }
         return isset($_SESSION['previous_url']) ? $_SESSION['previous_url'] : null;
+    }
+
+    public static function route($name, $parameters = [])
+    {
+        foreach (self::$routes as $method => $routes) {
+            foreach ($routes as $route => $data) {
+                if ($data['name'] === $name) {
+                    foreach ($parameters as $key => $value) {
+                        $route = str_replace('$' . $key, $value, $route);
+                    }
+                    return $route;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public static function signedRoute($name, $parameters = [], $secret = 'secret-key')
+    {
+        $url = self::route($name, $parameters);
+
+        if ($url) {
+            $signature = hash_hmac('sha256', $url, $secret);
+            $url .= '?signature=' . $signature;
+        }
+
+        return $url;
+    }
+
+    public static function temporarySignedRoute($name, $parameters = [], $expiration, $secret = 'secret-key')
+    {
+        $parameters['expires'] = $expiration;
+        $url = self::route($name, $parameters);
+
+        if ($url) {
+            $signature = hash_hmac('sha256', $url, $secret);
+            $url .= '?expires=' . $expiration . '&signature=' . $signature;
+        }
+
+        return $url;
+    }
+
+    public static function validateSignature($url, $secret = 'secret-key')
+    {
+        $urlParts = parse_url($url);
+        parse_str($urlParts['query'], $query);
+
+        $expires = $query['expires'] ?? null;
+        if ($expires && $expires < time()) {
+            return false;
+        }
+
+        $originalUrl = $urlParts['scheme'] . '://' . $urlParts['host'] . $urlParts['path'];
+        if (isset($urlParts['query'])) {
+            unset($query['signature']);
+            $originalUrl .= '?' . http_build_query($query);
+        }
+
+        $expectedSignature = hash_hmac('sha256', $originalUrl, $secret);
+        return hash_equals($expectedSignature, $query['signature']);
     }
 }
 

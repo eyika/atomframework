@@ -15,7 +15,8 @@
         "phpmailer/phpmailer": "^6.9",
         "eftec/bladeone": "^4.13",
         "eftec/bladeonehtml": "^2.4",
-        "eftec/clione": "^1.33"
+        "eftec/clione": "^1.33",
+        "firebase/php-jwt": "^6.10"
     },
     "license": "MIT",
     "autoload": {
