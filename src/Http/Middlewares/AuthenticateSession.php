@@ -6,6 +6,7 @@ use Eyika\Atom\Framework\Exceptions\Http\UnauthorizedHttpException;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Support\Database\DB;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
+use Eyika\Atom\Framework\Http\JsonResponse;
 
 class AuthenticateSession implements MiddlewareInterface
 {
@@ -18,13 +19,13 @@ class AuthenticateSession implements MiddlewareInterface
     {
         // Check if the user is authenticated
         if (!$this->isAuthenticated($request)) {
-            throw new UnauthorizedHttpException('Session', 'User is not authenticated.');
+            throw new UnauthorizedHttpException('Session: User is not authenticated.', JsonResponse::STATUS_UNAUTHORIZED);
         }
 
         // Regenerate session ID if necessary
         $this->ensureSessionIsFresh($request);
 
-        return true;
+        return false;
     }
 
     /**

@@ -6,7 +6,7 @@ use Eyika\Atom\Framework\Support\Facade\Console;
 
 class Artisan
 {
-    public static function command(string $name, callable|Command $command)
+    public static function command(string $name, callable|Command $command, array $options = [])
     {
         Console::register($name, $command);
     }
@@ -14,6 +14,7 @@ class Artisan
     public static function run(string $name, $arguments = [])
     {
         Console::run($name, $arguments);
+        return new static;
     }
 
     public static function terminate($arguments = [])

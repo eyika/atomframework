@@ -21,7 +21,7 @@ class SubstituteBindings implements MiddlewareInterface
         $routeParams = $request->route_params;
 
         // Substitute bindings for each parameter
-        foreach ($routeParams as $key => $value) {
+        foreach ($routeParams ?? [] as $key => $value) {
             if (is_numeric($value)) {
                 // Example: replace `{user}` with an instance of User model
                 $model = $this->resolveModel($key, $value);
@@ -33,7 +33,7 @@ class SubstituteBindings implements MiddlewareInterface
             }
         }
 
-        return true;
+        return false;
     }
 
     /**

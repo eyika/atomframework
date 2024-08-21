@@ -17,7 +17,7 @@ class StartSession  implements MiddlewareInterface
         if (strtolower($_SERVER["REQUEST_METHOD"]) !== "options") {
             $this->startSession($request);
         }
-        return true;
+        return false;
     }
 
     /**

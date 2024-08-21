@@ -4,35 +4,31 @@ namespace Eyika\Atom\Framework\Support\Database;
 
 use Exception;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
-use Eyika\Atom\Framework\Support\Arr;
-use Eyika\Atom\Framework\Support\Database\Concerns\ModelHelpers;
 
 class DB
 {
     public static bool $transaction_mode;
 
-    protected static $bind_or_filter ;
-    protected static $or_ands;
-    protected static $operators;
+    protected static $bind_or_filter;
+    protected static array|string $or_ands;
+    protected static array|string $operators;
     protected static $order;
-    protected static $table;
+
+    private static $instantiated = false;
 
     protected static $recordsPerPage;
 
-    public static function __construct(string $table = '')
+    public function __construct()
     {
         static::$transaction_mode = false;
-        static::$table = $table;
+        static::$or_ands = 'AND';
+        static::$operators = '=';
+        static::$instantiated = true;
     }
 
-    public static function init(string $table = '')
+    public static function init()
     {
-        return new static($table);
-    }
-
-    public static function setTable(string $table = '')
-    {
-        static::$table = $table;
+        return new static();
     }
 
     public static function beginTransaction()
@@ -71,13 +67,15 @@ class DB
         return new static;
     }
 
-    public static function raw(string $table, string $sql, $bind)
+    public static function raw(string $sql, $bind)
     {
         return mysqly::exec($sql, $bind);
     }
 
     public static function create(string $table, array $values, array|string $select = '*')
     {
+        if (! self::$instantiated)
+            static::init();
         if (!$id = mysqly::insert($table, $values)) {
             return false;
         }
@@ -93,10 +91,9 @@ class DB
 
     public static function find(string $table, $id, array|string $fields = '*')
     {
+        if (! self::$instantiated)
+            static::init();
         $query_arr = [];
-        if (static::$bind_or_filter)
-            $query_arr = static::$bind_or_filter;
-
         
         if ($id > 0)
             $query_arr['id'] = $id;
@@ -136,6 +133,8 @@ class DB
 
     public static function findBy(string $table, $key, $value, array|string $select = '*')
     {
+        if (! self::$instantiated)
+            static::init();
         $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
 
         $query_arr[$key] = $value;
@@ -154,6 +153,8 @@ class DB
 
     public static function findByArray(string $table, $keys, $values, $or_and = "AND", $select = [])
     {
+        if (! self::$instantiated)
+            static::init();
         if (count($keys) !== count($values)) {
             return false;
         }
@@ -165,7 +166,7 @@ class DB
             is_string(static::$or_ands) ? static::$or_ands = [$or_and] : array_push(static::$or_ands, $or_and);
         }
         
-        if (!$fields = mysqly::fetch(static::$table, $query_arr, $select)) {
+        if (!$fields = mysqly::fetch($table, $query_arr, $select)) {
             return false;
         }
         return $fields;
@@ -173,6 +174,8 @@ class DB
 
     public static function all(string $table, $select = [])
     {
+        if (! self::$instantiated)
+            static::init();
         $query_arr = [];
         if (static::$bind_or_filter)
             $query_arr = static::$bind_or_filter;
@@ -232,6 +235,8 @@ class DB
 
     public static function _count(string $table, $column = "*", $reset_instance = true)
     {
+        if (! self::$instantiated)
+            static::init();
         $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
 
         $i = 0;
@@ -273,6 +278,8 @@ class DB
 
     public static function delete(string $table, $id)
     {
+        if (! self::$instantiated)
+            static::init();
         $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
 
         if ($id !== 0 && count($query_arr) < 1)
@@ -404,6 +411,8 @@ class DB
      */
     private function _update(string $table, array $values, int $id, string|array $fields = '*')
     {   
+        if (! self::$instantiated)
+            static::init();
         $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
 
         $query_arr['id'] = $id;
@@ -422,6 +431,8 @@ class DB
 
     private function _where(string $column, string $operatorOrValue = null, $value = null, $boolean = "AND")
     {
+        if (! self::$instantiated)
+            static::init();
         $bind_or_filter = static::$bind_or_filter;
         if ($bind_or_filter != null) {
             foreach ($bind_or_filter as $key => $_value) {
@@ -449,5 +460,7 @@ class DB
     public static function distinct($column)
     {
         is_string(static::$operators) ? static::$operators = ["DISTINCT `$column`"] : array_push(static::$operators, "DISTINCT `$column`");
+
+        return new static;
     }
 }

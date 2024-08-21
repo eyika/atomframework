@@ -146,18 +146,18 @@ class File
      * Create a directory.
      *
      * @param string $path
-     * @param int $mode
+     * @param int $permission
      * @param bool $recursive
      * @param bool $force
      * @return bool
      */
-    public static function makeDirectory($path, $mode = 0755, $recursive = false, $force = false)
+    public static function makeDirectory($path, $permission = 0755, $recursive = false, $force = false)
     {
         if ($force && static::exists($path)) {
             return true;
         }
 
-        return mkdir($path, $mode, $recursive);
+        return mkdir($path, $permission, $recursive);
     }
 
     /**

@@ -18,7 +18,7 @@ class ShareErrorsFromSession implements MiddlewareInterface
             $this->shareErrors($request);
         }
 
-        return true;
+        return false;
     }
 
     /**

@@ -19,7 +19,7 @@ class ValidatePostSize implements MiddlewareInterface
             return $this->handleRequestTooLarge($request);
         }
 
-        return true;
+        return false;
     }
 
     /**
@@ -31,7 +31,7 @@ class ValidatePostSize implements MiddlewareInterface
     protected function isRequestTooLarge(Request $request)
     {
         $postMaxSize = $this->getPostMaxSize();
-        $contentLength = $request->server->get('CONTENT_LENGTH', 0);
+        $contentLength = $request->server('CONTENT_LENGTH', 0);
 
         return $postMaxSize > 0 && $contentLength > $postMaxSize;
     }

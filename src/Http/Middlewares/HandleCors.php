@@ -56,7 +56,7 @@ class HandleCors implements MiddlewareInterface
             return $this->addCorsHeaders($request);
         }
 
-        return true;
+        return false;
     }
 
     /**

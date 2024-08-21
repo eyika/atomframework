@@ -17,11 +17,11 @@ class TrustProxies implements MiddlewareInterface
     /**
      * The headers that should be used to detect proxies.
      *
-     * @var array
+     * @var int
      */
     protected $headers;
 
-    public function __construct($proxies = null, $headers = null)
+    public function __construct(array $proxies = null, int $headers = null)
     {
         $this->proxies = $proxies;
 
@@ -40,10 +40,10 @@ class TrustProxies implements MiddlewareInterface
         // Trust the proxies configured for this application
         $request->setTrustedProxies(
             $this->proxies ?? ['127.0.0.1', 'localhost'], // Default to localhost if no proxies set
-            $this->headers
+            1
         );
 
-        return true;
+        return false;
     }
 
     /**

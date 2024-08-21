@@ -270,8 +270,7 @@ if (!function_exists('is_windows')) {
 if (! function_exists('logger')) {
     function logger(string $path = null, Monolog\Level $level = Monolog\Level::Debug, $bubble = true, $filePermission = 0664, $useLocking = false)
     {
-        $logger_path = "/logs/custom.log";
-        $path = is_null($path) ? storage_path().$logger_path : $path;
+        $path = is_null($path) ? storage_path("logs/custom.log") : $path;
         $log = new Logger('tradingio');
         // Define the date format to match Laravel's
         $dateFormat = "Y-m-d H:i:s";

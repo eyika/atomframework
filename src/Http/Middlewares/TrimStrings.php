@@ -17,7 +17,7 @@ class TrimStrings implements MiddlewareInterface
     {
         $this->clean($request);
 
-        return true;
+        return false;
     }
 
     /**

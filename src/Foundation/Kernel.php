@@ -48,4 +48,24 @@ class Kernel implements ContractsKernel
      */
     protected $middlewarePriority = [
     ];
+
+    public function getMiddlewares(): array
+    {
+        return $this->middleware;
+    }
+
+    public function getMiddlewareGroups(): array
+    {
+        return $this->middlewareGroups;
+    }
+
+    public function getMiddlewareAliases(): array
+    {
+        return $this->middlewareAliases;
+    }
+
+    public function getMiddlewarePriority(): array
+    {
+        return $this->middlewarePriority;
+    }
 }
