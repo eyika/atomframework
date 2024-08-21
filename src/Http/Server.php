@@ -59,7 +59,7 @@ class Server
         Route::$middlewareAliases = $kernel->getMiddlewareAliases();
         $middlewares = $kernel->getMiddlewares();
 
-        array_push($middlewares, $kernel->getMiddlewareGroups()[$type]);
+        array_push($middlewares, ...$kernel->getMiddlewareGroups()[$type]);
         Route::$defaultMiddlewares = $middlewares;
 
         Route::$middlewarePriority = $kernel->getMiddlewarePriority();

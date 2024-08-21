@@ -37,7 +37,7 @@ class RoleMiddleware implements MiddlewareInterface
             throw new RequestException(403, 'You do not have the required role to access this resource.');
         }
 
-        return true;
+        return false;
     }
 
     /**

@@ -16,7 +16,7 @@ class XSSProtection
         $this->sanitizeInputs($request);
 
         // Proceed with the next middleware or request handler
-        return true;
+        return false;
     }
 
     /**

@@ -223,7 +223,7 @@ class Request
         return $this->getScheme() . '://' . $this->getHost();
     }
 
-    public function setTrustedProxies(array $proxies, int $headers)
+    public function setTrustedProxies(array $proxies, int $headers = null)
     {
         $this->trustedProxies = $proxies;
 

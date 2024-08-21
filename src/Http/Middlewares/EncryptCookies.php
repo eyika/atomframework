@@ -28,7 +28,7 @@ class EncryptCookies implements MiddlewareInterface
         // Encrypt the cookies on the outgoing response
         $this->encryptCookies($request);
 
-        return true;
+        return false;
     }
 
     /**
@@ -39,7 +39,7 @@ class EncryptCookies implements MiddlewareInterface
      */
     protected function decryptCookies(Request $request): void
     {
-        foreach ($request->cookies as $key => $value) {
+        foreach ($request->cookies ?? [] as $key => $value) {
             if ($this->isDisabled($key)) {
                 continue;
             }

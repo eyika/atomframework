@@ -14,7 +14,7 @@ class Route
     protected static $groupPrefix = '';
     protected static $routeName = '';
     protected static $currentRoute = '';
-    private static $instantiated = '';
+    private static $instantiated = false;
     private static $lastInsertedRouteKeys = '';
     private static $apiRequest = false;
 

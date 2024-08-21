@@ -51,7 +51,7 @@ class Response extends BaseResponse
         $path = resource_path('views');
         try {
             if (config('view.use_advance_engine')) {
-                $view = new View("$path");
+                $view = new View($path);
                 $code = $view->run("$file_name", $data);
             } else {
                 $code = BasicView::make("$file_name.blade.php", "$path/", $data, true);

@@ -19,7 +19,7 @@ class VerifyCsrfToken implements MiddlewareInterface
             $this->verifyCsrfToken($request);
         }
 
-        return true;
+        return false;
     }
 
     /**

@@ -30,7 +30,7 @@ class PermissionMiddleware implements MiddlewareInterface
             }
         }
 
-        return true;
+        return false;
     }
 
     /**

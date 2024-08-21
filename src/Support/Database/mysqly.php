@@ -103,7 +103,11 @@ class mysqly {
   public static function exec($sql, $bind = []) {
     if ( !isset(static::$db) ) {
       if ( !static::$auth ) {
-        static::$auth = @include static::$auth_file;
+        if (!empty(env('DB_USERNAME')) && !empty(env('DB_PASSWORD') && !empty(env('DB_DATABASE')))) {
+          static::auth(env('DB_USERNAME'), env('DB_PASSWORD'), env('DB_DATABASE'), env('DB_HOST'));
+        } else {
+          static::$auth = @include static::$auth_file;
+        }
       }
       static::$db = new PDO('mysql:host=' . (isset(static::$auth['host']) ? static::$auth['host'] : '127.0.0.1') . ';port=' . (isset(static::$auth['port']) ? static::$auth['port'] : '3306') . (static::$auth['db'] ? ';dbname=' . static::$auth['db'] : ''), static::$auth['user'], static::$auth['pwd']);
       static::$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -330,7 +334,8 @@ class mysqly {
 
       $sql .= $order_limit_or_offset;
     }
-    logger()->info($sql, isset($bind) &&  is_array($bind) ? $bind : []);
+    if (env('APP_DEBUG', null) === 'true')
+      logger()->info($sql, isset($bind) &&  is_array($bind) ? $bind : []);
 
     $res = isset($bind) ? static::exec($sql, $bind) : static::exec($sql);
     return $res;

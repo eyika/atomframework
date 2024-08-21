@@ -40,10 +40,10 @@ class TrustProxies implements MiddlewareInterface
         // Trust the proxies configured for this application
         $request->setTrustedProxies(
             $this->proxies ?? ['127.0.0.1', 'localhost'], // Default to localhost if no proxies set
-            $this->headers
+            1
         );
 
-        return true;
+        return false;
     }
 
     /**

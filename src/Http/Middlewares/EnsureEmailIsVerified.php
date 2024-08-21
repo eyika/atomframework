@@ -22,7 +22,7 @@ class EnsureEmailIsVerified implements MiddlewareInterface
             throw new RequestException(403, 'Your email address is not verified.');
         }
 
-        return true;
+        return false;
     }
 
     /**
