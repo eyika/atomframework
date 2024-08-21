@@ -36,7 +36,7 @@ class AuthenticateSession implements MiddlewareInterface
      */
     protected function isAuthenticated(Request $request): bool
     {
-        if (!$id = 1) {
+        if (!$id = $request->getSession()->get('user_id')) {
             return false;
         }
         if (!$user = DB::find('users', $id)) {
