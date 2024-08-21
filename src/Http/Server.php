@@ -32,6 +32,37 @@ class Server
 
         // Config::loadConfigFiles(base_path() . "/config");
 
+        $server = strtolower($_SERVER['SERVER_SOFTWARE']) ?? "";
+
+
+        if (in_array($_ENV['APP_ENV'], [ 'local', 'dev' ]) && (!str_contains($server, 'apache') && (!str_contains($server, 'nginx')) && (!str_contains($server, 'litespeed')))) {
+
+            $customMappings = [
+                'js' => 'text/javascript', //'application/javascript',
+                'css' => 'text/css',
+                'woff2' => 'font/woff2'
+            ];
+
+            if (preg_match('/\.(?:js|css|svg|ico|woff2|ttf|webp|pdf|png|jpg|json|jpeg|gif|md)$/', $_SERVER["REQUEST_URI"])) {
+                $path = $_SERVER['DOCUMENT_ROOT'].$_SERVER["REQUEST_URI"];
+                if (file_exists($path)) {
+                    $mime = mime_content_type($path);
+                    $ext = pathinfo($path, PATHINFO_EXTENSION);
+                    if (array_key_exists($ext, $customMappings)) {
+                        $mime = $customMappings[$ext];
+                    }
+                    header("Content-Type: $mime", true, 200);
+                    echo file_get_contents($path);
+                    return true;
+                }
+
+                header("Content-type: text/html", true, 404);
+                echo "File Not Found";
+
+                return true;
+            }
+        }
+
         $request = Request::capture();
         if (preg_match('/^.*$/i', $request->getRequestUri())) {
             //register controllers
