@@ -1,6 +1,6 @@
 <?php
 
-namespace Basttyy\FxDataServer\Middlewares;
+namespace Eyika\Atom\Framework\Http\Middlewares;
 
 use Exception;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
@@ -15,11 +15,10 @@ class ThrottleRequestsMiddleware implements MiddlewareInterface
     public function handle(Request $request, ...$params): bool
     {
         try {
-            logger()->info('this is from throttleRequest middleware', $params);
             $ipAddress = getIpAddress($request);
             $currentTime = time();
             $user = $request->auth_user ?? null;
-            [$limit, $timeFrame] = $params;
+            [$limit, $timeFrame] = count($params) ? $params : [ '10', '60'];
     
             // Throttle by User ID
             if ($user) {

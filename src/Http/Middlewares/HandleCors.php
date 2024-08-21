@@ -67,8 +67,8 @@ class HandleCors implements MiddlewareInterface
      */
     protected function isCorsRequest(Request $request): bool
     {
-        return $request->headers->has('Origin') &&
-            $request->headers->get('Origin') !== $request->getSchemeAndHttpHost();
+        return $request->has('Origin') &&
+            $request->header('Origin') !== $request->getSchemeAndHttpHost();
     }
 
     /**
