@@ -10,4 +10,9 @@ class UnauthorizedHttpException extends BaseHttpException
     {
         parent::__construct($message, $code, $previous);
     }
+
+    public function getStatusCode()
+    {
+        return $this->getCode();
+    }
 }

@@ -26,6 +26,8 @@ namespace Eyika\Atom\Framework\Support\Facade;
  * @method static bool isMethod($method)
  * @method static bool isJson()
  * @method static bool wantsJson()
+ * @method static bool expectsJson()
+ * @method static bool isXmlHttpRequest()
  * @method static string getPathInfo()
  * @method static string getOriginPathInfo()
  * @method static string getRequestUri()

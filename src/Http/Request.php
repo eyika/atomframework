@@ -151,7 +151,17 @@ class Request
 
     public function wantsJson()
     {
-        return $this->isJson();
+        return $this->expectsJson();
+    }
+
+    function expectsJson()
+    {
+        return strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false;
+    }
+    
+    function isXmlHttpRequest()
+    {
+        return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
     }
 
     public function getPathInfo()
