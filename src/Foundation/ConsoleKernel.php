@@ -20,18 +20,38 @@ class ConsoleKernel implements ContractsConsoleKernel
 
     protected $status = false;
 
-    public function register(string $name, Command $command, array $options = [])
+    public function register(string $name, Command|callable $command, array $options = [])
     {
-        $this->commands[$name] = [ 'command' => $command, 'options' => $options ];
+        $this->commands[$name] = [ 'command' => $command, 'options' => $options, 'purpose' => '' ];
+    }
+
+    public function purpose(string $purpose)
+    {
+        $key = array_key_last($this->commands);
+        if ($this->commands[$key]['purpose'] == '')
+            $this->commands[$key]['purpose'] = $purpose;
+    }
+
+    public function comment(string $comment)
+    {
+        consoleLog(0, "Info: $comment." . PHP_EOL);
     }
 
     public function run(string $name, array $arguments = [])
     {
+        //Load console route command definitions into $commands array
+        require base_path().'/routes/console.php';
+
         if (isset($this->commands[$name])) {
-            $this->commands[$name]['command']->setAllowedOptions($this->commands[$name]['options']);
-            $this->status = $this->commands[$name]['command']->handle($arguments);
+            $command = $this->commands[$name]['command'];
+
+            if ($command instanceof Command) {
+                $this->commands[$name]['command']->setAllowedOptions($this->commands[$name]['options']);
+                $this->status = $command->handle($arguments);
+            } else if (is_callable($command))
+                $this->status = $command($arguments);
         } else {
-            echo "Error: Command '$name' not found." . PHP_EOL;
+            consoleLog(1, "Error: Command '$name' not found." . PHP_EOL);
         }
     }
 

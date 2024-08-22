@@ -1,10 +1,10 @@
 <?php
 
-use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Http\Response;
 use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
 use Eyika\Atom\Framework\Support\Database\DB;
 use Eyika\Atom\Framework\Support\Encrypter;
+use Eyika\Atom\Framework\Support\Facade\Request;
 use Eyika\Atom\Framework\Support\Storage\Storage;
 use Eyika\Atom\Framework\Support\Str;
 use Eyika\Atom\Framework\Support\Stringable;
@@ -72,7 +72,7 @@ if (! function_exists('request')) {
      * Returns the current request object
      */
     function request() {
-        return Request::capture();
+        return new Request;
     }
 }
 
@@ -197,11 +197,12 @@ if (! function_exists('getIpAddress')) {
     /**
      * Get the IP address of the current request
      * 
-     * @param Request $request
      * @return string
      */
-    function getIpAddress(Request $request)
+    function getIpAddress()
     {
+        $request = request();
+
         if ($request->HTTP_CLIENT_IP) {
             return $request->HTTP_CLIENT_IP;
         } elseif ($request->HTTP_X_FORWARDED_FOR) {
@@ -223,6 +224,15 @@ if (! function_exists('base_path')) {
     {
         $folder = empty($folder) ? '' : "/$folder";
         return $GLOBALS['base_path'].$folder ?? $_SERVER['DOCUMENT_ROOT'].$folder;
+    }
+}
+
+if (! function_exists('asset')) {
+    function asset(string $folder = ''): string
+    {
+        $server_url = Request::getSchemeAndHttpHost();
+        $folder = empty($folder) ? '' : "/$folder";
+        return $server_url.$folder;
     }
 }
 

@@ -22,6 +22,10 @@ class ViewRedis extends BladeOne
         $templatePath = $templatePath ?? config('view.paths');
         $compiledPath = $compiledPath ?? config('view.compiled');
 
+        if (!file_exists($compiledPath)) {
+            mkdir($compiledPath, 0744, true);
+        }
+
         parent::__construct($templatePath, $compiledPath, $mode);
     }
 }

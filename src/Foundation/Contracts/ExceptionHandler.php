@@ -4,5 +4,5 @@ namespace Eyika\Atom\Framework\Foundation\Contracts;
 
 interface ExceptionHandler
 {
-    public function render();
+    public function render($request, \Throwable $exception);
 }

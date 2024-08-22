@@ -13,6 +13,7 @@ class JsonResponse
     public const STATUS_BAD_REQUEST = 400;
     public const STATUS_NOT_FOUND = 404;
     public const STATUS_UNAUTHORIZED = 401;
+    public const STATUS_UNPROCESSABLE_ENTITY = 422;
     public const STATUS_INTERNAL_SERVER_ERROR = 500;
 
     public function __construct(int $status_code, $data = null)
@@ -77,10 +78,19 @@ class JsonResponse
         }
     }
 
+    public static function unprocessableEntity(string $message = "unprocessable request", string|array $error = ""): bool
+    {
+        try {
+            new self(self::STATUS_UNAUTHORIZED, ['message' => $message, 'error' => $error]);
+            return true;
+        } catch (Exception $ex) {
+        }
+    }
+
     public static function serverError(string $message=""): bool
     {
         try {
-            new self(self::STATUS_INTERNAL_SERVER_ERROR, ['message' => $message]);
+            new self(self::STATUS_UNPROCESSABLE_ENTITY, ['message' => $message]);
             return true;
         } catch (Exception $ex) {
         }

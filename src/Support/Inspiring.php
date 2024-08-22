@@ -1,6 +1,6 @@
 <?php
 
-namespace Illuminate\Foundation;
+namespace Eyika\Atom\Framework\Support;
 
 use Eyika\Atom\Framework\Support\Arr;
 

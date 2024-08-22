@@ -5,6 +5,7 @@ namespace Eyika\Atom\Framework\Http;
 use Dotenv\Dotenv;
 use Exception;
 use Eyika\Atom\Framework\Foundation\Application;
+use Eyika\Atom\Framework\Foundation\Contracts\ExceptionHandler;
 use Eyika\Atom\Framework\Foundation\Contracts\Kernel;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\NamespaceHelper;
@@ -26,59 +27,69 @@ class Server
 
     public static function handle(): bool
     {
-        $dotenv = strtolower(PHP_OS_FAMILY) === 'windows' ? Dotenv::createImmutable(base_path()."\\") : Dotenv::createImmutable(base_path()."/");
-        $dotenv->load();
-        $dotenv->required([])->notEmpty(); ///TODO: get required env keys from config if set
-
-        // Config::loadConfigFiles(base_path() . "/config");
-
-        $server = strtolower($_SERVER['SERVER_SOFTWARE']) ?? "";
-
-
-        if (in_array($_ENV['APP_ENV'], [ 'local', 'dev' ]) && (!str_contains($server, 'apache') && (!str_contains($server, 'nginx')) && (!str_contains($server, 'litespeed')))) {
-
-            $customMappings = [
-                'js' => 'text/javascript', //'application/javascript',
-                'css' => 'text/css',
-                'woff2' => 'font/woff2'
-            ];
-
-            if (preg_match('/\.(?:js|css|svg|ico|woff2|ttf|webp|pdf|png|jpg|json|jpeg|gif|md)$/', $_SERVER["REQUEST_URI"])) {
-                $path = $_SERVER['DOCUMENT_ROOT'].$_SERVER["REQUEST_URI"];
-                if (file_exists($path)) {
-                    $mime = mime_content_type($path);
-                    $ext = pathinfo($path, PATHINFO_EXTENSION);
-                    if (array_key_exists($ext, $customMappings)) {
-                        $mime = $customMappings[$ext];
+        try {
+            $dotenv = strtolower(PHP_OS_FAMILY) === 'windows' ? Dotenv::createImmutable(base_path()."\\") : Dotenv::createImmutable(base_path()."/");
+            $dotenv->load();
+            $dotenv->required([])->notEmpty(); ///TODO: get required env keys from config if set
+    
+            // Config::loadConfigFiles(base_path() . "/config");
+    
+            $server = strtolower($_SERVER['SERVER_SOFTWARE']) ?? "";
+    
+    
+            if (in_array($_ENV['APP_ENV'], [ 'local', 'dev' ]) && (!str_contains($server, 'apache') && (!str_contains($server, 'nginx')) && (!str_contains($server, 'litespeed')))) {
+    
+                $customMappings = [
+                    'js' => 'text/javascript', //'application/javascript',
+                    'css' => 'text/css',
+                    'woff2' => 'font/woff2',
+                    'woff' => 'font/woff'
+                ];
+    
+                $uri = explode('?', $_SERVER["REQUEST_URI"])[0];
+                if (preg_match('/\.(?:js|css|svg|ico|woff|woff2|ttf|webp|pdf|png|jpg|json|jpeg|gif|md)$/', $uri)) {
+                    $path = public_path().$uri;
+                    if (file_exists($path)) {
+                        $mime = mime_content_type($path);
+                        $ext = pathinfo($path, PATHINFO_EXTENSION);
+                        if (array_key_exists($ext, $customMappings)) {
+                            $mime = $customMappings[$ext];
+                        }
+                        header("Content-Type: $mime", true, 200);
+                        echo file_get_contents($path);
+                        return true;
                     }
-                    header("Content-Type: $mime", true, 200);
-                    echo file_get_contents($path);
+    
+                    header("Content-type: text/html", true, 404);
+                    echo "File Not Found";
+    
                     return true;
                 }
-
-                header("Content-type: text/html", true, 404);
-                echo "File Not Found";
-
-                return true;
             }
-        }
-
-        $request = Request::capture();
-        if (preg_match('/^.*$/i', $request->getRequestUri())) {
-            //register controllers
-            if (strpos($request->getPathInfo(), '/api') === false) {
-                static::loadMiddlewares('web');
-                ///TODO: load all default web middlewares
-                require_once base_path().'/routes/web.php';
+    
+            $request = new Request();
+            static::$app->instance('request', $request);
+            if (preg_match('/^.*$/i', $request->getRequestUri())) {
+                //register controllers
+                if (strpos($request->getPathInfo(), '/api') === false) {
+                    static::loadMiddlewares('web');
+                    ///TODO: load all default web middlewares
+                    require_once base_path().'/routes/web.php';
+                } else {
+                    Route::isApiRequest(true);
+                    static::loadMiddlewares('api');
+                    ///TODO: load all default api middlewares
+                    require_once base_path().'/routes/api.php';
+                }
+                return Route::dispatch($request);
             } else {
-                Route::isApiRequest(true);
-                static::loadMiddlewares('api');
-                ///TODO: load all default api middlewares
-                require_once base_path().'/routes/api.php';
+                return false; // Let php bultin server serve
             }
-            return Route::dispatch($request);
-        } else {
-            return false; // Let php bultin server serve
+        } catch (Exception $e) {
+            /** @var ExceptionHandler $handler */
+            $handler = static::$app->make(ExceptionHandler::class);
+
+            $handler->render($request, $e);
         }
     }
 

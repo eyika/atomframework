@@ -19,7 +19,13 @@ class Response extends BaseResponse
 
     private const methodToFunc = [
         self::STATUS_OK => 'ok',
-        self::STATUS_BAD_REQUEST => 'badRequest'
+        self::STATUS_NO_CONTENT => 'noContent',
+        self::STATUS_CREATED => 'created',
+        self::NOT_MODIFIED => 'notModified',
+        self::STATUS_BAD_REQUEST => 'badRequest',
+        self::STATUS_NOT_FOUND => 'notFound',
+        self::STATUS_UNAUTHORIZED => 'unauthorized',
+        self::STATUS_INTERNAL_SERVER_ERROR => 'serverError'
     ];
 
     public function __construct(int $status_code = 200)
