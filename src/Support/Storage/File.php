@@ -47,6 +47,19 @@ class File
     }
 
     /**
+     * Put the contents into a file.
+     *
+     * @param string $contents
+     * @param string $path
+     * @return int|bool
+     */
+    public static function upload($contents, $path)
+    {
+        static::makeDirectoryIfNotExist($path);
+        return move_uploaded_file($contents, $path);
+    }
+
+    /**
      * Delete the file at a given path.
      *
      * @param string $path
@@ -158,6 +171,25 @@ class File
         }
 
         return mkdir($path, $permission, $recursive);
+    }
+
+    /**
+     * @param string $path
+     * @return void
+     */
+    public static function makeDirectoryIfNotExist($path)
+    {
+
+        $paths = explode('/', $path);
+        if (str_contains($paths[count($paths) -1], '.')) {
+            array_pop($paths);
+        }
+
+        $paths = implode('/', $paths);
+
+        if (!static::exists($paths)) {
+            static::makeDirectory($paths);
+        }
     }
 
     /**
