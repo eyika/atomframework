@@ -215,7 +215,7 @@ class Request
             return $this->headers['X-Forwarded-Host'];
         }
 
-        return $this->headers['HTTP_HOST'] ?? '';
+        return $this->headers['HTTP_HOST'];
     }
 
     public function getSchemeAndHttpHost()

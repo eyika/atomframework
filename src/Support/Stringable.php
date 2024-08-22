@@ -187,11 +187,11 @@ class Stringable
      *
      * @param  string  $delimiter
      * @param  int  $limit
-     * @return \Illuminate\Support\Collection
+     * @return array
      */
     public function explode($delimiter, $limit = PHP_INT_MAX)
     {
-        return $this->collect(explode($delimiter, $this->value, $limit));
+        return explode($delimiter, $this->value, $limit);
     }
 
     /**
@@ -200,13 +200,13 @@ class Stringable
      * @param  string  $pattern
      * @param  int  $limit
      * @param  int  $flags
-     * @return \Illuminate\Support\Collection
+     * @return array
      */
     public function split($pattern, $limit = -1, $flags = 0)
     {
         $segments = preg_split($pattern, $this->value, $limit, $flags);
 
-        return ! empty($segments) ? $this->collect($segments) : $this->collect();
+        return ! empty($segments) ? $segments : [];
     }
 
     /**
@@ -325,17 +325,17 @@ class Stringable
      * Get the string matching the given pattern.
      *
      * @param  string  $pattern
-     * @return \Illuminate\Support\Collection
+     * @return array
      */
     public function matchAll($pattern)
     {
         preg_match_all($pattern, $this->value, $matches);
 
         if (empty($matches[0])) {
-            return $this->collect();
+            return [];
         }
 
-        return $this->collect($matches[1] ?? $matches[0]);
+        return $matches[1] ?? $matches[0];
     }
 
     /**

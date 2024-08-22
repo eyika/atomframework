@@ -40,11 +40,13 @@ class Server
             $customMappings = [
                 'js' => 'text/javascript', //'application/javascript',
                 'css' => 'text/css',
-                'woff2' => 'font/woff2'
+                'woff2' => 'font/woff2',
+                'woff' => 'font/woff'
             ];
 
-            if (preg_match('/\.(?:js|css|svg|ico|woff2|ttf|webp|pdf|png|jpg|json|jpeg|gif|md)$/', $_SERVER["REQUEST_URI"])) {
-                $path = $_SERVER['DOCUMENT_ROOT'].$_SERVER["REQUEST_URI"];
+            $uri = explode('?', $_SERVER["REQUEST_URI"])[0];
+            if (preg_match('/\.(?:js|css|svg|ico|woff|woff2|ttf|webp|pdf|png|jpg|json|jpeg|gif|md)$/', $uri)) {
+                $path = public_path().$uri;
                 if (file_exists($path)) {
                     $mime = mime_content_type($path);
                     $ext = pathinfo($path, PATHINFO_EXTENSION);
@@ -63,7 +65,8 @@ class Server
             }
         }
 
-        $request = Request::capture();
+        $request = new Request();
+        static::$app->instance('request', $request);
         if (preg_match('/^.*$/i', $request->getRequestUri())) {
             //register controllers
             if (strpos($request->getPathInfo(), '/api') === false) {

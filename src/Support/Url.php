@@ -100,7 +100,7 @@ class Url
         return $url;
     }
 
-    public static function temporarySignedRoute($name, $parameters = [], $expiration, $secret = 'secret-key')
+    public static function temporarySignedRoute($name, $expiration, $parameters = [], $secret = 'secret-key')
     {
         $parameters['expires'] = $expiration;
         $url = self::route($name, $parameters);
