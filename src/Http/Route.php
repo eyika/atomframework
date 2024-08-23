@@ -83,7 +83,8 @@ class Route
 
     protected static function addRoute(string $method, string $route, callable|string|array $path_to_include): self
     {
-        $slash = static::$apiRequest ? "/api/" : '/';
+        // $slash = static::$apiRequest ? "/api/" : '/';
+        $slash = '/';
         $route = self::$groupPrefix . $slash . ltrim($route, '/');
         $route = rtrim($route, '/');
         $name = self::$routeName ? self::$routeName : $route;

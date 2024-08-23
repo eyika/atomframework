@@ -2,7 +2,7 @@
 
 namespace Eyika\Atom\Framework\Http\Middlewares;
 
-use Eyika\Atom\Framework\Exceptions\Http\NotFoundHttpException;
+use Eyika\Atom\Framework\Exceptions\Db\ModelNotFoundException;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
@@ -28,7 +28,7 @@ class SubstituteBindings implements MiddlewareInterface
                 if ($model) {
                     $request->{$key} = $model;
                 } else {
-                    throw new NotFoundHttpException("Model not found for parameter: $key");
+                    throw new ModelNotFoundException("Model not found for parameter: $key");
                 }
             }
         }

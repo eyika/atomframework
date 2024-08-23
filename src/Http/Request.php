@@ -151,7 +151,7 @@ class Request
 
     public function wantsJson()
     {
-        return $this->expectsJson();
+        return $this->expectsJson() || $this->isJson();
     }
 
     function expectsJson()

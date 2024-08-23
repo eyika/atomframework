@@ -71,7 +71,7 @@ class Server
             static::$app->instance('request', $request);
             if (preg_match('/^.*$/i', $request->getRequestUri())) {
                 //register controllers
-                if (strpos($request->getPathInfo(), '/api') === false) {
+                if (!str_contains($request->getPathInfo(), '/api') && !$request->expectsJson() && !$request->isXmlHttpRequest() && !$request->isJson()) {
                     static::loadMiddlewares('web');
                     ///TODO: load all default web middlewares
                     require_once base_path().'/routes/web.php';
