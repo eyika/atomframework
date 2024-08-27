@@ -99,7 +99,7 @@ class ExceptionHandler implements ContractExceptionHandler
             }
 
             if ($request->wantsJson() or $request->isXmlHttpRequest()) {
-                return Response::json('An error occured',[
+                return Response::json('An error occured', [
                     'success' => false,
                     'message' => str_contains($message, 'SQLSTATE') || str_contains($message, 'Illuminate') ? 'something happened try again' : $message,
                 ], $code);

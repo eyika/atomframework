@@ -59,11 +59,18 @@ trait ModelProperties
     protected const guarded = ['deleted_at'];
 
     /**
+     * Indicates what database attributes of the model can be exposed outside the application
+     * 
+     * @var array
+     */
+    protected const defaultGuarded = ['incrementing', 'exists', 'wasRecentlyCreated'];
+
+    /**
      * Indicates if the IDs are auto-incrementing.
      *
      * @var bool
      */
-    public $incrementing = true;
+    protected $incrementing = true;
 
     /**
      * The number of models to return for pagination.
@@ -77,14 +84,14 @@ trait ModelProperties
      *
      * @var bool
      */
-    public $exists = false;
+    protected $exists = false;
 
     /**
      * Indicates if the model was inserted during the current request lifecycle.
      *
      * @var bool
      */
-    public $wasRecentlyCreated = false;
+    protected $wasRecentlyCreated = false;
 
     /**
      * The operators for query

@@ -3,8 +3,8 @@
 namespace Eyika\Atom\Framework\Http;
 
 use Exception;
-use Eyika\Atom\Framework\Support\View\BasicView;
-use Eyika\Atom\Framework\Support\View\View;
+use Eyika\Atom\Framework\Support\View\Blade;
+use Eyika\Atom\Framework\Support\View\Twig;
 
 class Response extends BaseResponse
 {
@@ -42,10 +42,12 @@ class Response extends BaseResponse
 
     public static function json(string $message, array|int $data_or_method = 200, $method = null): bool
     {
-        if (empty($method) && gettype($data_or_method) === 'integer') {
+        if (is_array($data_or_method)) {
+            $data = $data_or_method;
+        } else {
             $data = null;
+            $method = $data_or_method;
         }
-        $method = $data_or_method;
         if (!method_exists(JsonResponse::class, self::methodToFunc[$method])) {
             ///TODO throw an exception
         }
@@ -57,10 +59,10 @@ class Response extends BaseResponse
         $path = resource_path('views');
         try {
             if (config('view.use_advance_engine')) {
-                $view = new View($path);
+                $view = new Blade($path);
                 $code = $view->run("$file_name", $data);
             } else {
-                $code = BasicView::make("$file_name.blade.php", "$path/", $data, true);
+                $code = Twig::make("$file_name.blade.php", "$path/", $data, true);
             }
         } catch (Exception $e) {
             header("Content-Type: text/html; charset=utf-8", self::STATUS_INTERNAL_SERVER_ERROR);

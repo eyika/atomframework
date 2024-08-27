@@ -4,9 +4,10 @@ namespace Eyika\Atom\Framework\Support;
 
 class NamespaceHelper
 {
-    public static function getBaseNamespace(): string
+    public static function getBaseNamespace(string $composerJsonPath = null): string
     {
-        $composerJsonPath = self::findComposerJsonPath();
+        if (!$composerJsonPath)
+            $composerJsonPath = self::findComposerJsonPath();
 
         if ($composerJsonPath && file_exists($composerJsonPath)) {
             $composerJson = json_decode(file_get_contents($composerJsonPath), true);
@@ -18,6 +19,26 @@ class NamespaceHelper
         }
 
         throw new \RuntimeException("Base namespace could not be determined.");
+    }
+
+    public static function loadAndPerformActionOnClasses(string $namespace, string $fullPath, callable $method, $after = 'src')
+    {
+        $listObject = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ($listObject as $fileinfo) {
+            if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1]) {
+                $facade = classFromFile($fileinfo, $namespace, $after);
+                $class_name = explode("\\", $facade);
+                $class_name = $class_name[count($class_name) - 1];
+
+                if ($method($class_name, $facade)) {
+                    break;
+                }
+            }
+        }
     }
 
     private static function findComposerJsonPath(): ?string

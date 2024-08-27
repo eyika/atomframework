@@ -103,7 +103,7 @@ class mysqly {
   public static function exec($sql, $bind = []) {
     if ( !isset(static::$db) ) {
       if ( !static::$auth ) {
-        if (!empty(env('DB_USERNAME')) && !empty(env('DB_PASSWORD') && !empty(env('DB_DATABASE')))) {
+        if (env('DB_USERNAME') && env('DB_PASSWORD') && env('DB_DATABASE')) {
           static::auth(env('DB_USERNAME'), env('DB_PASSWORD'), env('DB_DATABASE'), env('DB_HOST'));
         } else {
           static::$auth = @include static::$auth_file;
@@ -509,7 +509,8 @@ class mysqly {
     $values = static::values($data, $bind);
     $sql = 'INSERT ' . ($ignore ? ' IGNORE ' : '') . "INTO `{$table}` SET {$values}";
     
-    // logger()->info($sql, $bind);
+    if (env('APP_DEBUG', null) === 'true')
+      logger()->info($sql, $bind);
     try {
       static::exec($sql, $bind);
     }

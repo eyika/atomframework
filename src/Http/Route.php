@@ -3,6 +3,7 @@
 namespace Eyika\Atom\Framework\Http;
 
 use Eyika\Atom\Framework\Exceptions\NotFoundException;
+use Eyika\Atom\Framework\Support\Arr;
 
 class Route
 {
@@ -36,7 +37,7 @@ class Route
 
     public static function middleware(string | array $middleware, callable $method = null): self
     {
-        $middleware = is_array($middleware) ? $middleware : [$middleware];
+        $middleware = Arr::wrap($middleware);
 
         if ($method === null) {
             if (self::$lastInsertedRouteKeys !== '') {
@@ -44,7 +45,8 @@ class Route
 
                 self::$routes[$last_key][$last_value]['middlewares'] =
                     count($middleware) > 1 && is_string($middleware[0]) ?
-                        self::$routes[$last_key][$last_value]['middlewares'] = [...self::$routes[$last_key][$last_value]['middlewares'], $middleware] :
+                        // self::$routes[$last_key][$last_value]['middlewares'] = [...self::$routes[$last_key][$last_value]['middlewares'], $middleware] :
+                        [...self::$routes[$last_key][$last_value]['middlewares'], $middleware] :
                         array_merge(self::$routes[$last_key][$last_value]['middlewares'], $middleware);
             }
 
@@ -167,9 +169,14 @@ class Route
                 self::$currentRoute = $route;
 
                 foreach (static::$defaultMiddlewares as $key => $middleware) {
+                    $middlewares = explode(':', $middleware);
+                    $middleware = array_shift($middlewares);
+                    $params = explode(',', $middlewares[0] ?? '');
                     $middlewareInstance = new $middleware;
-                    if ($middlewareInstance->handle($request)) {
-                        return true;
+
+                    if (method_exists($middlewareInstance, 'handle') && $status = $middlewareInstance->handle($request, ...$params)) {
+                        if ($status)
+                            return true;
                     }
                 }
 
@@ -184,26 +191,30 @@ class Route
                             $middlewareInstance = new $middleware;
                         }
 
-                        if ($middlewareInstance->handle($request, ...$params)) {
-                            return true;
+                        if (method_exists($middlewareInstance, 'handle') && $status = $middlewareInstance->handle($request, ...$params)) {
+                            if ($status)
+                                return true;
                         }
                         continue;
                     }
-                    $middlewares = is_array($middlewares) ? $middlewares[0] : $middlewares;
+                    $middlewares = Arr::wrap($middlewares)[0];
                     $middlewareInstance = new $middlewares;
-                    if ($middlewareInstance->handle($request)) {
-                        return true;
+                    if (method_exists($middlewareInstance, 'handle') && $status = $middlewareInstance->handle($request)) {
+                        if ($status)
+                            return true;
                     }
                 }
+
+                $parameters = $request->route_params;
 
                 // foreach ($data['callback'] as $callback) {
                     $callback = $data['callback'];
                     if (is_callable($callback)) {
-                        call_user_func_array($callback, array_merge([$request], $parameters));
+                        call_user_func_array($callback, array_merge([$request], is_array($parameters) ? array_values($parameters) : []));
                     } elseif (is_array($callback) && count($callback) > 1) {
                         [$controller, $method] = $callback;
                         $controllerInstance = new $controller;
-                        call_user_func_array([$controllerInstance, $method], array_merge([$request], $parameters));
+                        call_user_func_array([$controllerInstance, $method], array_merge([$request], is_array($parameters) ? array_values($parameters) : []));
                     } elseif (is_string($callback)) {
                         include_once __DIR__ . "/$callback";
                     } else {

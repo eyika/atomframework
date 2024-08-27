@@ -21,12 +21,12 @@ if (! function_exists('classFromFile')) {
      * @param  string  $namespace
      * @return string
      */
-    function classFromFile(SplFileInfo $file, string $namespace): string
+    function classFromFile(SplFileInfo $file, string $namespace, $after = 'src'): string
     {
         return $namespace.str_replace(
             ['/', '.php'],
             ['\\', ''],
-            Str::after($file->getRealPath(), 'src')  //may trigger cyclic reference error
+            Str::after($file->getRealPath(), $after)  //may trigger cyclic reference error
         );
     }
 }
@@ -67,14 +67,14 @@ if (! function_exists('transaction_ref')) {
     }
 }
 
-if (! function_exists('request')) {
-    /**
-     * Returns the current request object
-     */
-    function request() {
-        return new Request;
-    }
-}
+// if (! function_exists('request')) {
+//     /**
+//      * Returns the current request object
+//      */
+//     function request() {
+//         return new Request;
+//     }
+// }
 
 if (! function_exists('storage')) {
     /**
@@ -201,14 +201,12 @@ if (! function_exists('getIpAddress')) {
      */
     function getIpAddress()
     {
-        $request = request();
-
-        if ($request->HTTP_CLIENT_IP) {
-            return $request->HTTP_CLIENT_IP;
-        } elseif ($request->HTTP_X_FORWARDED_FOR) {
-            return $request->HTTP_X_FORWARDED_FOR;
+        if (Request::server('HTTP_CLIENT_IP')) {
+            return Request::server('HTTP_CLIENT_IP');
+        } elseif (Request::server('HTTP_X_FORWARDED_FOR')) {
+            return Request::server('HTTP_X_FORWARDED_FOR');
         } else {
-            return $request->REMOTE_ADDR;
+            return Request::server('REMOTE_ADDR');
         }
     }
 }
@@ -224,6 +222,22 @@ if (! function_exists('base_path')) {
     {
         $folder = empty($folder) ? '' : "/$folder";
         return $GLOBALS['base_path'].$folder ?? $_SERVER['DOCUMENT_ROOT'].$folder;
+    }
+}
+
+if (! function_exists('framework_namespace')) {
+    function framework_namespace(string $classname = ''): string
+    {
+        $classname = empty($classname) ? '' : "\\$classname";
+        return $GLOBALS['framework_namespace'].$classname;
+    }
+}
+
+if (! function_exists('project_namespace')) {
+    function project_namespace(string $classname = ''): string
+    {
+        $classname = empty($classname) ? '' : "\\$classname";
+        return $GLOBALS['project_namespace'].$classname;
     }
 }
 

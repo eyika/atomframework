@@ -5,8 +5,10 @@ namespace Eyika\Atom\Framework\Http\Middlewares;
 use Eyika\Atom\Framework\Exceptions\Db\ModelNotFoundException;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
 use Eyika\Atom\Framework\Http\Request;
+use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
 use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
+use Eyika\Atom\Framework\Support\NamespaceHelper;
 
 class SubstituteBindings implements MiddlewareInterface
 {
@@ -15,23 +17,31 @@ class SubstituteBindings implements MiddlewareInterface
      *
      * @throws NotFoundHttpException
      */
-    public function handle(Request $request): bool
+    public function handle(Request $request, ...$ignoreKeys): bool
     {
         // Get the route parameters from the request
         $routeParams = $request->route_params;
 
+        if (empty($routeParams))
+            return false;
+
         // Substitute bindings for each parameter
-        foreach ($routeParams ?? [] as $key => $value) {
+        foreach ($routeParams as $key => $value) {
+            if (in_array($key, $ignoreKeys))
+                continue;
+
             if (is_numeric($value)) {
+                $value = sanitize_data($value);
                 // Example: replace `{user}` with an instance of User model
                 $model = $this->resolveModel($key, $value);
                 if ($model) {
-                    $request->{$key} = $model;
+                    $routeParams[$key] = $model;
                 } else {
-                    throw new ModelNotFoundException("Model not found for parameter: $key");
+                    throw new ModelNotFoundException("unable to retrieve $key with id $value");
                 }
             }
         }
+        $request->route_params = $routeParams;
 
         return false;
     }
@@ -41,18 +51,18 @@ class SubstituteBindings implements MiddlewareInterface
      *
      * @param string $key
      * @param mixed $value
-     * @return ModelInterface|UserModelInterface|null
+     * @return ModelInterface|UserModelInterface|false
      */
-    protected function resolveModel(string $key, $value): ModelInterface | UserModelInterface | null
+    protected function resolveModel(string $key, $value): ModelInterface | UserModelInterface | false
     {
         // Map the route parameter to a model class
         $modelClass = $this->modelClassForKey($key);
 
         if ($modelClass && class_exists($modelClass)) {
-            return $modelClass::find($value);
+            return $modelClass::getBuilder()->find($value, false);
         }
 
-        return null;
+        return false;
     }
 
     /**
@@ -63,13 +73,21 @@ class SubstituteBindings implements MiddlewareInterface
      */
     protected function modelClassForKey(string $key): ?string
     {
-        // Map route parameter keys to model classes (customize as needed)
-        $map = [
-            'user' => 'App\Models\User', // Example mapping
-            'post' => 'App\Models\Post', // Example mapping
-        ];
+        // Map route parameter keys to model classes
+        $fullPath = base_path('app/Models');
 
-        return $map[$key] ?? null;
+        $namespace = project_namespace();
+
+        $model_class = null;
+
+        NamespaceHelper::loadAndPerformActionOnClasses($namespace, $fullPath, function (string $class_name, string $model) use (&$model_class, $key) {
+            if ($key === strtolower($class_name)) {
+                $model_class = $model;
+                return true;
+            }
+        }, 'app');
+
+        return $model_class;
     }
 }
 

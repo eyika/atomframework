@@ -26,14 +26,15 @@ class Request
 
     public function __construct()
     {
-        $this->query = $_GET;
-        $this->body = $_POST;
+        $this->query = sanitize_data($_GET);
+        $this->body = sanitize_data($_POST);
         $this->attributes = [];
         $this->cookies = $_COOKIE;
         $this->files = $_FILES;
         $this->server = $_SERVER;
         $this->headers = getallheaders();
         $this->proxyheader = 0;
+
 
         // Handle JSON payload
         if ($this->isJson()) {

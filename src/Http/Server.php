@@ -30,7 +30,7 @@ class Server
         try {
             $dotenv = strtolower(PHP_OS_FAMILY) === 'windows' ? Dotenv::createImmutable(base_path()."\\") : Dotenv::createImmutable(base_path()."/");
             $dotenv->load();
-            $dotenv->required([])->notEmpty(); ///TODO: get required env keys from config if set
+            $dotenv->required(['DB_USERNAME'])->notEmpty(); ///TODO: get required env keys from config if set
     
             // Config::loadConfigFiles(base_path() . "/config");
     
@@ -89,7 +89,7 @@ class Server
             /** @var ExceptionHandler $handler */
             $handler = static::$app->make(ExceptionHandler::class);
 
-            $handler->render($request, $e);
+            return $handler->render($request, $e);
         }
     }
 
@@ -110,28 +110,37 @@ class Server
     private static function loadFacades()
     {
         try {
-            $ds = DIRECTORY_SEPARATOR;
-            $fullPath = __DIR__ . $ds. "..". $ds. "Support". $ds. "Facade";
-            $listObject = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
-                \RecursiveIteratorIterator::CHILD_FIRST
-            );
+            $fullPath = __DIR__ . "/../Support/Facade";
+            $namespace = framework_namespace();
 
-            $namespace = NamespaceHelper::getBaseNamespace();
+            NamespaceHelper::loadAndPerformActionOnClasses($namespace, $fullPath, function (string $class_name, string $facade) {
+                if (in_array(strtolower($class_name), static::ignore_facades))
+                    return false;
+
+                $facade_obj = new $facade;
+
+                static::$app->instance(Str::camel($class_name), $facade_obj);
+            });
+            // $listObject = new \RecursiveIteratorIterator(
+            //     new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
+            //     \RecursiveIteratorIterator::CHILD_FIRST
+            // );
+
+            // $namespace = base_namespace();
     
-            foreach ($listObject as $fileinfo) {
-                if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1]) {
-                    $facade = classFromFile($fileinfo, $namespace);
-                    $class_name = explode("\\", $facade);
-                    $class_name = $class_name[count($class_name) - 1];
-                    if (in_array(strtolower($class_name), static::ignore_facades))
-                        continue;
+            // foreach ($listObject as $fileinfo) {
+            //     if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1]) {
+            //         $facade = classFromFile($fileinfo, $namespace);
+            //         $class_name = explode("\\", $facade);
+            //         $class_name = $class_name[count($class_name) - 1];
+            //         if (in_array(strtolower($class_name), static::ignore_facades))
+            //             continue;
     
-                    $facade_obj = new $facade;
+            //         $facade_obj = new $facade;
     
-                    static::$app->instance(Str::camel($class_name), $facade_obj);
-                }
-            }
+            //         static::$app->instance(Str::camel($class_name), $facade_obj);
+            //     }
+            // }
         } catch (Exception $e) {
             logger()->info("INTERNAL: ".$e->getMessage(), $e->getTrace());
             ///TODO handle exception
