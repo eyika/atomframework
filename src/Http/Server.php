@@ -5,16 +5,27 @@ namespace Eyika\Atom\Framework\Http;
 use Dotenv\Dotenv;
 use Exception;
 use Eyika\Atom\Framework\Foundation\Application;
+use Eyika\Atom\Framework\Foundation\Console\Scheduler;
 use Eyika\Atom\Framework\Foundation\Contracts\ExceptionHandler;
 use Eyika\Atom\Framework\Foundation\Contracts\Kernel;
+use Eyika\Atom\Framework\Support\Encrypter;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\NamespaceHelper;
+use Eyika\Atom\Framework\Support\Storage\File;
+use Eyika\Atom\Framework\Support\Storage\Storage;
 use Eyika\Atom\Framework\Support\Str;
 
 class Server
 {
     public static Application $app;
     protected const ignore_facades = ['console', 'app', 'application'];
+    protected const facadables = [
+        'encrypter' => Encrypter::class,
+        'file' => File::class,
+        'storage' => Storage::class,
+        'request' => Request::class,
+        'scheduler' => Scheduler::class
+    ];
 
     public function __construct(Application $app)
     {
@@ -110,17 +121,19 @@ class Server
     private static function loadFacades()
     {
         try {
-            $fullPath = __DIR__ . "/../Support/Facade";
-            $namespace = framework_namespace();
+            // $fullPath = __DIR__ . "/../Support/Facade";
+            // $namespace = framework_namespace();
 
-            NamespaceHelper::loadAndPerformActionOnClasses($namespace, $fullPath, function (string $class_name, string $facade) {
-                if (in_array(strtolower($class_name), static::ignore_facades))
-                    return false;
+            // NamespaceHelper::loadAndPerformActionOnClasses($namespace, $fullPath, function (string $class_name, string $facade) {
+            //     if (in_array(strtolower($class_name), static::ignore_facades))
+            //         return false;
 
-                $facade_obj = new $facade;
+            foreach (self::facadables as $tag => $class_name) {
+                $facade_obj = new $class_name;
 
-                static::$app->instance(Str::camel($class_name), $facade_obj);
-            });
+                static::$app->instance($tag, $facade_obj);
+            }
+            // });
             // $listObject = new \RecursiveIteratorIterator(
             //     new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
             //     \RecursiveIteratorIterator::CHILD_FIRST

@@ -163,10 +163,11 @@ class Route
                     break;
                 }
             }
-            $request->route_params = $parameters;
+            $request->route_params = sanitize_data($parameters);
 
             if ($matched) {
                 self::$currentRoute = $route;
+
 
                 foreach (static::$defaultMiddlewares as $key => $middleware) {
                     $middlewares = explode(':', $middleware);

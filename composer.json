@@ -16,7 +16,12 @@
         "eftec/bladeone": "^4.13",
         "eftec/bladeonehtml": "^2.4",
         "eftec/clione": "^1.33",
-        "firebase/php-jwt": "^6.10"
+        "firebase/php-jwt": "^6.10",
+        "league/flysystem": "^3.0",
+        "league/flysystem-ftp": "^3.0",
+        "league/flysystem-aws-s3-v3": "^3.0",
+        "league/flysystem-azure-blob-storage": "^3.0",
+        "league/flysystem-google-cloud-storage": "^3.0"
     },
     "license": "MIT",
     "autoload": {

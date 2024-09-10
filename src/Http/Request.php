@@ -2,6 +2,7 @@
 
 namespace Eyika\Atom\Framework\Http;
 
+use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
 
 class Request
@@ -253,6 +254,21 @@ class Request
         $clientIp = $this->headers['REMOTE_ADDR'] ?? '';
 
         return in_array($clientIp, $this->trustedProxies);
+    }
+
+    public function hasValidSignature(): bool
+    {
+        return $this->validateSignature();
+    }
+
+    public function hasValidSignatureWhileIgnoring(array $ignoredParams): bool
+    {
+        return $this->validateSignature($ignoredParams);
+    }
+
+    protected function validateSignature(array $ignoredParams = []): bool
+    {
+        throw new NotImplementedException('this method validateSignature is not yet implemented');
     }
 
     protected function retrieveItem($source, $key = null, $default = null)

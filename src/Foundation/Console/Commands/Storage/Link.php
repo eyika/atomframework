@@ -5,7 +5,8 @@ namespace Eyika\Atom\Framework\Foundation\Console\Commands\Storage;
 use Exception;
 use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
 use Eyika\Atom\Framework\Foundation\Console\Command;
-use Eyika\Atom\Framework\Support\Storage\File;
+use Eyika\Atom\Framework\Support\Facade\File;
+use League\Flysystem\Visibility;
 
 class Link extends Command
 {
@@ -19,23 +20,35 @@ class Link extends Command
     public function handle(array $arguments = []): bool
     {
         try {
-            $publicPath = public_path('storage'); $storagePath = storage_path('app/public');
-            $publicPath = File::realpath($publicPath) ?: $publicPath;
-            $storagePath = File::realpath($storagePath) ?: $storagePath;
-    
-            if (File::exists($publicPath)) {
-                throw new BaseConsoleException("The \"$publicPath\" directory already exists.");
-            }
-    
-            if (!File::exists($storagePath)) {
-                File::makeDirectory($storagePath, 0755, true);
-                $this->info("The \"$storagePath\" directory does not exist, creating it...");
-            }
-    
-            if (File::symlink($storagePath, $publicPath)) {
-                $this->info("The [$publicPath] directory has been linked.\n");
-            } else {
-                throw new BaseConsoleException("Failed to create the symbolic link.");
+            $links = config('filesystem.links');
+
+            foreach ($links as $link => $source) {
+                $link = File::realpath($link) ?: $link;
+                $source = File::realpath($source) ?: $source;
+        
+                if (File::exists($link)) {
+                    throw new BaseConsoleException("The [$link] directory already exists.");
+                }
+        
+                if (!File::exists($source)) {
+                    File::makeDirectory($source, Visibility::PUBLIC, true);
+                    $this->info("The [$source] directory does not exist, creating it...");
+                }
+
+                $_link = explode(DIRECTORY_SEPARATOR, $link);
+                array_pop($_link);
+                $_link = implode(DIRECTORY_SEPARATOR, $_link);
+
+                if (!File::exists($_link)) {
+                    File::makeDirectory($_link, 0755, true);
+                    $this->info("The directory [$_link] does not exist, creating it...");
+                }
+        
+                if (File::symlink($source, $link)) {
+                    $this->info("The [$link] directory has been linked.\n");
+                } else {
+                    throw new BaseConsoleException("Failed to create the symbolic link.");
+                }
             }
             return true;
         } catch (Exception $e) {
