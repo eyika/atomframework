@@ -3,6 +3,7 @@
 namespace Eyika\Atom\Framework\Http;
 
 use Exception;
+use Eyika\Atom\Framework\Support\Database\Model;
 
 class JsonResponse
 {
@@ -18,6 +19,7 @@ class JsonResponse
 
     public function __construct(int $status_code, $data = null)
     {
+        $data = $data instanceof Model ? $data->toArray() : $data;
         $body = $data ? json_encode($data) : null;
         http_response_code($status_code);
         header("Content-type: application/json");
@@ -60,10 +62,10 @@ class JsonResponse
         }
     }
 
-    public static function notFound(string $error): bool
+    public static function notFound(string $error, array $data = null): bool
     {
         try {
-            new self(self::STATUS_NOT_FOUND, ['message' => $error]);
+            new self(self::STATUS_NOT_FOUND, ['message' => $error, 'error' => $data]);
             return true;
         } catch (Exception $ex) {
         }

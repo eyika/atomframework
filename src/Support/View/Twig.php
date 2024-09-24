@@ -3,7 +3,7 @@ namespace Eyika\Atom\Framework\Support\View;
 
 use Exception;
 
-class BasicView {
+class Twig {
 	static $blocks = array();
 	static $cache_path;
 	static $cache_enabled = FALSE;

@@ -4,11 +4,11 @@ namespace Eyika\Atom\Framework\Support;
 
 use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Concerns\Macroable;
-// use Ramsey\Uuid\Codec\TimestampFirstCombCodec;
-// use Ramsey\Uuid\Generator\CombGenerator;
-// use Ramsey\Uuid\Uuid;
-// use Ramsey\Uuid\UuidFactory;
-// use voku\helper\ASCII;
+use Ramsey\Uuid\Codec\TimestampFirstCombCodec;
+use Ramsey\Uuid\Generator\CombGenerator;
+use Ramsey\Uuid\Uuid;
+use Ramsey\Uuid\UuidFactory;
+use voku\helper\ASCII;
 
 class Str
 {
@@ -103,8 +103,7 @@ class Str
      */
     public static function ascii($value, $language = 'en')
     {
-        throw new \Exception("The method is not implemented yet", 1);
-        //return ASCII::to_ascii((string) $value, $language);
+        return ASCII::to_ascii((string) $value, $language);
     }
 
     /**
@@ -816,11 +815,9 @@ class Str
      */
     public static function uuid()
     {
-        throw new \Exception("The method is not implemented yet", 1);
-        
-        // return static::$uuidFactory
-        //             ? call_user_func(static::$uuidFactory)
-        //             : Uuid::uuid4();
+        return static::$uuidFactory
+                    ? call_user_func(static::$uuidFactory)
+                    : Uuid::uuid4();
     }
 
     /**
@@ -830,24 +827,22 @@ class Str
      */
     public static function orderedUuid()
     {
-        throw new \Exception("The method is not implemented yet", 1);
-        
-        // if (static::$uuidFactory) {
-        //     return call_user_func(static::$uuidFactory);
-        // }
+        if (static::$uuidFactory) {
+            return call_user_func(static::$uuidFactory);
+        }
 
-        // $factory = new UuidFactory();
+        $factory = new UuidFactory();
 
-        // $factory->setRandomGenerator(new CombGenerator(
-        //     $factory->getRandomGenerator(),
-        //     $factory->getNumberConverter()
-        // ));
+        $factory->setRandomGenerator(new CombGenerator(
+            $factory->getRandomGenerator(),
+            $factory->getNumberConverter()
+        ));
 
-        // $factory->setCodec(new TimestampFirstCombCodec(
-        //     $factory->getUuidBuilder()
-        // ));
+        $factory->setCodec(new TimestampFirstCombCodec(
+            $factory->getUuidBuilder()
+        ));
 
-        // return $factory->uuid4();
+        return $factory->uuid4();
     }
 
     /**

@@ -17,7 +17,7 @@ class Test extends Command
         try {
             array_unshift($arguments, 'tests');
 
-            $code = $this->executeCommand($arguments, 'phpInbuiltServer');
+            $code = $this->executeCommand($arguments, 'phpUnit');
         } catch (BaseConsoleException $e) {
             $this->error($e->getMessage(), $e->getTrace());
             return !(bool)($e->getCode());

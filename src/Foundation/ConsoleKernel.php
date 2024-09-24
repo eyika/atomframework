@@ -8,6 +8,11 @@ use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\NamespaceHelper;
 use Eyika\Atom\Framework\Support\Str;
 use Eyika\Atom\Framework\Foundation\Console\Command;
+use Eyika\Atom\Framework\Support\Encrypter;
+use Eyika\Atom\Framework\Support\Facade\Request;
+use Eyika\Atom\Framework\Support\Facade\Scheduler;
+use Eyika\Atom\Framework\Support\Storage\File;
+use Eyika\Atom\Framework\Support\Storage\Storage;
 
 class ConsoleKernel implements ContractsConsoleKernel
 {
@@ -17,6 +22,22 @@ class ConsoleKernel implements ContractsConsoleKernel
      * @var array
      */
     protected $commands = [];
+
+    protected const ignore_facades = ['app', 'application'];
+    protected const facadables = [
+        'file' => File::class,
+        'storage' => Storage::class,
+        'encrypter' => Encrypter::class,
+        'request' => Request::class,
+        'scheduler' => Scheduler::class,
+    ];
+
+    public function __construct()
+    {
+        $this->loadCommands();
+        $this->loadThirdPartyCommands();
+        $this->loadFacades();
+    }
 
     protected $status = false;
 
@@ -66,23 +87,31 @@ class ConsoleKernel implements ContractsConsoleKernel
     protected function loadCommands(string $fullPath = null)
     {
         try {
-            $ds = DIRECTORY_SEPARATOR;
             $fullPath = $fullPath ?? base_path("vendor/eyika/atom-framework/src/Foundation/Console/Commands");
-            $listObject = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
-                \RecursiveIteratorIterator::CHILD_FIRST
-            );
-            $namespace = NamespaceHelper::getBaseNamespace();
+            $namespace = framework_namespace();
 
-            foreach ($listObject as $fileinfo) {
-                if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1])
-                    $command = classFromFile($fileinfo, $namespace);
-                    $command_obj = new $command;
+            NamespaceHelper::loadAndPerformActionOnClasses($namespace, $fullPath, function (string $class_name, string $command) {
+                $command_obj = new $command;
     
-                    $args = explode(' ', $command_obj->signature);
-                    $signature = array_shift($args) ?? '';
-                    $this->register($signature, $command_obj, $args);
-            }
+                $args = explode(' ', $command_obj->signature);
+                $signature = array_shift($args) ?? '';
+                $this->register($signature, $command_obj, $args);
+            });
+            // $listObject = new \RecursiveIteratorIterator(
+            //     new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
+            //     \RecursiveIteratorIterator::CHILD_FIRST
+            // );
+            // $namespace = NamespaceHelper::getBaseNamespace();
+
+            // foreach ($listObject as $fileinfo) {
+            //     if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1])
+            //         $command = classFromFile($fileinfo, $namespace);
+            //         $command_obj = new $command;
+    
+            //         $args = explode(' ', $command_obj->signature);
+            //         $signature = array_shift($args) ?? '';
+            //         $this->register($signature, $command_obj, $args);
+            // }
         } catch (Exception $e) {
             logger()->info("INTERNAL: ".$e->getMessage(), $e->getTrace());
             ///TODO handle exception
@@ -103,25 +132,41 @@ class ConsoleKernel implements ContractsConsoleKernel
     protected function loadFacades()
     {
         try {
-            $ds = DIRECTORY_SEPARATOR;
-            $fullPath = base_path("vendor/eyika/atom-framework/src/Support/Facade");
-            $listObject = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
-                \RecursiveIteratorIterator::CHILD_FIRST
-            );
-    
-            $namespace = NamespaceHelper::getBaseNamespace();
+            // $fullPath = base_path("vendor/eyika/atom-framework/src/Support/Facade");
+            // $namespace = framework_namespace();
             $app = Facade::getFacadeApplication();
-    
-            foreach ($listObject as $fileinfo) {
-                if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1]) {
-                    $facade = classFromFile($fileinfo, $namespace);
-    
-                    $facade_obj = new $namespace."\/$facade";
-    
-                    $app->instance(Str::camel($facade), $facade_obj);
-                }
+
+            // NamespaceHelper::loadAndPerformActionOnClasses($namespace, $fullPath, function (string $class_name, string $facade) use ($app) {
+            //     if (in_array(strtolower($class_name), static::ignore_facades))
+            //         return false;
+
+            //     $facade_obj = new $facade;
+
+            //     $app->instance(Str::camel($class_name), $facade_obj);
+            // });
+
+            $facades = self::facadables;
+
+            foreach ($facades as $tag => $class_name) {
+                $facade_obj = new $class_name;
+                $app->instance($tag, $facade_obj);
             }
+            // $listObject = new \RecursiveIteratorIterator(
+            //     new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
+            //     \RecursiveIteratorIterator::CHILD_FIRST
+            // );
+    
+            // $namespace = NamespaceHelper::getBaseNamespace();
+    
+            // foreach ($listObject as $fileinfo) {
+            //     if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1]) {
+            //         $facade = classFromFile($fileinfo, $namespace);
+    
+            //         $facade_obj = new $namespace."\/$facade";
+    
+            //         $app->instance(Str::camel($facade), $facade_obj);
+            //     }
+            // }
         } catch (Exception $e) {
             logger()->info("INTERNAL: ".$e->getMessage(), $e->getTrace());
             ///TODO handle exception

@@ -151,11 +151,11 @@ class Validator {
                     break;
                 case 'contains':
                     $stat = Str::contains($items[0], $items[1]);
-                    $resp = !$stat ? "{$param} should should be a string that contains $items[1]" : '';
+                    $resp = !$stat ? "{$param} should be a string that contains $items[1]" : '';
                     break;
                 case 'includes':
                     $stat = Arr::has($items[0], $items[1]);
-                    $resp = !$stat ? "{$param} should should be an array that has $items[1]" : '';
+                    $resp = !$stat ? "{$param} should be an array that has $items[1]" : '';
                     break;
                 default:
                     $resp = '';
@@ -170,6 +170,6 @@ class Validator {
         if (!array_key_exists($param, self::$req_obj)) {
             return false;
         }
-        return self::$req_obj[$param];
+        return self::$req_obj[$param] ?? '';
     }
 }

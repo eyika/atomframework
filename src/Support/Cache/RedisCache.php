@@ -12,6 +12,8 @@ class RedisCache implements CacheInterface
 
     public function __construct()
     {
+        $config = config('cache.stores.redis');
+
         $this->redis = new Client();  //need to install phredis
         $this->redis->connect('127.0.0.1', 6379);
     }

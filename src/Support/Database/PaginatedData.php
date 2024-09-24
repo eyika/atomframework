@@ -6,6 +6,9 @@ use Eyika\Atom\Framework\Http\Route;
 
 class PaginatedData
 {
+    public const recordsPerPage = 15;
+    public const currentPage = 1;
+
     protected static array $data;
     protected static int $total_records;
     protected static int $records_per_page;

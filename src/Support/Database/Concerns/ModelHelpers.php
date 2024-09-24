@@ -19,6 +19,21 @@ trait ModelHelpers
         return !$this->isSaved();
     }
 
+    public function incrementing()
+    {
+        return $this->incrementing;
+    }
+
+    public function exists()
+    {
+        return $this->exists;
+    }
+
+    public function wasRecentlyCreated()
+    {
+        return $this->wasRecentlyCreated;
+    }
+
     public function __get($name) {
         return $this->dynamicProperties[$name] ?? null;
     }

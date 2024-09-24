@@ -4,6 +4,7 @@ namespace Eyika\Atom\Framework\Http\Middlewares;
 
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
+use Eyika\Atom\Framework\Support\Arr;
 
 class HandleCors implements MiddlewareInterface
 {
@@ -35,12 +36,24 @@ class HandleCors implements MiddlewareInterface
      */
     protected $exposedHeaders = [];
 
+    protected $maxAge = 0;
+
     /**
      * Whether to allow credentials.
      *
      * @var bool
      */
     protected $allowCredentials = false;
+
+    public function __construct()
+    {
+        $this->allowedOrigins = config('cors.allowed_origins');
+        $this->allowedMethods = config('cors.allowed_methods');
+        $this->allowedHeaders = config('cors.allowed_headers');
+        $this->exposedHeaders = config('cors.exposed_headers');
+        $this->allowCredentials = config('cors.supports_credentials');
+        $this->maxAge =  config('cors.max_age');
+    }
 
     /**
      * Handle an incoming request.
@@ -53,7 +66,7 @@ class HandleCors implements MiddlewareInterface
                 return $this->handlePreflight($request);
             }
 
-            return $this->addCorsHeaders($request);
+            return !$this->addCorsHeaders($request);
         }
 
         return false;
@@ -67,8 +80,8 @@ class HandleCors implements MiddlewareInterface
      */
     protected function isCorsRequest(Request $request): bool
     {
-        return $request->has('Origin') &&
-            $request->header('Origin') !== $request->getSchemeAndHttpHost();
+        return $request->hasHeader('Origin') &&
+            $request->headers('Origin') !== $request->getSchemeAndHttpHost();
     }
 
     /**
@@ -80,29 +93,37 @@ class HandleCors implements MiddlewareInterface
     protected function isPreflightRequest(Request $request): bool
     {
         return $request->isMethod('OPTIONS') &&
-            $request->headers->has('Access-Control-Request-Method');
+            $request->hasHeader('Access-Control-Request-Method');
     }
 
     /**
      * Handle a preflight CORS request.
      *
      * @param Request $request
+     * @return bool
      */
     protected function handlePreflight(Request $request)
     {
-        return $this->addCorsHeaders($request);
+        header("Content-Type: text/html; charset=utf-8", 200);
+        $this->addCorsHeaders($request);
+        return true;
     }
 
     /**
      * Add CORS headers to the response.
      *
      * @param Request $request
-     * @return void
+     * @return bool
      */
     protected function addCorsHeaders(Request $request)
     {
-        $_origin = $request->headers->get('Origin');
-        $origin = $this->allowedOrigins[0] === '*' ? '*' : $_origin;
+        $_origin = $request->headers('Origin');
+        if ($this->allowedOrigins[0] === '*') {
+            $origin = $_origin;
+        } else if (Arr::exists($this->allowedOrigins, $_origin)) {
+           $origin = $_origin;
+        } else return false;
+
         $allowedMethods = implode(', ', $this->allowedMethods);
         $allowedHeaders = implode(', ', $this->allowedHeaders);
 
@@ -118,5 +139,6 @@ class HandleCors implements MiddlewareInterface
         if ($this->allowCredentials) {
             header("Access-Control-Allow-Credentials: true");
         }
+        return true;
     }
 }

@@ -41,11 +41,11 @@ class ExceptionHandler implements ContractExceptionHandler
      * Render an exception into an HTTP response.
      *
      * @param  Request  $request
-     * @return Response
+     * @return bool
      *
      * @throws \Exception
      */
-    public function render($request, \Throwable $exception)
+    public function render($request, \Throwable $exception): bool
     {
         logger()->info($exception->getMessage(), $exception->getTrace());
         if ($request->wantsJson()) {
@@ -98,13 +98,14 @@ class ExceptionHandler implements ContractExceptionHandler
                 ], $exception->getStatusCode());
             }
 
-            // if ($request->expectsJson() or $request->isXmlHttpRequest()) {
-                return Response::json(str_contains($message, 'SQLSTATE') || str_contains($message, 'Illuminate') ? 'something happened try again' : $message,[
+            if ($request->wantsJson() or $request->isXmlHttpRequest()) {
+                return Response::json('An error occured', [
                     'success' => false,
                     'message' => str_contains($message, 'SQLSTATE') || str_contains($message, 'Illuminate') ? 'something happened try again' : $message,
                 ], $code);
-            // }
+            }
         } else {
+            echo "got here";
             $code = $exception->getCode();
             $message = $exception->getMessage();
             if ($code < 100 || $code >= 600) {
@@ -127,6 +128,7 @@ class ExceptionHandler implements ContractExceptionHandler
                 $code = JsonResponse::STATUS_UNPROCESSABLE_ENTITY;
 
                 if (! $request->expectsJson() and ! $request->isXmlHttpRequest()) {
+                    return false;
                     // return Response::redirectBack()::back()->withInput()->withErrors($message);
                 }
             }

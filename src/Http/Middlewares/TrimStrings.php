@@ -47,6 +47,8 @@ class TrimStrings implements MiddlewareInterface
     protected function trimArray(array $data)
     {
         return array_map(function ($value) {
+            if (is_null($value) || is_bool($value) || is_numeric($value))
+                return $value;
             return is_array($value) ? $this->trimArray($value) : trim($value);
         }, $data);
     }

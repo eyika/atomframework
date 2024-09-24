@@ -43,17 +43,8 @@ trait QueryBuilder
 
     public function fill($values)
     {
-        // if ($self == null) {
-        //     $self = \get_called_class();
-        //     self::$instance = new $self;
-        // }
-        // $items = self::$instance->fillable;
-        // if ($self == null || count($values) < 1) {
-        //     return $self;
-        // }
-
         foreach ($this->child::fillable as $item) {
-            if (Arr::exists($values, $item)) {
+            if (Arr::keyExists($values, $item)) {
                 $this->child->{$item} = $values[$item];
             }
         }
@@ -70,7 +61,7 @@ trait QueryBuilder
         ]);
         if (count($select)) {
             foreach ($select as $item) {
-                if (Arr::exists($obj_props, $item, true)) {
+                if (Arr::exists($obj_props, $item)) {
                     $result[$item] = $this->child->{$item};
                 }
             }
@@ -78,7 +69,7 @@ trait QueryBuilder
         }
         $items = $guard ? array_diff($this->child::fillable, array_merge($this->child::guarded, $ignore)) : array_diff($this->child::fillable, $ignore);
         foreach ($items as $item) {
-            if (Arr::exists($obj_props, $item, true)) {
+            if (Arr::exists($obj_props, $item)) {
                 $result[$item] = $this->child->{$item};
             }
         }
@@ -98,8 +89,6 @@ trait QueryBuilder
         $this->child->boot($this->child, 'creating');
         $this->child->booted($this->child, 'creating');
         $this->child->booting($this->child, 'creating');
-
-        $values = $this->child->toArray(false, ignore: ['created_at', 'updated_at', 'deleted_at']);
 
         if (!$id = mysqly::insert($this->table, $values)) {
             return false;
@@ -274,7 +263,6 @@ trait QueryBuilder
         } else {
             $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
         }
-
         if (!$fields = mysqly::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
             $this->resetInstance();
             return false;
@@ -294,11 +282,12 @@ trait QueryBuilder
         return $this->all($is_protected, $select);
     }
 
-    public function paginate($currentPage = null, $recordsPerPage = null)
+    public function paginate($currentPage = null, $recordsPerPage = null, $is_protected = true, $select = [])
     {
         $currentPage = $currentPage ?? 1;
         $recordsPerPage = $recordsPerPage ?? $this->recordsPerPage;
-        $totalRecords = $this->count($this->child->primaryKey, false);
+
+        $totalRecords = $this->_count($this->child->primaryKey, false);
         // Calculate total pages
         $totalPages = ceil($totalRecords / $recordsPerPage);
         // Calculate the offset
@@ -307,7 +296,7 @@ trait QueryBuilder
         $this->limit($recordsPerPage);
         $this->offset($offset);
 
-        $data = $this->all();
+        $data = $this->all($is_protected, $select);
 
         if (!$data) {
             return false;
@@ -381,10 +370,8 @@ trait QueryBuilder
         if ($this->child->softdeletes) {
             $query_arr['deleted_at'] = "IS NULL";
             is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
-            if (!mysqly::update($this->table, $query_arr, ['deleted_at' => "now"], $this->operators, $this->or_ands)) {
-                $this->resetInstance();
-                return false;
-            }
+            mysqly::update($this->table, $query_arr, ['deleted_at' => "now"], $this->operators, $this->or_ands);
+            
             $this->resetInstance();
             return true;
         }

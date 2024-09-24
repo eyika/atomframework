@@ -2,7 +2,7 @@
 
 namespace Eyika\Atom\Framework\Support\LogViewer;
 
-use Eyika\Atom\Framework\Support\Storage\DbCache;
+use Eyika\Atom\Framework\Support\Cache\DbCache;
 
 class LogViewer
 {

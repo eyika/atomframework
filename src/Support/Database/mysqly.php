@@ -103,7 +103,7 @@ class mysqly {
   public static function exec($sql, $bind = []) {
     if ( !isset(static::$db) ) {
       if ( !static::$auth ) {
-        if (!empty(env('DB_USERNAME')) && !empty(env('DB_PASSWORD') && !empty(env('DB_DATABASE')))) {
+        if (env('DB_USERNAME') && env('DB_PASSWORD') && env('DB_DATABASE')) {
           static::auth(env('DB_USERNAME'), env('DB_PASSWORD'), env('DB_DATABASE'), env('DB_HOST'));
         } else {
           static::$auth = @include static::$auth_file;
@@ -240,9 +240,9 @@ class mysqly {
         if ($len - $j === 1)
           $or_and = '';
         else
-          $or_and = is_array($or_ands) ? "$or_ands[$j]" : "$or_ands";
+          $or_and = is_array($or_ands) ? $or_ands[$j] ?? '' : "$or_ands";
         
-        $operator = is_array($operators) ? $operators[$i] : $operators;
+        $operator = is_array($operators) ? $operators[$i] ?? '' : $operators;
         static::condition($k, $v, $query, $bind, $incr_operator, $or_and, $operator);
         $j++;
         if ($incr_operator)
@@ -322,7 +322,7 @@ class mysqly {
             $incr_operator = false;
           }
 
-          if ( $where ) {
+          if ( $where ?? null ) {
             $sql .= ' WHERE ' . implode( " ", $where);
           }
         }
@@ -509,7 +509,8 @@ class mysqly {
     $values = static::values($data, $bind);
     $sql = 'INSERT ' . ($ignore ? ' IGNORE ' : '') . "INTO `{$table}` SET {$values}";
     
-    // logger()->info($sql, $bind);
+    if (env('APP_DEBUG', null) === 'true')
+      logger()->info($sql, $bind);
     try {
       static::exec($sql, $bind);
     }
@@ -592,7 +593,7 @@ class mysqly {
 
   /* Data update */  
 
-  public static function update($table, $filter, $data, string|array $operators = '=', string|array $or_ands = "AND") {
+  public static function update($table, $filter, $data, string|array $operators = '=', string|array $or_ands = "AND"): int {
     list($where, $bind) = static::filter($filter, $or_ands, $operators);
     $values = static::values($data, $bind);
     
@@ -753,17 +754,17 @@ class mysqly {
  
   /* Cache storage */
 
-  public static function cache($key, $populate = null, $ttl = 60) {
+  public static function cache($key, $populate = null, $ttl = 60, $table = '_cache') {
     $key = sha1($key);
     
     try {
-      $data = static::fetch('_cache', ['key' => $key]);
+      $data = static::fetch($table, ['key' => $key]);
       if ($data && count($data) > 0) {
         $data = $data[0];
       }
     } catch ( PDOException $e ) {
       if ( strpos($e->getMessage(), "doesn't exist") ) {
-        static::exec("CREATE TABLE _cache(`key` varchar(40) PRIMARY KEY, `expire` int unsigned, `value` TEXT) ENGINE = INNODB");
+        static::exec("CREATE TABLE $table(`key` varchar(40) PRIMARY KEY, `expire` int unsigned, `value` TEXT) ENGINE = INNODB");
       }
       return false;
     }
@@ -771,7 +772,7 @@ class mysqly {
     if ( !$data || ($data['expire'] < time() || json_decode($data['value'], 1) !== $populate) ) {
       if ( $populate !== null ) {
         try {
-          static::insert_update('_cache', [
+          static::insert_update($table, [
             'key' => $key,
             'expire' => time() + $ttl,
             'value' => json_encode($populate)
@@ -789,16 +790,16 @@ class mysqly {
     return false;
   }
 
-  public static function clear_cache()
+  public static function clear_cache($table = '_cache')
   {
-    return self::remove('_cache', []);
+    return self::remove($table, []);
   }
   
-  public static function uncache($key) {
+  public static function uncache($key, $table = '_cache') {
     $key = sha1($key);
     
     try {
-      static::remove('_cache', ['key' => $key]);
+      static::remove($table, ['key' => $key]);
       return true;
     }
     catch ( PDOException $e ) {

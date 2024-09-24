@@ -36,19 +36,18 @@ final class JwtAuthenticator
      * @param array|string $_role
      * @param bool $return_bool
      * 
-     * @return bool|User
+     * @return bool
      */
     public static function verifyRole($user, $_role, $return_bool = true)
     {
         new static(new JwtEncoder(env('APP_KEY')), $user);
 
-        if (!is_array($_role)) {
-            $_role = [$_role];
-        }
+        $_role = Arr::wrap($_role);
+
         if (!$role = Role::getBuilder()->orderBy()->findBy('id', $user->role_id)) {
             return false;
         }
-        if (Arr::exists($_role, $role[0]['name'], true)) {
+        if (Arr::exists($_role, $role[0]['name'])) {
             return true;
         }
         return false;

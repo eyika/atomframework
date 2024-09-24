@@ -6,7 +6,7 @@ use eftec\bladeone\BladeOneCache;
 use eftec\bladeone\BladeOneCacheRedis;
 use eftec\bladeonehtml\BladeOneHtml;
 
-class View extends BladeOne
+class Blade extends BladeOne
 {
     use BladeOneCache, BladeOneHtml;
     /**
