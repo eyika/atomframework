@@ -10,10 +10,8 @@ use Eyika\Atom\Framework\Foundation\Contracts\ExceptionHandler;
 use Eyika\Atom\Framework\Foundation\Contracts\Kernel;
 use Eyika\Atom\Framework\Support\Encrypter;
 use Eyika\Atom\Framework\Support\Facade\Facade;
-use Eyika\Atom\Framework\Support\NamespaceHelper;
 use Eyika\Atom\Framework\Support\Storage\File;
 use Eyika\Atom\Framework\Support\Storage\Storage;
-use Eyika\Atom\Framework\Support\Str;
 
 class Server
 {
@@ -43,46 +41,11 @@ class Server
             $dotenv->load();
             $dotenv->required(['DB_USERNAME'])->notEmpty(); ///TODO: get required env keys from config if set
     
-            // Config::loadConfigFiles(base_path() . "/config");
-    
-            $server = strtolower($_SERVER['SERVER_SOFTWARE']) ?? "";
-    
-    
-            if (in_array($_ENV['APP_ENV'], [ 'local', 'dev' ]) && (!str_contains($server, 'apache') && (!str_contains($server, 'nginx')) && (!str_contains($server, 'litespeed')))) {
-    
-                $customMappings = [
-                    'js' => 'text/javascript', //'application/javascript',
-                    'css' => 'text/css',
-                    'woff2' => 'font/woff2',
-                    'woff' => 'font/woff'
-                ];
-    
-                $uri = explode('?', $_SERVER["REQUEST_URI"])[0];
-                if (preg_match('/\.(?:js|css|svg|ico|woff|woff2|ttf|webp|pdf|png|jpg|json|jpeg|gif|md)$/', $uri)) {
-                    $path = public_path().$uri;
-                    if (file_exists($path)) {
-                        $mime = mime_content_type($path);
-                        $ext = pathinfo($path, PATHINFO_EXTENSION);
-                        if (array_key_exists($ext, $customMappings)) {
-                            $mime = $customMappings[$ext];
-                        }
-                        header("Content-Type: $mime", true, 200);
-                        echo file_get_contents($path);
-                        return true;
-                    }
-    
-                    header("Content-type: text/html", true, 404);
-                    echo "File Not Found";
-    
-                    return true;
-                }
-            }
-    
             $request = new Request();
             static::$app->instance('request', $request);
             if (preg_match('/^.*$/i', $request->getRequestUri())) {
                 //register controllers
-                if (!str_contains($request->getPathInfo(), '/api') && !$request->expectsJson() && !$request->isXmlHttpRequest() && !$request->isJson()) {
+                if (!str_contains($request->getPathInfo(), '/api') && !$request->expectsJson() && !$request->isXmlHttpRequest() && !$request->isJson() && !$request->isOptions()) {
                     static::loadMiddlewares('web');
                     ///TODO: load all default web middlewares
                     require_once base_path().'/routes/web.php';
@@ -112,7 +75,7 @@ class Server
         Route::$middlewareAliases = $kernel->getMiddlewareAliases();
         $middlewares = $kernel->getMiddlewares();
 
-        array_push($middlewares, ...$kernel->getMiddlewareGroups()[$type]);
+        array_push($middlewares, '*', ...$kernel->getMiddlewareGroups()[$type]);
         Route::$defaultMiddlewares = $middlewares;
 
         Route::$middlewarePriority = $kernel->getMiddlewarePriority();

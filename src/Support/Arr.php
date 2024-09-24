@@ -136,21 +136,28 @@ Class Arr
     }
 
     /**
+     * Determine if the given value exists in the provided array.
+     *
+     * @param  \ArrayAccess|array  $array
+     * @param  string|int  $value
+     * @return bool
+     */
+    public static function exists($array, $value)
+    {          
+        return in_array($value, $array);
+    }
+
+    /**
      * Determine if the given key exists in the provided array.
      *
      * @param  \ArrayAccess|array  $array
      * @param  string|int  $key
-     * @param  bool $use_values
      * @return bool
      */
-    public static function exists($array, $key, $use_values=false)
+    public static function keyExists($array, $key)
     {
         if ($array instanceof ArrayAccess) {
             return $array->offsetExists($key);
-        }
-
-        if ($use_values) {            
-            return in_array($key, $array);
         }
 
         return array_key_exists($key, $array);
@@ -203,6 +210,21 @@ Class Arr
     }
 
     /**
+     * Return the keys in an array.
+     *
+     * @param  array  $array
+     * @return mixed
+     */
+    public static function keys($array)
+    {
+        if (!is_array($array) || empty($array)) {
+            return NULL;
+        }
+
+        return array_keys($array);
+    }
+
+    /**
      * Return the last key in an array.
      *
      * @param  array  $array
@@ -210,11 +232,7 @@ Class Arr
      */
     public static function lastKey($array)
     {
-        if (!is_array($array) || empty($array)) {
-            return NULL;
-        }
-
-        return array_keys($array)[count($array)-1];
+        return static::keys($array)[count($array)-1];
     }
 
     /**
@@ -266,7 +284,7 @@ Class Arr
 
         foreach ($keys as $key) {
             // if the exact key exists in the top-level, remove it
-            if (static::exists($array, $key)) {
+            if (static::keyExists($array, $key)) {
                 unset($array[$key]);
 
                 continue;
@@ -309,7 +327,7 @@ Class Arr
             return $array;
         }
 
-        if (static::exists($array, $key)) {
+        if (static::keyExists($array, $key)) {
             return $array[$key];
         }
 
@@ -318,7 +336,7 @@ Class Arr
         }
 
         foreach (explode('.', $key) as $segment) {
-            if (static::accessible($array) && static::exists($array, $segment)) {
+            if (static::accessible($array) && static::keyExists($array, $segment)) {
                 $array = $array[$segment];
             } else {
                 return self::value($default);
@@ -346,12 +364,12 @@ Class Arr
         foreach ($keys as $key) {
             $subKeyArray = $array;
 
-            if (static::exists($array, $key)) {
+            if (static::keyExists($array, $key)) {
                 continue;
             }
 
             foreach (explode('.', $key) as $segment) {
-                if (static::accessible($subKeyArray) && static::exists($subKeyArray, $segment)) {
+                if (static::accessible($subKeyArray) && static::keyExists($subKeyArray, $segment)) {
                     $subKeyArray = $subKeyArray[$segment];
                 } else {
                     return false;

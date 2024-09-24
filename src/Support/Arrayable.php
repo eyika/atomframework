@@ -149,15 +149,27 @@ Class Arrayable implements ArrayAccess
     }
 
     /**
-     * Determine if the given key exists in the provided array.
+     * Determine if the given value exists in the Arrayble instance.
+     *
+     * @param  string|int  $value
+     * @param  bool $use_values
+     * @return bool
+     */
+    public function exists($value)
+    {
+        return Arr::exists($this->data, $value);
+    }
+
+    /**
+     * Determine if the given key exists in the Arrayble instance.
      *
      * @param  string|int  $key
      * @param  bool $use_values
      * @return bool
      */
-    public function exists($key, $use_values=false)
+    public function keyExists($key)
     {
-        return Arr::exists($key, $use_values);
+        return Arr::keyExists($this->data, $key);
     }
 
     /**
@@ -182,6 +194,16 @@ Class Arrayable implements ArrayAccess
     public function last(callable $callback = null, $default = null)
     {
         Arr::last($this->data, $callback, $default);
+    }
+
+    /**
+     * Return the keys in the instance.
+     *
+     * @return mixed
+     */
+    public function keys()
+    {
+        return Arr::keys($this->data);
     }
 
     /**

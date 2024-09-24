@@ -5,33 +5,38 @@ namespace Eyika\Atom\Framework\Support\Storage;
 use Eyika\Atom\Framework\Exceptions\Storage\InvalidDiskException;
 use Eyika\Atom\Framework\Exceptions\Storage\InvalidStorageAdapterException;
 use Eyika\Atom\Framework\Support\Arr;
+use Eyika\Atom\Framework\Support\Cache\Cache;
 use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
-use Eyika\Atom\Framework\Support\Cache\RedisCache;
 use Eyika\Atom\Framework\Support\Facade\Facade;
+use Eyika\Atom\Framework\Support\Storage\Contracts\CustomStorageAdapterCallback;
 use League\Flysystem\FilesystemAdapter;
 
 class Storage
 {
     protected $flysystemCompatibleAdapters = ['local', 's3', 'google', 'azure', 'ftp', 'sftp'];
     protected $customDriverAdapters = [];
-    protected array $disk;
+    protected string $disk;
     protected array $disks;
     protected CacheInterface $cache;
     protected File $file;
 
-    public function __construct($disk = null, CacheInterface $cache = null)
+    public function __construct(string $disk = null, CacheInterface $cache = null)
     {
-        $this->disks = config('filesystem.disks');
-        $this->disk = $disk ? $this->disks[$disk] : $this->disks[config('filesystem.default')];
-        $this->cache = $cache ?? new RedisCache();
+        $this->disks = config('filesystems.disks');
+        $disks = Arr::keys($this->disks);
+        if (!empty($disk) && !Arr::keyExists($disks, $disk)) {
+            throw new InvalidDiskException('the given disk deos not exist in filesystem config');
+        }
+        $this->disk = $disk ? $disk : config('filesystems.default');
+        $this->cache = $cache ?? new Cache();
         $this->file = new File(disk: $this->disk);
     }
 
     public function drive(string $driver): self
     {
-        if (Arr::exists($this->customDriverAdapters, $driver)) {
+        if (Arr::keyExists($this->customDriverAdapters, $driver)) {
             $this->file->setFileSystemAdapter($this->customDriverAdapters[$driver]);
-        } else if (Arr::exists($this->flysystemCompatibleAdapters, $driver, true)) {
+        } else if (Arr::keyExists($this->flysystemCompatibleAdapters, $driver)) {
             $this->file->setFileSystemAdapter($this->customDriverAdapters[$driver]);
         } else {
             throw new InvalidDiskException();
@@ -42,7 +47,7 @@ class Storage
 
     public function disk(string $disk): self
     {
-        if (!Arr::exists($this->disks, $disk)) {
+        if (!Arr::keyExists($this->disks, $disk)) {
             throw new InvalidDiskException();
         }
         $this->file->setDisk($disk);
@@ -56,9 +61,9 @@ class Storage
         return $this;
     }
 
-    public function extend(string $driverName, callable $callback): self
+    public function extend(string $driverName, CustomStorageAdapterCallback $callback): self
     {
-        if (Arr::exists($this->customDriverAdapters, $driverName)) {
+        if (Arr::keyExists($this->customDriverAdapters, $driverName)) {
             throw new InvalidStorageAdapterException("a custom driver with the name $driverName is already registered");
         }
 
@@ -153,7 +158,7 @@ class Storage
 
     public function delete($path, $isfullpath = false): bool
     {
-        $path = $isfullpath ? $path : $this->getFullPath($path);
+        // $path = $isfullpath ? $path : $this->getFullPath($path);
         $result = false;
 
         $result = $this->file->delete($path);
@@ -262,7 +267,7 @@ class Storage
 
     protected function getFullPath($path)
     {
-        if (Arr::exists($this::$flysystemCompatibleAdapters, $this->disk['driver'], true)) {
+        if (Arr::exists($this::$flysystemCompatibleAdapters, $this->disks[$this->disk]['driver'])) {
             return ; // For S3, the full path is managed by the S3 client.
         }
 

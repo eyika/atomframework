@@ -2,7 +2,7 @@
 
 namespace Eyika\Atom\Framework\Support\Database\Contracts;
 
-use Eyika\Atom\Framework\Support\PaginatedData;
+use Eyika\Atom\Framework\Support\Database\PaginatedData;
 
 interface ModelInterface extends ModelEventsInterface
 {
@@ -254,10 +254,12 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @param int $currentPage indicate the current page
      * @param int $recordsPerPage indicate the number of records to display per page
+     * @param bool $is_protected 'wether to hide or show protected values'
+     * @param array $select 'what parameters of model to fetch in results'
      * 
      * @return PaginatedData|false
      */
-    public function paginate($currentPage = null, $recordsPerPage = null);
+    public function paginate($currentPage = null, $recordsPerPage = null, $is_protected = true, $select = []);
 
     /**
      * Return a random result from the current query

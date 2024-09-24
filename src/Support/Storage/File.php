@@ -27,37 +27,36 @@ use League\Flysystem\UnableToReadFile;
 use League\Flysystem\UnableToRetrieveMetadata;
 use League\Flysystem\UnableToWriteFile;
 use League\Flysystem\UnixVisibility\PortableVisibilityConverter;
-use League\Flysystem\Visibility;
 use MicrosoftAzure\Storage\Blob\BlobRestProxy;
 
 class File
 {
     const adapters = [
-        'local' => 'LocalFilesystemAdapter',
-        'ftp' => 'FtpAdapter',
-        's3' => 'AwsS3V3Adapter',
-        'azure' => 'AzureBlobStorageAdapter',
-        'google' => 'GoogleCloudStorageAdapter'
+        'local' => 'League\Flysystem\Local\LocalFilesystemAdapter',
+        'ftp' => 'League\Flysystem\Ftp\FtpAdapter',
+        's3' => 'League\Flysystem\AwsS3V3\AwsS3V3Adapter',
+        'azure' => 'League\Flysystem\AzureBlobStorage\AzureBlobStorageAdapter',
+        'google' => 'League\Flysystem\GoogleCloudStorage\GoogleCloudStorageAdapter'
     ];
 
-    const flysystemCompatibleAdapters = ['local', 's3', 'google', 'azure', 'ftp', 'sftp', 'dropbox'];
     protected $customDriverAdapters = [];
 
     protected Filesystem $filesystem;
-    protected array $diskconfig;
+    protected array $diskconfig = [];
     protected string $visibility;
     protected string $contents;
 
     public function __construct(Filesystem $filesystem = null, $disk = null)
     {
-        if ($filesystem == null) {
+        $this->setDiskConfig($disk);
+
+        if ($filesystem) {
+            $this->filesystem = $filesystem;
+        } else {
             $this->initAdapter();
         }
-        $this->$filesystem = $filesystem;
-
-        $this->setDiskConfig($disk);
         
-        $this->diskconfig['visibility'] ?? 'public';
+        $this->visibility = $this->diskconfig['visibility'] ?? 'public';
     }
 
     public function setFileSystemAdapter(FilesystemAdapter $filesystem)
@@ -70,61 +69,62 @@ class File
         return $this->filesystem;
     }
 
-    public function setDisk(string $disk)
+    public function setDisk(string $disk = null)
     {
         $this->setDiskConfig($disk);
         $this->initAdapter();
     }
 
-    protected function setDiskConfig(string $disk)
+    protected function setDiskConfig(string $disk = null)
     {
-        $this->diskconfig = $disk ?
-            config('filesystem.disks')[config('filesystem.default')] :
-            config('filesystem.disks')[$disk];
+        $this->diskconfig = is_null($disk) ? config('filesystems.disks')[config('filesystems.default')] : config('filesystems.disks')[$disk];
     }
 
     protected function initAdapter()
     {
-        $classname = self::adapters[$this->diskconfig['driver']] ?? null;
+        // $classname = self::adapters[$this->diskconfig['driver']] ?? null;
 
-        if (empty($this->diskconfig['driver']) || empty($classname)) {
+        if (empty($this->diskconfig['driver'])) {
             throw new FilesystemException('driver not found or adapter package not installed');
         }
 
         switch ($this->diskconfig['driver']) {
             case 'local':
-                $this->filesystem = self::initLocalAdapter($classname);
+                $this->filesystem = self::initLocalAdapter();
                 break;
             case 'ftp':
-                $this->filesystem = self::initFtpAdapter($classname);
+                $this->filesystem = self::initFtpAdapter();
                 break;
             case 'sftp':
-                $this->filesystem = self::initFtpAdapter($classname);
+                $this->filesystem = self::initFtpAdapter();
                 break;
             case 's3':
-                $this->filesystem = self::initS3Adapter($classname);
+                $this->filesystem = self::initS3Adapter();
                 break;
             case 'azure':
-                $this->filesystem = self::initAzureAdapter($classname);
+                $this->filesystem = self::initAzureAdapter();
                 break;
             case 'google':
-                $this->filesystem = self::initGoogleAdapter($classname);
+                $this->filesystem = self::initGoogleAdapter();
                 break;
         }
     }
 
-    protected function initLocalAdapter(string $classname): Filesystem
+    protected function initLocalAdapter(): Filesystem
     {
-        $adapter = new $classname(
+        if (!file_exists($this->diskconfig['root']))
+            mkdir($this->diskconfig['root'], 0775, true);
+
+        $adapter = new LocalFilesystemAdapter(
             $this->diskconfig['root'],
             PortableVisibilityConverter::fromArray([
                 'file' => [
-                    'public' => 0640,
-                    'private' => 0604,
+                    'public' => 0644,
+                    'private' => 0664,
                 ],
                 'dir' => [
-                    'public' => 0740,
-                    'private' => 7604,
+                    'public' => 0755,
+                    'private' => 0775,
                 ],
             ]),
             LOCK_EX,
@@ -133,7 +133,7 @@ class File
         return new Filesystem($adapter);
     }
 
-    protected function initS3Adapter(string $classname): Filesystem
+    protected function initS3Adapter(): Filesystem
     {
         $options = Arr::except($this->diskconfig, ['driver', 'key', 'secret', 'throw', 'prefix']);
         $options['credentials'] = [
@@ -143,15 +143,15 @@ class File
 
         $client = new \Aws\S3\S3Client($options);
 
-        $adapter = new $classname($client, $this->diskconfig['bucket'], $this->diskconfig['prefix'] ?? '',
+        $adapter = new AwsS3V3Adapter($client, $this->diskconfig['bucket'], $this->diskconfig['prefix'] ?? '',
             new AwsS3V3PortableVisibilityConverter($this->diskconfig['visibility'])
         );
         return new Filesystem($adapter);
     }
 
-    protected function initFtpAdapter(string $classname): Filesystem
+    protected function initFtpAdapter(): Filesystem
     {
-        $adapter = new $classname(
+        $adapter = new FtpAdapter(
             // Connection options
             FtpConnectionOptions::fromArray($this->diskconfig)
         );
@@ -159,11 +159,11 @@ class File
         return new Filesystem($adapter);
     }
 
-    protected function initAzureAdapter(string $classname): Filesystem
+    protected function initAzureAdapter(): Filesystem
     {
         $client = BlobRestProxy::createBlobService($this->diskconfig['dsn']);
 
-        $adapter = new $classname(
+        $adapter = new AzureBlobStorageAdapter(
             $client,
             $this->diskconfig['container-name'],
             $this->diskconfig['prefix'] ?? '',
@@ -172,7 +172,7 @@ class File
         return new Filesystem($adapter);
     }
 
-    protected function initGoogleAdapter(string $classname): Filesystem
+    protected function initGoogleAdapter(): Filesystem
     {
         $storageClient = new StorageClient([
             'projectId' => $this->diskconfig['project_id'],
@@ -180,7 +180,7 @@ class File
         ]);
         $bucket = $storageClient->bucket($this->diskconfig['bucket']);
         
-        $adapter = new $classname($bucket, $this->diskconfig['prefix'] ?? '');
+        $adapter = new GoogleCloudStorageAdapter($bucket, $this->diskconfig['prefix'] ?? '');
         
         return new Filesystem($adapter);
     }
@@ -204,7 +204,7 @@ class File
      */
     public function exists($path)
     {
-        return $this->filesystem->fileExists($path) || $this->filesystem->directoryExists($path);
+        return $this->filesystem->fileExists($path);
         // return file_exists($path);
     }
 
@@ -781,7 +781,6 @@ class File
      */
     public function ensureDirectoryExists($path, int $mode = 0755, bool $recursive = true)
     {
-        new static;
         $paths = explode('/', $path);
         if (str_contains($paths[count($paths) -1], '.')) {
             array_pop($paths);
@@ -792,6 +791,18 @@ class File
         if (!$this->exists($paths)) {
             $this->makeDirectory($paths);
         }
+    }
+
+    /**
+     * Ensure a directory exists
+     * @param string $path
+     * @return bool
+     * @throws UnableToCheckExistence
+     * @throws FilesystemException
+     */
+    public function directoryExists($path)
+    {
+        return $this->filesystem->directoryExists($path);
     }
 
     /**

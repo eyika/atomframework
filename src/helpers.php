@@ -2,10 +2,13 @@
 
 use Eyika\Atom\Framework\Http\Response;
 use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
+use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
+use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
 use Eyika\Atom\Framework\Support\Database\DB;
+use Eyika\Atom\Framework\Support\Database\PaginatedData;
 use Eyika\Atom\Framework\Support\Encrypter;
 use Eyika\Atom\Framework\Support\Facade\Request;
-use Eyika\Atom\Framework\Support\Storage\Storage;
+use Eyika\Atom\Framework\Support\Facade\Storage;
 use Eyika\Atom\Framework\Support\Str;
 use Eyika\Atom\Framework\Support\Stringable;
 use Eyika\Atom\Framework\Support\Url;
@@ -57,6 +60,19 @@ if (! function_exists('json_response')) {
     }
 }
 
+if (! function_exists('paginate')) {
+    function paginate(array $data, ModelInterface|UserModelInterface $model, $currentPage = PaginatedData::currentPage, $recordsPerPage = PaginatedData::recordsPerPage)
+    {
+        $currentPage = $currentPage;
+        $recordsPerPage = $recordsPerPage;
+        $totalRecords = $model->count($model->primaryKey, false);
+        // Calculate total pages
+        $totalPages = ceil($totalRecords / $recordsPerPage);
+
+        return PaginatedData::init($data, $totalRecords, $recordsPerPage, $totalPages, $currentPage);
+    }
+}
+
 if (! function_exists('transaction_ref')) {
     /**
      * Returns a unique transaction reference
@@ -80,8 +96,13 @@ if (! function_exists('storage')) {
     /**
      * Return the current storage object
      */
-    function storage(string $disk = 'local', CacheInterface $cache = null) {
-        return Storage::init($disk, $cache);
+    function storage(string $disk = null, CacheInterface $cache = null) {
+        if (is_null($disk))
+            $disk = config('filesystems.default');
+        $storage = Storage::disk($disk);
+        if ($cache)
+            $storage = $storage->cache($cache);
+        return $storage;
     }
 }
 

@@ -25,12 +25,19 @@ class ConsoleKernel implements ContractsConsoleKernel
 
     protected const ignore_facades = ['app', 'application'];
     protected const facadables = [
-        'encrypter' => Encrypter::class,
         'file' => File::class,
         'storage' => Storage::class,
+        'encrypter' => Encrypter::class,
         'request' => Request::class,
-        'scheduler' => Scheduler::class
+        'scheduler' => Scheduler::class,
     ];
+
+    public function __construct()
+    {
+        $this->loadCommands();
+        $this->loadThirdPartyCommands();
+        $this->loadFacades();
+    }
 
     protected $status = false;
 
@@ -138,9 +145,10 @@ class ConsoleKernel implements ContractsConsoleKernel
             //     $app->instance(Str::camel($class_name), $facade_obj);
             // });
 
-            foreach (self::facadables as $tag => $class_name) {
-                $facade_obj = new $class_name;
+            $facades = self::facadables;
 
+            foreach ($facades as $tag => $class_name) {
+                $facade_obj = new $class_name;
                 $app->instance($tag, $facade_obj);
             }
             // $listObject = new \RecursiveIteratorIterator(

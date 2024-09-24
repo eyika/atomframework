@@ -19,16 +19,16 @@ class Unlink extends Command
     public function handle(array $arguments = []): bool
     {
         try {
-            $links = config('filesystem.links');
+            $links = config('filesystems.links');
 
             foreach ($links as $link => $source) {
                 $link = File::realpath($link) ?: $link;
         
-                if (!File::exists($link)) {
+                if (!file_exists($link)) {
                     continue;
                 }
 
-                if (!File::deleteDirectory($link)) {
+                if (!$this->deleteDirectory($link)) {
                     $this->info("unable to delete [$link]...");
                 }
             }
@@ -37,5 +37,34 @@ class Unlink extends Command
             $this->error($e->getMessage(), $e->getTrace());
             return false;
         }
+    }
+
+    protected function deleteDirectory(string $dir): bool
+    {
+        if (!is_dir($dir)) {
+            return false; // Directory doesn't exist
+        }
+
+        // Get all files and subdirectories
+        $items = scandir($dir);
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue; // Skip the current and parent directory entries
+            }
+
+            $path = $dir . DIRECTORY_SEPARATOR . $item;
+
+            // If it's a directory, recursively delete its contents
+            if (is_dir($path)) {
+                $this->deleteDirectory($path);
+            } else {
+                // If it's a file, delete it
+                unlink($path);
+            }
+        }
+
+        // Finally, delete the main directory
+        return rmdir($dir);
     }
 }

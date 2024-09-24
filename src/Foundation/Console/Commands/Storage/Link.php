@@ -20,18 +20,18 @@ class Link extends Command
     public function handle(array $arguments = []): bool
     {
         try {
-            $links = config('filesystem.links');
+            $links = config('filesystems.links');
 
             foreach ($links as $link => $source) {
                 $link = File::realpath($link) ?: $link;
                 $source = File::realpath($source) ?: $source;
-        
-                if (File::exists($link)) {
+                
+                if (file_exists($link)) {
                     throw new BaseConsoleException("The [$link] directory already exists.");
                 }
         
-                if (!File::exists($source)) {
-                    File::makeDirectory($source, Visibility::PUBLIC, true);
+                if (!file_exists($source)) {
+                    mkdir($source, 0755, true);
                     $this->info("The [$source] directory does not exist, creating it...");
                 }
 
@@ -39,8 +39,8 @@ class Link extends Command
                 array_pop($_link);
                 $_link = implode(DIRECTORY_SEPARATOR, $_link);
 
-                if (!File::exists($_link)) {
-                    File::makeDirectory($_link, 0755, true);
+                if (!file_exists($_link)) {
+                    mkdir($_link, 0777, true);
                     $this->info("The directory [$_link] does not exist, creating it...");
                 }
         

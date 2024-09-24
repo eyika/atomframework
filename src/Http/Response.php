@@ -40,7 +40,7 @@ class Response extends BaseResponse
         return true;
     }
 
-    public static function json(string $message, array|int $data_or_method = 200, $method = null): bool
+    public static function json(string $message, array|int $data_or_method = 200, $method = 200): bool
     {
         if (is_array($data_or_method)) {
             $data = $data_or_method;
@@ -51,7 +51,9 @@ class Response extends BaseResponse
         if (!method_exists(JsonResponse::class, self::methodToFunc[$method])) {
             ///TODO throw an exception
         }
-        return JsonResponse::{self::methodToFunc[$method]}($message, $data);
+        return $data === null ?
+            JsonResponse::{self::methodToFunc[$method]}($message) :
+            JsonResponse::{self::methodToFunc[$method]}($message, $data);
     }
 
     public static function view(string $file_name, $data = [])

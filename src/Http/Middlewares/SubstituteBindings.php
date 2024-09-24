@@ -27,14 +27,18 @@ class SubstituteBindings implements MiddlewareInterface
 
         // Substitute bindings for each parameter
         foreach ($routeParams as $key => $value) {
-            if (in_array($key, $ignoreKeys))
+            if (Arr::exists($ignoreKeys, $key))
                 continue;
 
             if (is_numeric($value)) {
                 $value = sanitize_data($value);
                 // Example: replace `{user}` with an instance of User model
                 $model = $this->resolveModel($key, $value);
+                if ($model === null) {
+                    continue;
+                }
                 if ($model) {
+                    logger()->info('model id is: '. $model->id);
                     $routeParams[$key] = $model;
                 } else {
                     throw new ModelNotFoundException("unable to retrieve $key with id $value");
@@ -51,12 +55,14 @@ class SubstituteBindings implements MiddlewareInterface
      *
      * @param string $key
      * @param mixed $value
-     * @return ModelInterface|UserModelInterface|false
+     * @return ModelInterface|UserModelInterface|false|null
      */
-    protected function resolveModel(string $key, $value): ModelInterface | UserModelInterface | false
+    protected function resolveModel(string $key, $value): ModelInterface | UserModelInterface | false | null
     {
         // Map the route parameter to a model class
-        $modelClass = $this->modelClassForKey($key);
+        if (!$modelClass = $this->modelClassForKey($key)) {
+            return null;
+        }
 
         if ($modelClass && class_exists($modelClass)) {
             return $modelClass::getBuilder()->find($value, false);

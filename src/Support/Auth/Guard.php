@@ -23,10 +23,23 @@ final class Guard
      * @param User $user
      * @param array|string $role
      * 
-     * @return bool|User
+     * @return bool
      */
     public static function roleIs($user, $role)
     {
         return JwtAuthenticator::verifyRole($user, $role);
+    }
+
+    /**
+     * Verify a user's role is not equal to a role using a(n) string/array of roles
+     * 
+     * @param User $user
+     * @param array|string $role
+     * 
+     * @return bool
+     */
+    public static function roleIsNot($user, $role)
+    {
+        return !JwtAuthenticator::verifyRole($user, $role);
     }
 }

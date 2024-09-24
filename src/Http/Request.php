@@ -3,6 +3,8 @@
 namespace Eyika\Atom\Framework\Http;
 
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
+use Eyika\Atom\Framework\Support\Arr;
+use Eyika\Atom\Framework\Support\Arrayable;
 use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
 
 class Request
@@ -13,12 +15,13 @@ class Request
     public const HEADER_X_FORWARDED_PROTO = 'HTTP_X_FORWARDED_PROTO';
 
     protected $query;
+    public array $route_params;
     protected $body;
     protected $attributes;
     protected $cookies;
     protected $files;
     protected $server;
-    protected $headers;
+    protected array $headers;
     protected $proxyheader;
     protected $trustedProxies = [];
     protected Session $session;
@@ -30,12 +33,12 @@ class Request
         $this->query = sanitize_data($_GET);
         $this->body = sanitize_data($_POST);
         $this->attributes = [];
+        $this->route_params = [];
         $this->cookies = $_COOKIE;
         $this->files = $_FILES;
         $this->server = $_SERVER;
         $this->headers = getallheaders();
         $this->proxyheader = 0;
-
 
         // Handle JSON payload
         if ($this->isJson()) {
@@ -78,6 +81,16 @@ class Request
         return $this->retrieveItem($this->body, $key, $default);
     }
 
+    public function only(array $keys)
+    {
+        return Arr::only($this->input(), $keys);
+    }
+
+    public function except(array $keys)
+    {
+        return Arr::except($this->input(), $keys);
+    }
+
     public function replaceInput(array $input)
     {
         $this->body = $input;
@@ -96,6 +109,11 @@ class Request
     public function has($key)
     {
         return $this->input($key) !== null || $this->query($key) !== null;
+    }
+
+    public function hasHeader($key)
+    {
+        return !empty($this->headers($key));
     }
 
     public function hasBody()
@@ -117,7 +135,7 @@ class Request
         return $this->retrieveItem($this->cookies, $key, $default);
     }
 
-    public function header($key = null, $default = null)
+    public function headers($key = null, $default = null)
     {
         if ($key == null)
             return $this->headers;
@@ -148,7 +166,12 @@ class Request
 
     public function isJson()
     {
-        return $this->header('Content-Type') === 'application/json';
+        return $this->headers('Content-Type') === 'application/json';
+    }
+
+    public function isOptions()
+    {
+        return $this->method() === 'OPTIONS';
     }
 
     public function wantsJson()
@@ -212,18 +235,23 @@ class Request
         return $requestUri;
     }
 
+    public function uri()
+    {
+        return $this->url();
+    }
+
     public function getScheme()
     {
-        if ($this->isFromTrustedProxy() && $this->header('X-Forwarded-Proto')) {
+        if ($this->isFromTrustedProxy() && $this->headers('X-Forwarded-Proto')) {
             return $this->headers['X-Forwarded-Proto'];
         }
 
-        return $this->header('HTTPS') && $this->headers['HTTPS'] === 'on' ? 'https' : 'http';
+        return $this->headers('HTTPS') && $this->headers['HTTPS'] === 'on' ? 'https' : 'http';
     }
 
     public function getHost()
     {
-        if ($this->isFromTrustedProxy() && $this->header('X-Forwarded-Host')) {
+        if ($this->isFromTrustedProxy() && $this->headers('X-Forwarded-Host')) {
             return $this->headers['X-Forwarded-Host'];
         }
 

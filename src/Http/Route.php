@@ -2,13 +2,14 @@
 
 namespace Eyika\Atom\Framework\Http;
 
+use App\Models\Strategy;
 use Eyika\Atom\Framework\Exceptions\NotFoundException;
 use Eyika\Atom\Framework\Support\Arr;
 
 class Route
 {
     protected static $routes = [];
-    protected static $middlewares = [];
+    public static $middlewares = [];
     public static $defaultMiddlewares = [];
     public static $middlewareAliases = [];
     public static $middlewarePriority = [];
@@ -35,7 +36,7 @@ class Route
         return new static();
     }
 
-    public static function middleware(string | array $middleware, callable $method = null): self
+    public static function middleware(string | array $middleware, callable|false $method = null): self
     {
         $middleware = Arr::wrap($middleware);
 
@@ -43,18 +44,24 @@ class Route
             if (self::$lastInsertedRouteKeys !== '') {
                 [$last_key, $last_value] = explode(' ::: ', self::$lastInsertedRouteKeys);
 
-                self::$routes[$last_key][$last_value]['middlewares'] =
-                    count($middleware) > 1 && is_string($middleware[0]) ?
-                        // self::$routes[$last_key][$last_value]['middlewares'] = [...self::$routes[$last_key][$last_value]['middlewares'], $middleware] :
-                        [...self::$routes[$last_key][$last_value]['middlewares'], $middleware] :
-                        array_merge(self::$routes[$last_key][$last_value]['middlewares'], $middleware);
+                self::$routes[$last_key][$last_value]['middlewares'] = [...self::$routes[$last_key][$last_value]['middlewares'], $middleware];
+                    // count($middleware) > 1 && is_string($middleware[0]) ?
+                        // [...self::$routes[$last_key][$last_value]['middlewares'], $middleware] :
+                        // array_merge(self::$routes[$last_key][$last_value]['middlewares'], $middleware);
             }
 
             return new static();
         }
 
+        if ($method === false) {
+            $previousMiddlewares = self::$middlewares;
+            self::$middlewares = [ ...self::$middlewares, $middleware ];
+
+            return new static();
+        }
+
         $previousMiddlewares = self::$middlewares;
-        self::$middlewares = array_merge(self::$middlewares, $middleware);
+        self::$middlewares = [ ...self::$middlewares, $middleware ];
 
         call_user_func($method);
 
@@ -143,6 +150,45 @@ class Route
         $requestUri = rtrim(filter_var($request->server('REQUEST_URI'), FILTER_SANITIZE_URL), '/');
         $requestUri = strtok($requestUri, '?');
 
+        for (;;) {
+            if (($middleware = array_shift(static::$defaultMiddlewares)) === '*') {
+                break;
+            }
+
+            $middlewares = explode(':', $middleware);
+            $middleware = array_shift($middlewares);
+            $params = explode(',', $middlewares[0] ?? '');
+            $middlewareInstance = new $middleware;
+
+            if (method_exists($middlewareInstance, 'handle') && $status = $middlewareInstance->handle($request, ...$params)) {
+                if ($status)
+                    return true;
+            }
+        }
+
+        // if ($request->isOptions()) {
+        $keys = [];
+        foreach (static::$defaultMiddlewares as $key => $middleware) {
+            $_middleware = explode('\\', $middleware);
+            $_middleware = strtolower($_middleware[count($_middleware) - 1]);
+            if (in_array($_middleware, ['handlecors', 'servepublicassets'])) {
+                $keys[] = $key;
+                $middlewares = explode(':', $middleware);
+                $middleware = array_shift($middlewares);
+                $params = explode(',', $middlewares[0] ?? '');
+                $middlewareInstance = new $middleware;
+    
+                if (method_exists($middlewareInstance, 'handle') && $status = $middlewareInstance->handle($request, ...$params)) {
+                    if ($status)
+                        return true;
+                }
+            }
+        }
+        foreach($keys as $key) {
+            unset(static::$defaultMiddlewares[$key]);
+        }
+        // }
+
         foreach (self::$routes[$requestMethod] ?? [] as $route => $data) {
             $routeParts = explode('/', $route);
             $requestUriParts = explode('/', $requestUri);
@@ -163,18 +209,18 @@ class Route
                     break;
                 }
             }
-            $request->route_params = sanitize_data($parameters);
+
+            $request->route_params = Arr::wrap(sanitize_data($parameters));
 
             if ($matched) {
                 self::$currentRoute = $route;
-
 
                 foreach (static::$defaultMiddlewares as $key => $middleware) {
                     $middlewares = explode(':', $middleware);
                     $middleware = array_shift($middlewares);
                     $params = explode(',', $middlewares[0] ?? '');
                     $middlewareInstance = new $middleware;
-
+        
                     if (method_exists($middlewareInstance, 'handle') && $status = $middlewareInstance->handle($request, ...$params)) {
                         if ($status)
                             return true;
