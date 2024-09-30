@@ -2,6 +2,7 @@
 namespace Eyika\Atom\Framework\Foundation\Console\Concerns;
 
 use Eyika\Atom\Framework\Exceptions\MethodNotFoundException;
+use Eyika\Atom\Framework\Foundation\Application;
 use Eyika\Atom\Framework\Support\Arr;
 
 trait RunsOnConsole
@@ -15,11 +16,13 @@ trait RunsOnConsole
         }
 
         $command = $this->{"{$type}Commander"}($options);
+        $env = Arr::only($GLOBALS, Arr::values(Application::GLOBAL_VARS));
+        print_r($env);
 
         $process = proc_open($command, [
             1 => ['pipe', 'w'], // stdout
             2 => ['pipe', 'w'], // stderr
-        ], $pipes);
+        ], $pipes, null);
 
         if (is_resource($process)) {
             stream_set_blocking($pipes[1], false); // Set stdout to non-blocking mode
@@ -27,13 +30,13 @@ trait RunsOnConsole
     
             while (!feof($pipes[1]) || !feof($pipes[2])) {
                 if ($line = fgets($pipes[1])) {
-                    echo "STDERR: $line";
+                    echo "$line";
                 }
                 if ($line = fgets($pipes[2])) {
-                    echo "STDOUT: $line";
+                    echo "$line";
                 }
     
-                usleep(10000); // Sleep for 10ms to prevent high CPU usage
+                usleep(1500); // Sleep for 10ms to prevent high CPU usage
             }
     
             fclose($pipes[1]);
@@ -84,6 +87,6 @@ trait RunsOnConsole
     function phpUnitCommander($options = [])
     {
         $slash = DIRECTORY_SEPARATOR;
-        return base_path("/vendor/bin/phpunit " . implode(' ', $options));
+        return base_path("vendor/eyika/atom-framework/src/bin/phpunit " . implode(' ', $options));
     }
 }

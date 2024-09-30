@@ -24,12 +24,12 @@ if (! function_exists('classFromFile')) {
      * @param  string  $namespace
      * @return string
      */
-    function classFromFile(SplFileInfo $file, string $namespace, $after = 'src'): string
+    function classFromFile(SplFileInfo $file, string $namespace, $base_folder = 'src'): string
     {
         return $namespace.str_replace(
             ['/', '.php'],
             ['\\', ''],
-            Str::after($file->getRealPath(), $after)  //may trigger cyclic reference error
+            Str::after($file->getRealPath(), $base_folder)  //may trigger cyclic reference error
         );
     }
 }
@@ -242,7 +242,8 @@ if (! function_exists('base_path')) {
     function base_path(string $folder = ''): string
     {
         $folder = empty($folder) ? '' : "/$folder";
-        return $GLOBALS['base_path'].$folder ?? $_SERVER['DOCUMENT_ROOT'].$folder;
+        $root = $GLOBALS['base_path'] ?? $_SERVER['DOCUMENT_ROOT'];
+        return $root.$folder;
     }
 }
 
@@ -274,35 +275,36 @@ if (! function_exists('asset')) {
 if (! function_exists('config_path')) {
     function config_path(string $folder = '')
     {
-        return base_path() . "/config/". $folder;
+        return base_path("/config/$folder");
     }
 }
 
 if (! function_exists('storage_path')) {
     function storage_path(string $folder = '')
     {
-        return base_path() . "/storage/". $folder;
+        // echo "base path is: " . $GLOBALS['base_path'];
+        return base_path("storage/$folder");
     }
 }
 
 if (! function_exists('public_path')) {
     function public_path(string $folder = '')
     {
-        return base_path() . "/public/". $folder;
+        return base_path("/public/$folder");
     }
 }
 
 if (! function_exists('resource_path')) {
     function resource_path(string $folder = '')
     {
-        return base_path() . "/resources/". $folder;
+        return base_path("/resources/$folder");
     }
 }
 
 if (! function_exists('database_path')) {
     function database_path(string $folder = '')
     {
-        return base_path() . "/database/". $folder;
+        return base_path("/database/$folder");
     }
 }
 
@@ -315,7 +317,8 @@ if (!function_exists('is_windows')) {
 if (! function_exists('logger')) {
     function logger(string $path = null, Monolog\Level $level = Monolog\Level::Debug, $bubble = true, $filePermission = 0664, $useLocking = false)
     {
-        $path = is_null($path) ? storage_path("logs/custom.log") : $path;
+        $path = $path ?? storage_path("logs/custom.log");
+        // echo $path;
         $log = new Logger('tradingio');
         // Define the date format to match Laravel's
         $dateFormat = "Y-m-d H:i:s";
