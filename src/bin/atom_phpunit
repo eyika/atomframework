@@ -19,7 +19,6 @@ $GLOBALS['_composer_autoload_path'] = __DIR__ . '/..'.'/autoload.php';
 $GLOBALS['__PHPUNIT_ISOLATION_EXCLUDE_LIST'] = $GLOBALS['__PHPUNIT_ISOLATION_BLACKLIST'] = array(realpath(__DIR__ . '/..'.'/phpunit/phpunit/phpunit'));
 
 use Eyika\Atom\Framework\Foundation\Application;
-use Eyika\Atom\Framework\Support\Arr;
 
 $log_path = __DIR__."/../../storage/logs/php_error.log";
 ini_set('error_log', $log_path);
