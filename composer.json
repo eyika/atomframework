@@ -37,5 +37,14 @@
             "email": "basttyy@gmail.com"
         }
     ],
-    "minimum-stability": "beta"
+    "minimum-stability": "beta",
+    "bin": [
+        "src/bin/atom_phpunit"
+    ],
+    "scripts": {
+        "post-install-cmd": [
+        ],
+        "post-update-cmd": [
+        ]
+    }
 }

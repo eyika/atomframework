@@ -44,10 +44,10 @@ class Route
             if (self::$lastInsertedRouteKeys !== '') {
                 [$last_key, $last_value] = explode(' ::: ', self::$lastInsertedRouteKeys);
 
-                self::$routes[$last_key][$last_value]['middlewares'] = [...self::$routes[$last_key][$last_value]['middlewares'], $middleware];
-                    // count($middleware) > 1 && is_string($middleware[0]) ?
-                        // [...self::$routes[$last_key][$last_value]['middlewares'], $middleware] :
-                        // array_merge(self::$routes[$last_key][$last_value]['middlewares'], $middleware);
+                // self::$routes[$last_key][$last_value]['middlewares'] = [...self::$routes[$last_key][$last_value]['middlewares'], $middleware];
+                    count($middleware) > 1 && is_string($middleware[0]) ?
+                        [...self::$routes[$last_key][$last_value]['middlewares'], $middleware] :
+                        array_merge(self::$routes[$last_key][$last_value]['middlewares'], $middleware);
             }
 
             return new static();

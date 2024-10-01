@@ -17,12 +17,12 @@ trait RunsOnConsole
 
         $command = $this->{"{$type}Commander"}($options);
         $env = Arr::only($GLOBALS, Arr::values(Application::GLOBAL_VARS));
-        print_r($env);
+        $env = array_merge($_ENV, $env, getenv());
 
         $process = proc_open($command, [
             1 => ['pipe', 'w'], // stdout
             2 => ['pipe', 'w'], // stderr
-        ], $pipes, null);
+        ], $pipes, null, $env);
 
         if (is_resource($process)) {
             stream_set_blocking($pipes[1], false); // Set stdout to non-blocking mode
@@ -87,6 +87,6 @@ trait RunsOnConsole
     function phpUnitCommander($options = [])
     {
         $slash = DIRECTORY_SEPARATOR;
-        return base_path("vendor/eyika/atom-framework/src/bin/phpunit " . implode(' ', $options));
+        return base_path("vendor/bin/atom_phpunit " . implode(' ', $options));
     }
 }
