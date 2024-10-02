@@ -39,7 +39,8 @@
     ],
     "minimum-stability": "beta",
     "bin": [
-        "src/bin/atom_phpunit"
+        "src/bin/atom_phpunit",
+        "src/bin/atom_phinx"
     ],
     "scripts": {
         "post-install-cmd": [
