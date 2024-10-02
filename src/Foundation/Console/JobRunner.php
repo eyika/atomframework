@@ -9,19 +9,15 @@ use PDO;
 class JobRunner {
     public function __invoke()
     {
-        $dotenv = Dotenv::createImmutable(__DIR__."/../../");
-        $dotenv->safeLoad();
-
-        $dotenv->required(['DB_ADAPTER', 'DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASS', 'DB_PORT', 'DB_CHARSET', 'CHRON_INTERVAL'])->notEmpty();
-
-        $dbtype = env('DB_ADAPTER');
-        $dbhost = env("DB_HOST");
-        $dbname = env('DB_NAME');
-        $dbuser = env('DB_USER');
-        $dbpass = env('DB_PASS');
-        $dbport = env('DB_PORT');
-        $dbcharset = env('DB_CHARSET');
-        $chron_interval = env('CHRON_INTERVAL');
+        //TODO: there should be db abstraction so we can be db agnostic
+        $dbtype = config('database.connections.mysql.driver'); // env('DB_ADAPTER');
+        $dbhost = config('database.connections.mysql.host'); //env("DB_HOST");
+        $dbname = config('database.connections.mysql.database'); //env('DB_NAME');
+        $dbuser = config('database.connections.mysql.username'); //env('DB_USER');
+        $dbpass = config('database.connections.mysql.password'); //env('DB_PASS');
+        $dbport = config('database.connections.mysql.port'); //env('DB_PORT');
+        $dbcharset = config('database.connections.mysql.charset'); //env('DB_CHARSET');
+        $chron_interval = (int)env('CHRON_INTERVAL', 60);
 
         $start_time = time();
         $end_time = $start_time + $chron_interval;
@@ -37,52 +33,40 @@ class JobRunner {
         $job_Queue->addQueueConnection($pdo);
         $job_Queue->watchPipeline('default');
 
-        $empty = false;
         while ($end_time > time()) {
             // Process Pending Jobs
             $job = $job_Queue->getNextJobAndReserve();
             
-            if(empty($job)) {
-                $empty = true;
-            }
-
-            $payload = $job['payload'];
-
-            try {
-                $job_obj = unserialize($payload);
-
-                if ($job_obj instanceof QueueInterface) {
-                    $job_obj->setJob($job);
-                    $job_obj->setQueue($job_Queue);
-                    $resp = $job_obj->handle();
+            if(!empty($job)) {
+                $payload = $job['payload'];
+    
+                try {
+                    $job_obj = unserialize($payload);
+    
+                    if ($job_obj instanceof QueueInterface) {
+                        $job_obj->setJob($job);
+                        $job_obj->setQueue($job_Queue);
+                        $resp = $job_obj->handle();
+                    }
+                } catch(Exception $e) {
+                    $job_Queue->buryJob($job, $job_obj->getDelay());
                 }
-            } catch(Exception $e) {
-                $job_Queue->buryJob($job, $job_obj->getDelay());
-            }
+            } else if (!empty($job = $job_Queue->getNextBuriedJob())) { // Process Pending Buried Jobs
+                $payload = $job['payload'];
 
-            // Process Pending Buried Jobs
-            $job = $job_Queue->getNextBuriedJob();
-            if (empty($job)) {
-                $empty = true;
-            }
-
-            $payload = $job['payload'];
-
-            try {
-                $job_obj = unserialize($payload);
-
-                if ($job_obj instanceof QueueInterface) {
-                    $job_obj->setJob($job);
-                    $job_obj->setQueue($job_Queue);
-                    $resp = $job_obj->handle();
+                try {
+                    $job_obj = unserialize($payload);
+    
+                    if ($job_obj instanceof QueueInterface) {
+                        $job_obj->setJob($job);
+                        $job_obj->setQueue($job_Queue);
+                        $resp = $job_obj->handle();
+                    }
+                } catch (Exception $e) {
+                    $job_Queue->buryJob($job, $job_obj->getDelay());
                 }
-            } catch (Exception $e) {
-                $job_Queue->buryJob($job, $job_obj->getDelay());
-            }
-            
-            if ($empty) {
+            } else {
                 sleep(1);
-                $empty = false;
                 continue;
             }
         }

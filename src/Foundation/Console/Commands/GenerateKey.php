@@ -4,7 +4,7 @@ namespace Eyika\Atom\Framework\Foundation\Console\Commands;
 
 use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
 use Eyika\Atom\Framework\Foundation\Console\Command;
-use Eyika\Atom\Framework\Support\Storage\File;
+use Eyika\Atom\Framework\Support\Facade\File;
 use Eyika\Atom\Framework\Support\Str;
 
 class GenerateKey extends Command

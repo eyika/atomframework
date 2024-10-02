@@ -15,7 +15,6 @@ class work extends Command
     {
         try {
             call_user_func(new JobRunner);
-            call_user_func(new BurriedJobRunner);
         } catch (BaseConsoleException $e) {
             $this->error($e->getMessage());
             return !(bool)($e->getCode());

@@ -16,6 +16,7 @@ trait RunsOnConsole
         }
 
         $command = $this->{"{$type}Commander"}($options);
+        echo $command;
         $env = Arr::only($GLOBALS, Arr::values(Application::GLOBAL_VARS));
         $env = array_merge($_ENV, $env, getenv());
 
@@ -54,9 +55,9 @@ trait RunsOnConsole
         $slash = DIRECTORY_SEPARATOR;
         $config = "-c ". base_path("config/phinx.php");
         if (count($options) > 1) {
-            $temp = $options[1];
-            $options[1] = $config;
-            $options[] = $temp;
+            $temp = [$options[0], $config];
+            array_push($temp, ...array_slice($options, 1));
+            $options = $temp;
         } else {
             $options[] = $config;
         }

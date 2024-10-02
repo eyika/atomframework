@@ -37,10 +37,6 @@ class Server
     public static function handle(): bool
     {
         try {
-            $dotenv = strtolower(PHP_OS_FAMILY) === 'windows' ? Dotenv::createImmutable(base_path()."\\") : Dotenv::createImmutable(base_path()."/");
-            $dotenv->load();
-            $dotenv->required(['DB_USERNAME'])->notEmpty(); ///TODO: get required env keys from config if set
-    
             $request = new Request();
             static::$app->instance('request', $request);
             if (preg_match('/^.*$/i', $request->getRequestUri())) {
