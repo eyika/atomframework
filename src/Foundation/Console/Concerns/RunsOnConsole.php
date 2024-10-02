@@ -62,7 +62,7 @@ trait RunsOnConsole
             $options[] = $config;
         }
 
-        return base_path("/vendor/bin/phinx " . implode(' ', $options));
+        return base_path("/vendor/bin/atom_phinx " . implode(' ', $options));
     }
 
     function phpInbuiltServerCommander($options = [])
