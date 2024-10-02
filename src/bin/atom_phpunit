@@ -101,8 +101,6 @@ if ([] !== $unavailableExtensions) {
 
 unset($requiredExtensions, $unavailableExtensions);
 
-// require __DIR__.'/../autoload.php';
-
 use Eyika\Atom\Framework\Foundation\Application;
 
 $log_path = __DIR__."/../../storage/logs/php_error.log";

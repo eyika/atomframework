@@ -35,5 +35,5 @@ foreach ($env as $key => $value) {
     }
 }
 
-$app = require __DIR__ . '/../app/phinx.php';
+$app = require __DIR__ . "/../../../../robmorgan/phinx/app/phinx.php";
 $app->run();
