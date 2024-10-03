@@ -54,14 +54,17 @@ class Route
         }
 
         if ($method === false) {
-            $previousMiddlewares = self::$middlewares;
-            self::$middlewares = [ ...self::$middlewares, $middleware ];
+            self::$middlewares = count($middleware) > 1 && is_string($middleware[0]) ?
+                [ ...self::$middlewares, $middleware ] :
+                array_merge(self::$middlewares, $middleware);
 
             return new static();
         }
 
         $previousMiddlewares = self::$middlewares;
-        self::$middlewares = [ ...self::$middlewares, $middleware ];
+        self::$middlewares = count($middleware) > 1 && is_string($middleware[0]) ?
+            [ ...self::$middlewares, $middleware ] :
+            array_merge(self::$middlewares, $middleware);
 
         call_user_func($method);
 
