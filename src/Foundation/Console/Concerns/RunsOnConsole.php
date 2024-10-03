@@ -82,7 +82,7 @@ trait RunsOnConsole
         $address = array_key_exists('--address', $kv_options) || array_key_exists('-a', $kv_options) ? ($kv_options['--address'] ?? $kv_options['-a']) : 'localhost';
         $port = array_key_exists('--port', $kv_options) || array_key_exists('-p', $kv_options) ? ($kv_options['--port'] ?? $kv_options['-p']) : '80';
 
-        return "php -S {$address}:{$port} -t . " . implode(' ', $options). base_path("public/index.php");
+        return "php -S {$address}:{$port} -t public";
     }
 
     function phpUnitCommander($options = [])
