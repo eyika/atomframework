@@ -7,11 +7,10 @@ use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel as ContractsConsoleKernel;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\NamespaceHelper;
-use Eyika\Atom\Framework\Support\Str;
 use Eyika\Atom\Framework\Foundation\Console\Command;
+use Eyika\Atom\Framework\Foundation\Console\Scheduler;
+use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Support\Encrypter;
-use Eyika\Atom\Framework\Support\Facade\Request;
-use Eyika\Atom\Framework\Support\Facade\Scheduler;
 use Eyika\Atom\Framework\Support\Storage\File;
 use Eyika\Atom\Framework\Support\Storage\Storage;
 

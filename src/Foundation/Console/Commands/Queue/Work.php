@@ -3,7 +3,6 @@
 namespace Eyika\Atom\Framework\Foundation\Console\Commands\Queue;
 
 use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
-use Eyika\Atom\Framework\Foundation\Console\BurriedJobRunner;
 use Eyika\Atom\Framework\Foundation\Console\Command;
 use Eyika\Atom\Framework\Foundation\Console\JobRunner;
 
