@@ -87,7 +87,6 @@ trait RunsOnConsole
 
     function phpUnitCommander($options = [])
     {
-        $slash = DIRECTORY_SEPARATOR;
         return base_path("vendor/bin/atom_phpunit " . implode(' ', $options));
     }
 }

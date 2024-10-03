@@ -109,8 +109,13 @@ $env = getenv();
 
 foreach (Application::GLOBAL_VARS as $key => $var) {
     if ($_var = getenv($var)) {
-        echo "setting key: $key var: $var to value $_var";
         $GLOBALS[$var] = $_var;
+    }
+}
+// Explicitly push environment variables into $_ENV
+foreach ($env as $key => $value) {
+    if (isset($_ENV[$key]) === false) {
+        $_ENV[$key] = $value;
     }
 }
 
