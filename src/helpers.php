@@ -275,36 +275,40 @@ if (! function_exists('asset')) {
 if (! function_exists('config_path')) {
     function config_path(string $folder = '')
     {
-        return base_path("/config/$folder");
+        $folder = empty($folder) ? '' : "/$folder";
+        return base_path("config$folder");
     }
 }
 
 if (! function_exists('storage_path')) {
     function storage_path(string $folder = '')
     {
-        // echo "base path is: " . $GLOBALS['base_path'];
-        return base_path("storage/$folder");
+        $folder = empty($folder) ? '' : "/$folder";
+        return base_path("storage$folder");
     }
 }
 
 if (! function_exists('public_path')) {
     function public_path(string $folder = '')
     {
-        return base_path("/public/$folder");
+        $folder = empty($folder) ? '' : "/$folder";
+        return base_path("public$folder");
     }
 }
 
 if (! function_exists('resource_path')) {
     function resource_path(string $folder = '')
     {
-        return base_path("/resources/$folder");
+        $folder = empty($folder) ? '' : "/$folder";
+        return base_path("resources$folder");
     }
 }
 
 if (! function_exists('database_path')) {
     function database_path(string $folder = '')
     {
-        return base_path("/database/$folder");
+        $folder = empty($folder) ? '' : "/$folder";
+        return base_path("database$folder");
     }
 }
 

@@ -34,7 +34,7 @@ class Mailer extends PHPMailer
         //Set an HTML and plain-text body, import relative image references
         $this->msgHTML($body, './images/');
         //Show debug output
-        $this->SMTPDebug = env('APP_ENV') === 'local' ? SMTP::DEBUG_SERVER : SMTP::DEBUG_OFF;
+        $this->SMTPDebug = config('app.env') === 'local' ? SMTP::DEBUG_SERVER : SMTP::DEBUG_OFF;
 
         //Inject a new debug output handler
         $this->Debugoutput = static function ($str, $level) {
@@ -47,7 +47,7 @@ class Mailer extends PHPMailer
     {
         $this->Subject = $this->Subject;
         $r = parent::send();
-        if (env('APP_ENV') === 'local')
+        if (config('app.env') === 'local')
             // logger(storage_path()."logs/email.log")->info('I sent a message with subject ' . $this->Subject);
 
         return $r;

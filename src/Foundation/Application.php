@@ -5,6 +5,7 @@ namespace Eyika\Atom\Framework\Foundation;
 use Dotenv\Dotenv;
 use Eyika\Atom\Framework\Foundation\Concerns\ServiceContainer;
 use Eyika\Atom\Framework\Foundation\Contracts\ApplicationInterface;
+use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\NamespaceHelper;
 
 class Application implements ApplicationInterface
@@ -24,6 +25,7 @@ class Application implements ApplicationInterface
 
         $dotenv = strtolower(PHP_OS_FAMILY) === 'windows' ? Dotenv::createImmutable(base_path()."\\") : Dotenv::createImmutable(base_path()."/");
         $dotenv->load();
+        Facade::pushDefaultAliases();
         // $dotenv->required(['DB_USERNAME'])->notEmpty(); ///TODO: get required env keys from config if set
         // print_r($_ENV);
     }
