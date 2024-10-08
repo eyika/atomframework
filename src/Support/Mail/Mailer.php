@@ -21,6 +21,7 @@ class Mailer
     protected static MailerInterface $driver;
     protected static array $config;
     protected static string $html;
+    private static $instantiated = false;
 
     /**
      * @param array $config  The config data of the intended mailer driver
@@ -32,6 +33,7 @@ class Mailer
         $this->config = $config ?? config('mail.mailers', [])[$driver];
 
         $this->setDriver($this->config['transport']);
+        static::$instantiated = true;
     }
 
     public static function setDriver(string $transport)
@@ -68,11 +70,15 @@ class Mailer
 
     public static function to(string $address, string $name = null)
     {
+        if (! self::$instantiated)
+            new static;
         self::$driver->to($address, $name);
     }
 
     public static function from(string $address, string $name = null)
     {
+        if (! self::$instantiated)
+            new static;
         if (!self::$driver instanceof SmtpDriver || !self::$driver instanceof SendmailDriver) {
             throw new BadMethodCallException('this method only exists for smtp and sendmail drivers');
         }
@@ -81,12 +87,16 @@ class Mailer
 
     public static function buildHtml(string $templateName, array $data = [], string $resourcePath = null)
     {
+        if (! self::$instantiated)
+            new static;
         self::$html = Twig::make($templateName, $resourcePath ?? config('mail.markdown.paths'), $data, true);
         return new static;
     }
 
     public static function send($subject, $to = null): MailerResponse
     {
+        if (! self::$instantiated)
+            new static;
         if ($to)
             self::to($to);
 
