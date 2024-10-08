@@ -1,0 +1,65 @@
+<?php
+namespace Eyika\Atom\Framework\Support\Mail\Drivers;
+
+use Exception;
+use Eyika\Atom\Framework\Support\Mail\Contracts\MailerInterface;
+use Eyika\Atom\Framework\Support\Mail\Contracts\MailerResponse;
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+
+class SmtpDriver implements MailerInterface
+{
+    protected PHPMailer $mailer;
+    /**
+     * BaseMailer constructor.
+     *
+     * @param bool|null $exceptions
+     * @param string $user
+     * @param string $pass
+     * @param string    $body A default HTML message body
+     */
+    public function __construct(array $config)
+    {
+        $this->mailer = new PHPMailer($config['exception'] ?? true);
+        $host = $config['host'];
+        $port = $config['port'];
+        //Set a default 'From' address
+        $this->mailer->Host = $host;
+        $this->mailer->Port = $port;
+        //Send via SMTP
+        $this->mailer->isSMTP();
+        $this->mailer->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        //Equivalent to setting `Host`, `Port` and `SMTPSecure` all at once
+        // $this->Host = "tls://$host:$port";
+        if (isset($config['password']) && isset($config['username'])) {
+            $this->mailer->SMTPAuth = true;
+            $this->mailer->Password = $config['password'];
+            $this->mailer->Username = $config['username'];
+        }
+        //Show debug output
+        $this->mailer->SMTPDebug = config('app.env') === 'local' ? SMTP::DEBUG_SERVER : SMTP::DEBUG_OFF;
+
+        //Inject a new debug output handler
+        $this->mailer->Debugoutput = static function ($str, $level) {
+            consoleLog($level, $str);
+        };
+    }
+
+    //Extend the send function
+    public function send(string $to, string $subject, string $body): MailerResponse
+    {
+        try {
+            $this->mailer->addAddress($to);
+            $this->mailer->Subject = $subject;
+            //Set an HTML and plain-text body, import relative image references
+            $this->mailer->msgHTML($body, './images/'); //TODO: images path not yet correct
+            $r = $this->mailer->send();
+            if (config('app.env') === 'local')
+                // logger(storage_path()."logs/email.log")->info('I sent a message with subject ' . $this->Subject);
+    
+                return new MailerResponse($r, $this->mailer->getLastMessageID());
+        } catch (Exception $e) {
+            return  new MailerResponse($r, null, $e->getMessage(), $e);
+        }
+    }
+}

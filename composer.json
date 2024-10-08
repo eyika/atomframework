@@ -23,7 +23,10 @@
         "league/flysystem-azure-blob-storage": "^3.0",
         "league/flysystem-google-cloud-storage": "^3.0",
         "voku/portable-ascii": "^2.0",
-        "ramsey/uuid": "^4.7"
+        "ramsey/uuid": "^4.7",
+        "mailgun/mailgun-php": "^4.3",
+        "aws/aws-sdk-php": "^3.323",
+        "wildbit/postmark-php": "^6.0"
     },
     "license": "MIT",
     "autoload": {
@@ -47,5 +50,10 @@
         ],
         "post-update-cmd": [
         ]
+    },
+    "config": {
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
     }
 }
