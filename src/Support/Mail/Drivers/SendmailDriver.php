@@ -20,10 +20,21 @@ class SendmailDriver implements MailerInterface
         $this->mailer->Sendmail = $config['path'] ?? config('mail.sendmail');
     }
 
-    public function send($to, $subject, $body): MailerResponse
+    public function to(string $address, string $name = null): self
+    {
+        $this->mailer->addAddress($address, $name ?? '');
+        return $this;
+    }
+
+    public function from(string $address, string $name): self
+    {
+        $this->mailer->setFrom($address, $name);
+        return $this;
+    }
+
+    public function send($subject, $body): MailerResponse
     {
         try {
-            $this->mailer->addAddress($to);
             $this->mailer->Subject = $subject;
             $this->mailer->Body = $body;
             $result = $this->mailer->send();

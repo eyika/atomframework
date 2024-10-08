@@ -8,20 +8,28 @@ use Eyika\Atom\Framework\Support\Mail\Contracts\MailerResponse;
 class LogDriver implements MailerInterface
 {
     protected $logger;
+    protected array $tos;
 
     public function __construct(array $config)
     {
         if (empty($config)) {
             throw new Exception('bad configuration data');
         }
+        $this->tos = [];
         $this->logger = $config['logger'] ?? new \Monolog\Logger('mail');
     }
 
-    public function send($to, $subject, $body): MailerResponse
+    public function to(string $address, string $name = null): self
+    {
+        array_push($this->tos, $address);
+        return $this;
+    }
+
+    public function send($subject, $body): MailerResponse
     {
         try {
             $this->logger->info('Sending email', [
-                'to' => $to,
+                'to' => $this->tos,
                 'subject' => $subject,
                 'body' => $body,
             ]);

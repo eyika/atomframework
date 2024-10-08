@@ -11,6 +11,7 @@ class PostmarkDriver implements MailerInterface
 {
     protected $client;
     protected $config;
+    protected array $tos;
 
     public function __construct(array $config)
     {
@@ -18,18 +19,25 @@ class PostmarkDriver implements MailerInterface
             throw new Exception('bad configuration data');
         }
         $this->config = $config;
+        $this->tos = [];
 
         // Initialize the Postmark client with the provided server token
         $this->client = new PostmarkClient($config['token']);
     }
 
-    public function send($to, $subject, $body): MailerResponse
+    public function to(string $address, string $name = null): self
+    {
+        array_push($this->tos, $address);
+        return $this;
+    }
+
+    public function send($subject, $body): MailerResponse
     {
         try {
             // Send the email using Postmark
             $result = $this->client->sendEmail(
                 $this->config['from'], // From email address
-                $to,                               // To email address
+                $this->tos[0] ?? '',                              // To email address
                 $subject,                          // Subject of the email
                 $body                              // HTML body content
             );

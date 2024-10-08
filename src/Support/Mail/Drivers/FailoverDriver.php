@@ -13,6 +13,7 @@ class FailoverDriver implements MailerInterface
     protected $mailers;
 
     protected $config;
+    protected array $tos;
 
     public function __construct(array $config)
     {
@@ -23,7 +24,13 @@ class FailoverDriver implements MailerInterface
         $this->mailers = $config['mailers'];
     }
 
-    public function send($to, $subject, $body): MailerResponse
+    public function to(string $address, string $name = null): self
+    {
+        array_push($this->tos, $address);
+        return $this;
+    }
+
+    public function send($subject, $body): MailerResponse
     {
         foreach ($this->mailers as $mailerClass) {
             try {
@@ -31,7 +38,7 @@ class FailoverDriver implements MailerInterface
                 /**
                  * @var MailerInterface $mailer
                  */
-                $response = $mailer->send($to, $subject, $body);
+                $response = $mailer->send($this->tos[0] ?? '', $subject, $body);
                 
                 if ($response['success']) {
                     return $response; // Return on successful send

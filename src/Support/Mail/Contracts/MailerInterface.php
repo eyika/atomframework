@@ -3,5 +3,6 @@ namespace Eyika\Atom\Framework\Support\Mail\Contracts;
 
 interface MailerInterface
 {
-    public function send(string $to, string $subject, string $body): MailerResponse;
+    public function to(string $address, string $name = null): MailerInterface;
+    public function send(string $subject, string $body): MailerResponse;
 }

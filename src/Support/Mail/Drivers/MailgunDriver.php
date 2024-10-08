@@ -13,12 +13,14 @@ class MailgunDriver implements MailerInterface
 {
     protected $client;
     protected $config;
+    protected array $tos;
 
     public function __construct(array $config)
     {
         if (empty($config)) {
             throw new Exception('bad configuration data');
         }
+        $this->tos = [];
         $this->config = $config;
         $configurator = new HttpClientConfigurator();
         $configurator->setHttpClient(new Client());
@@ -28,12 +30,18 @@ class MailgunDriver implements MailerInterface
         $this->client = new Mailgun($configurator, new ArrayHydrator); // Assuming Guzzle as the HTTP client
     }
 
-    public function send($to, $subject, $body): MailerResponse
+    public function to(string $address, string $name = null): self
+    {
+        array_push($this->tos, $address);
+        return $this;
+    }
+
+    public function send($subject, $body): MailerResponse
     {
         try {
             $response = $this->client->messages()->send($this->config['mailgun']['domain'], [
                 'from'    => $this->config['mailgun']['from'],
-                'to'      => $to,
+                'to'      => $this->tos,
                 'subject' => $subject,
                 'html'    => $body,
             ]);

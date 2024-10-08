@@ -7,13 +7,14 @@ use Eyika\Atom\Framework\Support\Mail\Contracts\MailerResponse;
 class ArrayDriver implements MailerInterface
 {
     protected static $sentEmails = [];
+    protected array $tos;
 
-    public function send($to, $subject, $body): MailerResponse
+    public function send($subject, $body): MailerResponse
     {
         try {
             // Store the email in the array
             self::$sentEmails[] = [
-                'to' => $to,
+                'to' => $this->tos,
                 'subject' => $subject,
                 'body' => $body,
             ];
@@ -22,6 +23,12 @@ class ArrayDriver implements MailerInterface
         } catch (\Exception $e) {
             return new MailerResponse(false, null, $e->getMessage(), $e);
         }
+    }
+
+    public function to(string $address, string $name = null): self
+    {
+        array_push($this->tos, $address);
+        return $this;
     }
 
     public static function getSentEmails()

@@ -13,10 +13,7 @@ class SmtpDriver implements MailerInterface
     /**
      * BaseMailer constructor.
      *
-     * @param bool|null $exceptions
-     * @param string $user
-     * @param string $pass
-     * @param string    $body A default HTML message body
+     * @param array $config
      */
     public function __construct(array $config)
     {
@@ -45,11 +42,22 @@ class SmtpDriver implements MailerInterface
         };
     }
 
+    public function to(string $address, string $name = null): self
+    {
+        $this->mailer->addAddress($address, $name ?? '');
+        return $this;
+    }
+
+    public function from(string $address, string $name): self
+    {
+        $this->mailer->setFrom($address, $name);
+        return $this;
+    }
+
     //Extend the send function
-    public function send(string $to, string $subject, string $body): MailerResponse
+    public function send(string $subject, string $body): MailerResponse
     {
         try {
-            $this->mailer->addAddress($to);
             $this->mailer->Subject = $subject;
             //Set an HTML and plain-text body, import relative image references
             $this->mailer->msgHTML($body, './images/'); //TODO: images path not yet correct

@@ -11,12 +11,14 @@ class SesDriver implements MailerInterface
 {
     protected $client;
     protected $config;
+    protected array $tos;
 
     public function __construct(array $config)
     {
         if (empty($config)) {
             throw new Exception('bad configuration data');
         }
+        $this->tos = [];
 
         $this->config = $config;
 
@@ -31,14 +33,20 @@ class SesDriver implements MailerInterface
         ]);
     }
 
-    public function send($to, $subject, $body): MailerResponse
+    public function to(string $address, string $name = null): self
+    {
+        array_push($this->tos, $address);
+        return $this;
+    }
+
+    public function send($subject, $body): MailerResponse
     {
         try {
             // Send the email using SES
             $result = $this->client->sendEmail([
                 'Source' => $this->config['from'], // Sender email
                 'Destination' => [
-                    'ToAddresses' => [$to], // Recipient email
+                    'ToAddresses' => $this->tos, // Recipient email
                 ],
                 'Message' => [
                     'Subject' => [
