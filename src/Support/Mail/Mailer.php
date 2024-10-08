@@ -38,6 +38,8 @@ class Mailer
 
     public static function setDriver(string $transport)
     {
+        if (! self::$instantiated)
+            new static;
         switch ($transport) {
             case 'smtp':
                 self::$driver = new SmtpDriver(self::$config ?? []);
@@ -66,6 +68,7 @@ class Mailer
             default:
                 throw new \InvalidArgumentException("Unsupported mail driver: $transport");
         }
+        return new static;
     }
 
     public static function to(string $address, string $name = null)
@@ -73,6 +76,7 @@ class Mailer
         if (! self::$instantiated)
             new static;
         self::$driver->to($address, $name);
+        return new static;
     }
 
     public static function from(string $address, string $name = null)
@@ -83,6 +87,7 @@ class Mailer
             throw new BadMethodCallException('this method only exists for smtp and sendmail drivers');
         }
         self::$driver->from($address, $name);
+        return new static;
     }
 
     public static function buildHtml(string $templateName, array $data = [], string $resourcePath = null)
