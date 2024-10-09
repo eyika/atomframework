@@ -57,6 +57,7 @@ class SmtpDriver implements MailerInterface
     //Extend the send function
     public function send(string $subject, string $body): MailerResponse
     {
+        $r = false;
         try {
             $this->mailer->Subject = $subject;
             //Set an HTML and plain-text body, import relative image references

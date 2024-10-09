@@ -2,15 +2,16 @@
 namespace Eyika\Atom\Framework\Support\View;
 
 use Exception;
+use Eyika\Atom\Framework\Support\Arr;
 
 class Twig {
 	static $blocks = array();
 	static $cache_path;
 	static $cache_enabled = FALSE;
-    static $path;
+    static $paths;
 
-	static function make($file, $path = "/", $data = array(), $get_output = false) {
-        self::$path = $path;
+	static function make($file, array|string $paths = "/", $data = array(), $get_output = false) {
+        self::$paths = Arr::wrap($paths);
 		self::$cache_path = config('view.compiled');
 		$cached_file = self::cache($file);
 	    extract($data, EXTR_SKIP);
@@ -67,7 +68,17 @@ class Twig {
 	}
 
 	static function includeFiles($file) {
-		$code = file_get_contents(self::$path . $file);
+		$_path = null;
+		foreach (self::$paths as $path) {
+			if (file_exists($path . $file)) {
+				$_path = $path;
+				break;
+			}
+		}
+		if (!$_path) {
+			return '';
+		}
+		$code = file_get_contents($_path . $file);
 		preg_match_all('/{% ?(extends|include) ?\'?(.*?)\'? ?%}/i', $code, $matches, PREG_SET_ORDER);
 		foreach ($matches as $value) {
 			$code = str_replace($value[0], self::includeFiles($value[2]), $code);

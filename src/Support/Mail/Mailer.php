@@ -28,18 +28,30 @@ class Mailer
      */
     public function __construct(array $config = null, string $driver = null)
     {
-        $driver = $driver ?? config('mail.default');
-        $config['driver'] = $driver;
-        $this->config = $config ?? config('mail.mailers', [])[$driver];
+        if (self::$instantiated) {
+            // Prevent multiple instantiations
+            return;
+        }
 
-        $this->setDriver($this->config['transport']);
-        static::$instantiated = true;
+        self::$instantiated = true;
+        $driver = $driver ?? config('mail.default');
+        self::$config = $config ?? config('mail.mailers', [])[$driver];
+        self::$config['driver'] = $driver;
+
+        self::setDriver(self::$config['transport']);
     }
 
-    public static function setDriver(string $transport)
+    public static function init(string $driver = null, array $config = null): self
     {
-        if (! self::$instantiated)
-            new static;
+        if (!self::$instantiated) {
+            return new static($config, $driver); // Only instantiate if not already instantiated
+        }
+
+        return new static;
+    }
+
+    public static function setDriver(string $transport): self
+    {
         switch ($transport) {
             case 'smtp':
                 self::$driver = new SmtpDriver(self::$config ?? []);
@@ -71,39 +83,47 @@ class Mailer
         return new static;
     }
 
-    public static function to(string $address, string $name = null)
+    public static function to(string $address, string $name = null): self
     {
-        if (! self::$instantiated)
+        if (!self::$instantiated) {
             new static;
+        }
         self::$driver->to($address, $name);
         return new static;
     }
 
-    public static function from(string $address, string $name = null)
+    public static function from(string $address, string $name = null): self
     {
-        if (! self::$instantiated)
+        if (!self::$instantiated) {
             new static;
-        if (!self::$driver instanceof SmtpDriver || !self::$driver instanceof SendmailDriver) {
-            throw new BadMethodCallException('this method only exists for smtp and sendmail drivers');
         }
+
+        if (!self::$driver instanceof SmtpDriver && !self::$driver instanceof SendmailDriver) {
+            throw new BadMethodCallException('This method only exists for smtp and sendmail drivers');
+        }
+
         self::$driver->from($address, $name);
         return new static;
     }
 
-    public static function buildHtml(string $templateName, array $data = [], string $resourcePath = null)
+    public static function buildHtml(string $templateName, array $data = [], string $resourcePath = null): self
     {
-        if (! self::$instantiated)
+        if (!self::$instantiated) {
             new static;
+        }
         self::$html = Twig::make($templateName, $resourcePath ?? config('mail.markdown.paths'), $data, true);
         return new static;
     }
 
     public static function send($subject, $to = null): MailerResponse
     {
-        if (! self::$instantiated)
+        if (!self::$instantiated) {
             new static;
-        if ($to)
+        }
+
+        if ($to) {
             self::to($to);
+        }
 
         return self::$driver->send($subject, self::$html);
     }
