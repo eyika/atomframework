@@ -70,6 +70,8 @@ class Twig {
 	static function includeFiles($file) {
 		$_path = null;
 		foreach (self::$paths as $path) {
+			if (!str_ends_with($path, '/'))
+				$path .= '/';
 			if (file_exists($path . $file)) {
 				$_path = $path;
 				break;
