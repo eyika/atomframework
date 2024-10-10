@@ -19,6 +19,7 @@ class ArrayDriver implements MailerInterface
                 'body' => $body,
             ];
 
+            $this->tos = [];
             return new MailerResponse(true, null, null);
         } catch (\Exception $e) {
             return new MailerResponse(false, null, $e->getMessage(), $e);

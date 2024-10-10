@@ -3,7 +3,6 @@ namespace Eyika\Atom\Framework\Support\Mail;
 
 use BadMethodCallException;
 use Exception;
-use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\ArrayDriver;
 use Eyika\Atom\Framework\Support\LogDriver;
 use Eyika\Atom\Framework\Support\Mail\Contracts\MailerInterface;
@@ -26,14 +25,17 @@ class Mailer
     /**
      * @param array $config  The config data of the intended mailer driver
      */
-    public function __construct(array $config = null, string $driver = null)
+    public function __construct(array $config = null, string|MailerInterface $driver = null)
     {
         if (self::$instantiated) {
             // Prevent multiple instantiations
-            return;
+            return $this;
         }
 
         self::$instantiated = true;
+        if ($driver instanceof MailerInterface)
+            return $this;
+
         $driver = $driver ?? config('mail.default');
         self::$config = $config ?? config('mail.mailers', [])[$driver];
         self::$config['driver'] = $driver;
@@ -50,7 +52,7 @@ class Mailer
         return new static;
     }
 
-    public static function setDriver(string $transport): self
+    protected static function setDriver(string $transport): void
     {
         switch ($transport) {
             case 'smtp':
@@ -80,7 +82,7 @@ class Mailer
             default:
                 throw new \InvalidArgumentException("Unsupported mail driver: $transport");
         }
-        return new static;
+        // return new static;
     }
 
     public static function to(string $address, string $name = null): self
@@ -89,7 +91,7 @@ class Mailer
             new static;
         }
         self::$driver->to($address, $name);
-        return new static;
+        return new static(self::$config, self::$driver);
     }
 
     public static function from(string $address, string $name = null): self
@@ -103,7 +105,7 @@ class Mailer
         }
 
         self::$driver->from($address, $name);
-        return new static;
+        return new static(static::$config, static::$driver);
     }
 
     public static function buildHtml(string $templateName, array $data = [], string $resourcePath = null): self
@@ -111,8 +113,8 @@ class Mailer
         if (!self::$instantiated) {
             new static;
         }
-        self::$html = Twig::make($templateName, $resourcePath ?? config('mail.markdown.paths'), $data, true);
-        return new static;
+        static::$html = Twig::make($templateName, $resourcePath ?? config('mail.markdown.paths'), $data, true);
+        return new static(static::$config, static::$driver);
     }
 
     public static function send($subject, $to = null): MailerResponse
@@ -125,6 +127,6 @@ class Mailer
             self::to($to);
         }
 
-        return self::$driver->send($subject, self::$html);
+        return static::$driver->send($subject, static::$html);
     }
 }

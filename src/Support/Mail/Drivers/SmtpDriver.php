@@ -25,9 +25,7 @@ class SmtpDriver implements MailerInterface
         $this->mailer->Port = $port;
         //Send via SMTP
         $this->mailer->isSMTP();
-        $this->mailer->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        //Equivalent to setting `Host`, `Port` and `SMTPSecure` all at once
-        // $this->Host = "tls://$host:$port";
+        $this->mailer->SMTPSecure = $config['encryption'];
         if (isset($config['password']) && isset($config['username'])) {
             $this->mailer->SMTPAuth = true;
             $this->mailer->Password = $config['password'];
@@ -63,10 +61,8 @@ class SmtpDriver implements MailerInterface
             //Set an HTML and plain-text body, import relative image references
             $this->mailer->msgHTML($body, './images/'); //TODO: images path not yet correct
             $r = $this->mailer->send();
-            if (config('app.env') === 'local')
-                // logger(storage_path()."logs/email.log")->info('I sent a message with subject ' . $this->Subject);
     
-                return new MailerResponse($r, $this->mailer->getLastMessageID());
+            return new MailerResponse($r, $this->mailer->getLastMessageID());
         } catch (Exception $e) {
             return  new MailerResponse($r, null, $e->getMessage(), $e);
         }
