@@ -94,6 +94,19 @@ class Mailer
         return new static(self::$config, self::$driver);
     }
 
+    public static function replyTo(string $address, string $name = null): self
+    {
+        if (!self::$instantiated) {
+            new static;
+        }
+
+        if (!self::$driver instanceof SmtpDriver && !self::$driver instanceof SendmailDriver) {
+            throw new BadMethodCallException('This method only exists for smtp and sendmail drivers');
+        }
+        self::$driver->replyTo($address, $name);
+        return new static(self::$config, self::$driver);
+    }
+
     public static function from(string $address, string $name = null): self
     {
         if (!self::$instantiated) {
