@@ -3,14 +3,14 @@
 namespace Eyika\Atom\Framework\Foundation;
 
 use Exception;
+use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel as ContractsConsoleKernel;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\NamespaceHelper;
-use Eyika\Atom\Framework\Support\Str;
 use Eyika\Atom\Framework\Foundation\Console\Command;
+use Eyika\Atom\Framework\Foundation\Console\Scheduler;
+use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Support\Encrypter;
-use Eyika\Atom\Framework\Support\Facade\Request;
-use Eyika\Atom\Framework\Support\Facade\Scheduler;
 use Eyika\Atom\Framework\Support\Storage\File;
 use Eyika\Atom\Framework\Support\Storage\Storage;
 
@@ -35,7 +35,8 @@ class ConsoleKernel implements ContractsConsoleKernel
     public function __construct()
     {
         $this->loadCommands();
-        $this->loadThirdPartyCommands();
+        $this->loadProjectCommands();
+        // $this->loadLibrariesCommands();
         $this->loadFacades();
     }
 
@@ -61,7 +62,7 @@ class ConsoleKernel implements ContractsConsoleKernel
     public function run(string $name, array $arguments = [])
     {
         //Load console route command definitions into $commands array
-        require base_path().'/routes/console.php';
+        require base_path('routes/console.php');
 
         if (isset($this->commands[$name])) {
             $command = $this->commands[$name]['command'];
@@ -84,11 +85,11 @@ class ConsoleKernel implements ContractsConsoleKernel
     /**
      * Load all the defined commands into console kernel registry
      */
-    protected function loadCommands(string $fullPath = null)
+    protected function loadCommands(string $fullPath = null, string $namespace = null, $base_folder = 'src')
     {
         try {
             $fullPath = $fullPath ?? base_path("vendor/eyika/atom-framework/src/Foundation/Console/Commands");
-            $namespace = framework_namespace();
+            $namespace = $namespace ??  framework_namespace();
 
             NamespaceHelper::loadAndPerformActionOnClasses($namespace, $fullPath, function (string $class_name, string $command) {
                 $command_obj = new $command;
@@ -96,22 +97,7 @@ class ConsoleKernel implements ContractsConsoleKernel
                 $args = explode(' ', $command_obj->signature);
                 $signature = array_shift($args) ?? '';
                 $this->register($signature, $command_obj, $args);
-            });
-            // $listObject = new \RecursiveIteratorIterator(
-            //     new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
-            //     \RecursiveIteratorIterator::CHILD_FIRST
-            // );
-            // $namespace = NamespaceHelper::getBaseNamespace();
-
-            // foreach ($listObject as $fileinfo) {
-            //     if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1])
-            //         $command = classFromFile($fileinfo, $namespace);
-            //         $command_obj = new $command;
-    
-            //         $args = explode(' ', $command_obj->signature);
-            //         $signature = array_shift($args) ?? '';
-            //         $this->register($signature, $command_obj, $args);
-            // }
+            }, $base_folder);
         } catch (Exception $e) {
             logger()->info("INTERNAL: ".$e->getMessage(), $e->getTrace());
             ///TODO handle exception
@@ -119,11 +105,20 @@ class ConsoleKernel implements ContractsConsoleKernel
     }
 
     /**
+     * Load all the defined project commands into console kernel registry
+     */
+    protected function loadProjectCommands()
+    {
+        $this->loadCommands(base_path('app/Console/Commands'), project_namespace(), 'app');
+    }
+
+    /**
      * Load all the defined third party commands into console kernel registry
      */
-    protected function loadThirdPartyCommands()
+    protected function loadLibrariesCommands()
     {
-        $this->loadCommands(base_path() . 'app/Console/Commands');
+        throw new NotImplementedException('this method is not yet implemented');
+        $this->loadCommands(base_path('app/Console/Commands'), project_namespace(), 'app');
     }
 
     /**
@@ -132,41 +127,12 @@ class ConsoleKernel implements ContractsConsoleKernel
     protected function loadFacades()
     {
         try {
-            // $fullPath = base_path("vendor/eyika/atom-framework/src/Support/Facade");
-            // $namespace = framework_namespace();
             $app = Facade::getFacadeApplication();
 
-            // NamespaceHelper::loadAndPerformActionOnClasses($namespace, $fullPath, function (string $class_name, string $facade) use ($app) {
-            //     if (in_array(strtolower($class_name), static::ignore_facades))
-            //         return false;
-
-            //     $facade_obj = new $facade;
-
-            //     $app->instance(Str::camel($class_name), $facade_obj);
-            // });
-
-            $facades = self::facadables;
-
-            foreach ($facades as $tag => $class_name) {
+            foreach (self::facadables as $tag => $class_name) {
                 $facade_obj = new $class_name;
                 $app->instance($tag, $facade_obj);
             }
-            // $listObject = new \RecursiveIteratorIterator(
-            //     new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
-            //     \RecursiveIteratorIterator::CHILD_FIRST
-            // );
-    
-            // $namespace = NamespaceHelper::getBaseNamespace();
-    
-            // foreach ($listObject as $fileinfo) {
-            //     if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1]) {
-            //         $facade = classFromFile($fileinfo, $namespace);
-    
-            //         $facade_obj = new $namespace."\/$facade";
-    
-            //         $app->instance(Str::camel($facade), $facade_obj);
-            //     }
-            // }
         } catch (Exception $e) {
             logger()->info("INTERNAL: ".$e->getMessage(), $e->getTrace());
             ///TODO handle exception

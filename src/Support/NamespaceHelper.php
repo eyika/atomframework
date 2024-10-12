@@ -21,7 +21,7 @@ class NamespaceHelper
         throw new \RuntimeException("Base namespace could not be determined.");
     }
 
-    public static function loadAndPerformActionOnClasses(string $namespace, string $fullPath, callable $method, $after = 'src')
+    public static function loadAndPerformActionOnClasses(string $namespace, string $fullPath, callable $method, $base_folder = 'src')
     {
         $listObject = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
@@ -30,7 +30,7 @@ class NamespaceHelper
 
         foreach ($listObject as $fileinfo) {
             if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', '.php')[1]) {
-                $facade = classFromFile($fileinfo, $namespace, $after);
+                $facade = classFromFile($fileinfo, $namespace, $base_folder);
                 $class_name = explode("\\", $facade);
                 $class_name = $class_name[count($class_name) - 1];
 

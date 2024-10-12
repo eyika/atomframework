@@ -32,7 +32,7 @@ class Facade
     /**
      * Keeps track of the default aliases for resolving classes.
      */
-    protected Arrayable $defaultAliases;
+    protected static Arrayable $defaultAliases;
 
     /**
      * Get the facade default aliases store instance
@@ -42,6 +42,16 @@ class Facade
     public static function defaultAliases()
     {
         return static::$defaultAliases;
+    }
+
+    /**
+     * push the facade default aliases store instance
+     * 
+     * @return Arrayable
+     */
+    public static function pushDefaultAliases(array $aliases = null)
+    {
+        static::$defaultAliases = is_null($aliases) ? new Arrayable([]) : static::$defaultAliases->merge($aliases);
     }
 
     /**

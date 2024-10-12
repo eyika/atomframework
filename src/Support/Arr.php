@@ -225,6 +225,21 @@ Class Arr
     }
 
     /**
+     * Return the values in an array.
+     *
+     * @param  array  $array
+     * @return mixed
+     */
+    public static function values($array)
+    {
+        if (!is_array($array) || empty($array)) {
+            return NULL;
+        }
+
+        return array_values($array);
+    }
+
+    /**
      * Return the last key in an array.
      *
      * @param  array  $array
@@ -774,5 +789,27 @@ Class Arr
         }
 
         return is_array($value) ? $value : [$value];
+    }
+
+    /**
+     * Add a new element to the array.
+     *
+     * @param  array  $array
+     * @param $values
+     * @return mixed void
+     */
+    public static function push(&$array, ...$values)
+    {
+        foreach ($values as $value) {
+            if (is_array($value) && static::isAssoc($value)) {
+                // If it's associative, merge the key-value pairs into the array
+                foreach ($value as $key => $val) {
+                    $array[$key] = $val;
+                }
+            } else {
+                // Otherwise, push the value into the array as a non-associative element
+                $array[] = $value;
+            }
+        }
     }
 }

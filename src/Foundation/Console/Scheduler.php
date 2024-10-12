@@ -3,6 +3,7 @@
 namespace Eyika\Atom\Framework\Foundation\Console;
 
 use Cron\CronExpression;
+use Exception;
 use Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel;
 
 class Scheduler
@@ -24,6 +25,9 @@ class Scheduler
 
     protected function expression(string $expression): self
     {
+        if (!CronExpression::isValidExpression($expression)) {
+            throw new Exception('expression string is not a valid cron expression');
+        }
         $this->tasks[] = [
             'command' => $this->current_name,
             'expression' => $expression

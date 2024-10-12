@@ -2,10 +2,11 @@
 
 namespace Eyika\Atom\Framework\Foundation\Console\Commands\Schedule;
 
-use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
-use Eyika\Atom\Framework\Foundation\Console\BurriedJobRunner;
+use Exception;
 use Eyika\Atom\Framework\Foundation\Console\Command;
-use Eyika\Atom\Framework\Foundation\Console\JobRunner;
+use Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel;
+use Eyika\Atom\Framework\Support\Facade\Facade;
+use Eyika\Atom\Framework\Support\Facade\Scheduler;
 
 class Run extends Command
 {
@@ -13,13 +14,14 @@ class Run extends Command
 
     public function handle(array $arguments = []): bool
     {
+        $app = Facade::getFacadeApplication();
+        $kernel = $app->make(ConsoleKernel::class);
         try {
-            call_user_func(new JobRunner);
-            call_user_func(new BurriedJobRunner);
-        } catch (BaseConsoleException $e) {
+            Scheduler::run($kernel);
+            return true;
+        } catch (Exception $e) {
             $this->error($e->getMessage());
-            return !(bool)($e->getCode());
+            return false;
         }
-        return true;
     }
 }

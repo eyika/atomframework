@@ -44,7 +44,7 @@ class Request
         if ($this->isJson()) {
             $jsonData = json_decode(file_get_contents('php://input'), true);
             if (json_last_error() === JSON_ERROR_NONE) {
-                $this->body = array_merge($this->body, $jsonData);
+                $this->body = array_merge($this->body, $jsonData ?? []);
             }
         }
     }
@@ -181,12 +181,12 @@ class Request
 
     function expectsJson()
     {
-        return strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false;
+        return strpos($this->server('HTTP_ACCEPT', ''), 'application/json') !== false;
     }
     
     function isXmlHttpRequest()
     {
-        return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        return strtolower($this->server('HTTP_X_REQUESTED_WITH', '')) === 'xmlhttprequest';
     }
 
     public function getPathInfo()

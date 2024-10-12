@@ -23,6 +23,11 @@ class Artisan
         return new static;
     }
 
+    public static function call(string $name, $arguments = [])
+    {
+        return static::run($name, $arguments);
+    }
+
     public static function terminate($arguments = [])
     {
         exit(Console::terminate($arguments));
