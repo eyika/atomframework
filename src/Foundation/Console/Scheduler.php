@@ -37,6 +37,36 @@ class Scheduler
         return $this;
     }
 
+    public function everyMinute(): self
+    {
+        return $this->expression('* * * * *');
+    }
+
+    public function everyTwoMinutes(): self
+    {
+        return $this->expression('*/2 * * * *');
+    }
+
+    public function everyFiveMinutes(): self
+    {
+        return $this->expression('*/5 * * * *');
+    }
+
+    public function everyTenMinutes(): self
+    {
+        return $this->expression('*/10 * * * *');
+    }
+
+    public function everyFifteenMinutes(): self
+    {
+        return $this->expression('*/15 * * * *');
+    }
+
+    public function everyThirtyMinutes(): self
+    {
+        return $this->expression('0,30 * * * *');
+    }
+
     public function hourly(): self
     {
         return $this->expression('@hourly');
@@ -77,6 +107,8 @@ class Scheduler
         $now = new \DateTime();
         
         foreach ($this->tasks as $task) {
+            if (!$task['expression'] ?? null)
+                continue;
             $expression = new CronExpression($task['expression']);
             if ($expression->isDue($now)) {
                 $registry->run($task['command']);
