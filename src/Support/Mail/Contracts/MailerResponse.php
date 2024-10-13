@@ -6,11 +6,11 @@ use Exception;
 class MailerResponse
 {
     public bool $success;
-    public int | null $message_id;
+    public int | string | null $message_id;
     public string | null $error;
     public Exception | null $exception;
 
-    public function __construct(bool $success, int $message_id = null, string $error = null, Exception $exception = null)
+    public function __construct(bool $success, int | string $message_id = null, string $error = null, Exception $exception = null)
     {
         $this->success = $success;
         $this->message_id = $message_id;
