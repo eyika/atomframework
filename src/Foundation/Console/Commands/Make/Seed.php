@@ -25,7 +25,7 @@ class Seed extends Command
             $code = $this->executeCommand($arguments);
         } catch (BaseConsoleException $e) {
             $this->error($e->getMessage(), $e->getTrace());
-            return !(bool)($e->getCode());
+            return !(bool)$e->getCode();
         }
 
         return !(bool)$code;

@@ -25,8 +25,8 @@ class Migration extends Command
             $code = $this->executeCommand($arguments);
         } catch (BaseConsoleException $e) {
             $this->error($e->getMessage());
-            return !(bool)($e->getCode());
+            return !(bool)$e->getCode();
         }
-        return !(bool)($code());
+        return !(bool)$code;
     }
 }

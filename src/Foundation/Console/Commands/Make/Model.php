@@ -85,7 +85,7 @@ class Model extends Command
             $this->info("Model with name $name created successfully");
         } catch (Exception $e) {
             $this->error($e->getMessage());
-            return !(bool)($e->getCode());
+            return !(bool)$e->getCode();
         }
         return true;
     }

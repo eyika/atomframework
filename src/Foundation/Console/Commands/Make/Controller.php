@@ -191,7 +191,7 @@ class Controller extends Command
             $this->info("controller with name $name created successfully");
         } catch (Exception $e) {
             $this->error($e->getMessage());
-            return !(bool)($e->getCode());
+            return !(bool)$e->getCode();
         }
         return true;
     }
