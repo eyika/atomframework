@@ -334,7 +334,7 @@ class mysqly {
 
       $sql .= $order_limit_or_offset;
     }
-    if (env('APP_ENV', null) === 'local')
+    // if (env('APP_ENV', null) === 'local')
       // logger()->info($sql, isset($bind) &&  is_array($bind) ? $bind : []);
 
     $res = isset($bind) ? static::exec($sql, $bind) : static::exec($sql);
@@ -509,7 +509,7 @@ class mysqly {
     $values = static::values($data, $bind);
     $sql = 'INSERT ' . ($ignore ? ' IGNORE ' : '') . "INTO `{$table}` SET {$values}";
     
-    if (env('APP_ENV', null) === 'local')
+    // if (env('APP_ENV', null) === 'local')
       // logger()->info($sql, $bind);
     try {
       static::exec($sql, $bind);
