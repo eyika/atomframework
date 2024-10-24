@@ -14,7 +14,6 @@ class ServePublicAssets implements MiddlewareInterface
      */
     public function handle(Request $request): bool
     {
-        logger()->info('got to serve public');
         $server = strtolower($request->server('SERVER_SOFTWARE', ''));
     
     
@@ -28,10 +27,8 @@ class ServePublicAssets implements MiddlewareInterface
 
             $uri = explode('?', $_SERVER["REQUEST_URI"])[0];
             if (preg_match('/\.(?:js|css|svg|ico|woff|woff2|ttf|webp|pdf|png|jpg|json|jpeg|gif|md)$/', $uri)) {
-                // logger()->info('got here 0' . $_SERVER["REQUEST_METHOD"]);
                 $path = public_path().$uri;
                 if (file_exists($path)) {
-                    // logger()->info('got here 1' . $_SERVER["REQUEST_METHOD"]);
                     $mime = mime_content_type($path);
                     $ext = pathinfo($path, PATHINFO_EXTENSION);
                     if (array_key_exists($ext, $customMappings)) {
