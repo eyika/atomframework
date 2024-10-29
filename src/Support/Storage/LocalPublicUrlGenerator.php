@@ -9,6 +9,6 @@ class LocalPublicUrlGenerator implements PublicUrlGenerator
 {
     public function publicUrl(string $path, Config $config): string
     {
-        return "/public".$path;
+        return "/storage".$path;
     }
 }
