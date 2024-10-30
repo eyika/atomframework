@@ -112,6 +112,7 @@ class File
 
     protected function initLocalAdapter(): Filesystem
     {
+        $this->diskconfig['root'] .= str_ends_with("/", $this->diskconfig['root']) ? "" : "/";
         if (!file_exists($this->diskconfig['root']))
             mkdir($this->diskconfig['root'], 0775, true);
 

@@ -159,7 +159,7 @@ class Storage
     public function delete($path, $isfullpath = false): bool
     {
         // $path = $isfullpath ? $path : $this->getFullPath($path);
-        $result = false;
+        // $result = false;
 
         $result = $this->file->delete($path);
 
