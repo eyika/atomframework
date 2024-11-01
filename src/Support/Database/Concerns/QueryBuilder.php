@@ -448,6 +448,16 @@ trait QueryBuilder
         return $this->_where($column, '!=', $value, 'AND');
     }
 
+    public function whereNull($column)
+    {
+        return $this->_where($column, ' IS NULL');
+    }
+
+    public function whereNotNull($column)
+    {
+        return $this->_where($column, 'NOT NULL');
+    }
+
     public function orWhere($column, $operatorOrValue = null, $value = null)
     {
         return $this->_where($column, $operatorOrValue, $value, 'OR');
@@ -491,6 +501,16 @@ trait QueryBuilder
     public function orWhereNotEqual($column, $value = null)
     {
         return $this->_where($column, '!=', $value, 'OR');
+    }
+
+    public function orWhereNull($column)
+    {
+        return $this->_where($column, ' IS NULL', boolean: 'OR');
+    }
+
+    public function orWhereNotNull($column)
+    {
+        return $this->_where($column, 'NOT NULL', boolean: 'OR');
     }
 
     public function beginTransaction()

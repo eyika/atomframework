@@ -425,6 +425,24 @@ interface ModelInterface extends ModelEventsInterface
      * Add a where clause to the query instance
      * 
      * @param string $column
+     * 
+     * @return self
+     */
+    public function whereNull($column);
+
+    /**
+     * Add a where clause to the query instance
+     * 
+     * @param string $column
+     * 
+     * @return self
+     */
+    public function whereNotNull($column);
+
+    /**
+     * Add a where clause to the query instance
+     * 
+     * @param string $column
      * @param mixed $value
      * 
      * @return self
@@ -531,6 +549,24 @@ interface ModelInterface extends ModelEventsInterface
      * @return self
      */
     public function orWhereNotEqual($column, $value = null);
+
+    /**
+     * Add an orWhereNull clause to the query instance
+     * 
+     * @param string $column
+     * 
+     * @return self
+     */
+    public function orWhereNull($column);
+
+    /**
+     * Add an orWhereNotNull clause to the query instance
+     * 
+     * @param string $column
+     * 
+     * @return self
+     */
+    public function orWhereNotNull($column);
 
     /**
      * Begin a Transaction (all subsequent statements will be executed in that transaction)
