@@ -12,21 +12,21 @@ trait ModelProperties
      *
      * @var string
      */
-    protected $table;
+    public $table;
 
     /**
      * The primary key for the model in db
      *
      * @var string
      */
-    protected $primaryKey = 'id';
+    public $primaryKey = 'id';
 
     /**
      * Wether the model can be soft deleted
      * 
      * @var string
      */
-    protected $softdeletes = true;
+    public $softdeletes = true;
 
     /**
      * id property of the model
@@ -47,7 +47,7 @@ trait ModelProperties
      * 
      * @var array
      */
-    protected const fillable = [
+    public const fillable = [
         'id', 'created_at', 'updated_at', 'deleted_at'
     ];
 
@@ -56,14 +56,14 @@ trait ModelProperties
      * 
      * @var array
      */
-    protected const guarded = ['deleted_at'];
+    public const guarded = ['deleted_at'];
 
     /**
      * Indicates what database attributes of the model can be exposed outside the application
      * 
      * @var array
      */
-    protected const defaultGuarded = ['incrementing', 'exists', 'wasRecentlyCreated'];
+    public const defaultGuarded = ['incrementing', 'exists', 'wasRecentlyCreated'];
 
     /**
      * Indicates if the IDs are auto-incrementing.
