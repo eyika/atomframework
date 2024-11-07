@@ -47,7 +47,7 @@ trait ModelProperties
      * 
      * @var array
      */
-    public const fillable = [
+    protected const fillable = [
         'id', 'created_at', 'updated_at', 'deleted_at'
     ];
 
@@ -56,14 +56,14 @@ trait ModelProperties
      * 
      * @var array
      */
-    public const guarded = ['deleted_at'];
+    protected const guarded = ['deleted_at'];
 
     /**
      * Indicates what database attributes of the model can be exposed outside the application
      * 
      * @var array
      */
-    public const defaultGuarded = ['incrementing', 'exists', 'wasRecentlyCreated'];
+    protected const defaultGuarded = ['incrementing', 'exists', 'wasRecentlyCreated'];
 
     /**
      * Indicates if the IDs are auto-incrementing.
