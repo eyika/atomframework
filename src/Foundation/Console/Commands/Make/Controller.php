@@ -25,16 +25,16 @@ class Controller extends Command
             $controller_str_spc = str_replace('_', ' ', $controller_str);
             $controller_str_plural = Str::plural($controller_str);
             $controller_str_spc_plural = Str::plural($controller_str_spc);
-            $slash = DIRECTORY_SEPARATOR;
+            // $slash = DIRECTORY_SEPARATOR;
     
             if ($type === '--api') {
-                $api = 'Api'.$slash;
+                $api = 'Api/';
             } else {
                 $api = '';
             }
-            $controller_folder = base_path().$slash."Controllers".$slash.$api;
+            $controller_folder = base_path("app/Http/Controllers/$api");
         
-            $api = str_replace($slash, '', $api);
+            $api = str_replace('/', '', $api);
     
             $controller_template = "<?php
             namespace App\Http\Controllers$api;

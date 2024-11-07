@@ -20,8 +20,8 @@ class Model extends Command
     
             $name = Str::pascal($name);
             $name_lower = Str::plural(Str::snake($name));
-            $slash = DIRECTORY_SEPARATOR;
-            $model_folder = base_path().$slash."Models".$slash;
+            // $slash = DIRECTORY_SEPARATOR;
+            $model_folder = base_path("app/Models/");
     
     
             if (file_exists($model_folder.$name.'.php')) {
