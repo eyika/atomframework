@@ -408,7 +408,7 @@ trait QueryBuilder
         return $this->_where($column, $operatorOrValueOrMethod, $value, 'AND');
     }
     
-    public function whereLike($column, $value = null)
+    public function whereLike($column, $value)
     {
         return $this->_where($column, 'LIKE', $value, 'AND');
     }
@@ -423,37 +423,37 @@ trait QueryBuilder
         return $this->_where($column, 'NOT IN', $values, 'AND');
     }
 
-    public function whereNotLike($column, $value = null)
+    public function whereNotLike($column, $value)
     {
         return $this->_where($column, 'NOT LIKE', $value, 'AND');
     }
 
-    public function whereLessThan($column, $value = null)
+    public function whereLessThan($column, $value)
     {
         return $this->_where($column, '<', $value, 'AND');
     }
 
-    public function whereGreaterThan($column, $value = null)
+    public function whereGreaterThan($column, $value)
     {
         return $this->_where($column, '>', $value, 'AND');
     }
 
-    public function whereLessThanOrEqual($column, $value = null)
+    public function whereLessThanOrEqual($column, $value)
     {
         return $this->_where($column, '<=', $value, 'AND');
     }
 
-    public function whereGreaterThanOrEqual($column, $value = null)
+    public function whereGreaterThanOrEqual($column, $value)
     {
         return $this->_where($column, '>=', $value, 'AND');
     }
 
-    public function whereEqual($column, $value = null)
+    public function whereEqual($column, $value)
     {
         return $this->_where($column, '=', $value, 'AND');
     }
 
-    public function whereNotEqual($column, $value = null)
+    public function whereNotEqual($column, $value)
     {
         return $this->_where($column, '!=', $value, 'AND');
     }
@@ -483,42 +483,42 @@ trait QueryBuilder
         return $this->_where($column, 'NOT IN', $values, 'OR');
     }
 
-    public function orWhereLike($column, $value = null)
+    public function orWhereLike($column, $value)
     {
         return $this->_where($column, 'LIKE', $value, 'OR');
     }
 
-    public function orWhereNotLike($column, $value = null)
+    public function orWhereNotLike($column, $value)
     {
         return $this->_where($column, 'NOT LIKE', $value, 'OR');
     }
     
-    public function orWhereLessThan($column, $value = null)
+    public function orWhereLessThan($column, $value)
     {
         return $this->_where($column, '<', $value, 'OR');
     }
 
-    public function orWhereGreaterThan($column, $value = null)
+    public function orWhereGreaterThan($column, $value)
     {
         return $this->_where($column, '>', $value, 'OR');
     }
 
-    public function orWhereLessThanOrEqual($column, $value = null)
+    public function orWhereLessThanOrEqual($column, $value)
     {
         return $this->_where($column, '<=', $value, 'OR');
     }
 
-    public function orWhereGreaterThanOrEqual($column, $value = null)
+    public function orWhereGreaterThanOrEqual($column, $value)
     {
         return $this->_where($column, '>=', $value, 'OR');
     }
 
-    public function orWhereEqual($column, $value = null)
+    public function orWhereEqual($column, $value)
     {
         return $this->_where($column, '=', $value, 'OR');
     }
 
-    public function orWhereNotEqual($column, $value = null)
+    public function orWhereNotEqual($column, $value)
     {
         return $this->_where($column, '!=', $value, 'OR');
     }
