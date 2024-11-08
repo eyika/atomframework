@@ -412,6 +412,16 @@ trait QueryBuilder
     {
         return $this->_where($column, 'LIKE', $value, 'AND');
     }
+    
+    public function whereIn($column, $values)
+    {
+        return $this->_where($column, 'IN', $values, 'AND');
+    }
+    
+    public function whereNotIn($column, $values)
+    {
+        return $this->_where($column, 'NOT IN', $values, 'AND');
+    }
 
     public function whereNotLike($column, $value = null)
     {
@@ -450,7 +460,7 @@ trait QueryBuilder
 
     public function whereNull($column)
     {
-        return $this->_where($column, ' IS NULL');
+        return $this->_where($column, 'IS NULL');
     }
 
     public function whereNotNull($column)
@@ -461,6 +471,16 @@ trait QueryBuilder
     public function orWhere($column, $operatorOrValue = null, $value = null)
     {
         return $this->_where($column, $operatorOrValue, $value, 'OR');
+    }
+    
+    public function orWhereIn($column, $values)
+    {
+        return $this->_where($column, 'IN', $values, 'OR');
+    }
+    
+    public function orWhereNotIn($column, $values)
+    {
+        return $this->_where($column, 'NOT IN', $values, 'OR');
     }
 
     public function orWhereLike($column, $value = null)

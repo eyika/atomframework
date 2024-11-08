@@ -38,7 +38,7 @@ class mysqly {
       }
 
       $in = implode(', ', $in);
-      $where[] = "`{$k}` IN ($in){$or_and}";
+      $where[] = "`{$k}` {$_operator} ($in){$or_and}";
       $incr_operator = false;
     }
     else if ($v !== null && str_contains((string)$v, 'NULL')) {

@@ -365,6 +365,26 @@ interface ModelInterface extends ModelEventsInterface
      * Add a where clause to the query instance
      * 
      * @param string $column
+     * @param array $values
+     * 
+     * @return self
+     */
+    public function whereIn($column, array $values = null);
+    
+    /**
+     * Add a where clause to the query instance
+     * 
+     * @param string $column
+     * @param array $values
+     * 
+     * @return self
+     */
+    public function whereNotIn($column, array $values = null);
+    
+    /**
+     * Add a where clause to the query instance
+     * 
+     * @param string $column
      * @param mixed $value
      * 
      * @return self
