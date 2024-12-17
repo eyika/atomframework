@@ -31,7 +31,7 @@ class GenerateKey extends Command
 
         // Load the .env file content
         $envPath = base_path('.env');
-        $envContent = File::get($envPath);
+        $envContent = file_get_contents($envPath);
 
         // Replace the existing APP_KEY value with the new one
         if (Str::contains($envContent, 'APP_KEY=')) {
@@ -41,7 +41,7 @@ class GenerateKey extends Command
         }
 
         // Save the updated .env file
-        File::put($envPath, $envContent);
+        file_put_contents($envPath, $envContent);
 
         // Set the key in the environment
         // config(['app.key' => $key]);
