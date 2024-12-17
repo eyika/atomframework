@@ -12,21 +12,21 @@ trait ModelProperties
      *
      * @var string
      */
-    protected $table;
+    public $table;
 
     /**
      * The primary key for the model in db
      *
      * @var string
      */
-    protected $primaryKey = 'id';
+    public $primaryKey = 'id';
 
     /**
      * Wether the model can be soft deleted
      * 
      * @var string
      */
-    protected $softdeletes = true;
+    public $softdeletes = true;
 
     /**
      * id property of the model

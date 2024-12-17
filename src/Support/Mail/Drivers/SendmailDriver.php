@@ -45,7 +45,7 @@ class SendmailDriver implements MailerInterface
             $this->mailer->Body = $body;
             $result = $this->mailer->send();
 
-            return new MailerResponse($result, null, null);
+            return new MailerResponse($result, $this->mailer->getLastMessageID(), null);
         } catch (Exception $e) {
             return new MailerResponse(false, null, $e->getMessage(), $e);
         }

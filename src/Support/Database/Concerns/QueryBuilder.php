@@ -2,11 +2,14 @@
 
 namespace Eyika\Atom\Framework\Support\Database\Concerns;
 
+use Carbon\Carbon;
 use Exception;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Database\mysqly;
 use Eyika\Atom\Framework\Support\Database\PaginatedData;
+
+use function Symfony\Component\Clock\now;
 
 trait QueryBuilder
 {
@@ -86,55 +89,13 @@ trait QueryBuilder
     {
         $this->child->fill($values);
 
-        $this->child->boot($this->child, 'creating');
-        $this->child->booted($this->child, 'creating');
-        $this->child->booting($this->child, 'creating');
-
-        if (!$id = mysqly::insert($this->table, $values)) {
-            return false;
-        }
-        
-        if (count($select)) {
-            $fields = $select;
-        } else {
-            $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
-        }
-
-        if (!$model = mysqly::fetch($this->table, ['id' => $id], $fields)) {
-            return true;
-        }
-        $this->child->fill($model[0]);
-
-        $this->child->boot($this->child, 'created');
-        $this->child->booted($this->child, 'created');
-        $this->child->booting($this->child, 'created');
-
-        return $this->child;
+        return $this->_save($is_protected, $select);
     }
 
     public function save()
     {
-        $values = Arr::where($this->toArray(), function ($v, $k) {      // to be used to filter out empty values in future
-            return true;
-        }, ARRAY_FILTER_USE_BOTH);
-
-        if ($this->isSaved()) {
-            $model = $this->_update($values, $this->child->{$this->child->primaryKey}, true, should_fill: false);
-            if (!$model)
-                return false;
-        } else {
-            if (!$id = mysqly::insert($this->table, $values)) {
-                return false;
-            }
-
-            $fields = $this::fillable;
-            if (!$model = mysqly::fetch($this->table, ['id' => $id], $fields)) {
-                return true;
-            }
-        }
-
-        $this->child->{$this->child::UPDATED_AT} = $model[0][$this->child->{$this->child::UPDATED_AT}] ?? null;
-        $this->child->{$this->child->primaryKey} = $model[0][$this->child->{$this->child->primaryKey}] ?? null;
+        if (!$this->_save())
+            return false;
 
         return true;
     }
@@ -408,89 +369,129 @@ trait QueryBuilder
         return $this->_where($column, $operatorOrValueOrMethod, $value, 'AND');
     }
     
-    public function whereLike($column, $value = null)
+    public function whereLike($column, $value)
     {
         return $this->_where($column, 'LIKE', $value, 'AND');
     }
+    
+    public function whereIn($column, $values)
+    {
+        return $this->_where($column, 'IN', $values, 'AND');
+    }
+    
+    public function whereNotIn($column, $values)
+    {
+        return $this->_where($column, 'NOT IN', $values, 'AND');
+    }
 
-    public function whereNotLike($column, $value = null)
+    public function whereNotLike($column, $value)
     {
         return $this->_where($column, 'NOT LIKE', $value, 'AND');
     }
 
-    public function whereLessThan($column, $value = null)
+    public function whereLessThan($column, $value)
     {
         return $this->_where($column, '<', $value, 'AND');
     }
 
-    public function whereGreaterThan($column, $value = null)
+    public function whereGreaterThan($column, $value)
     {
         return $this->_where($column, '>', $value, 'AND');
     }
 
-    public function whereLessThanOrEqual($column, $value = null)
+    public function whereLessThanOrEqual($column, $value)
     {
         return $this->_where($column, '<=', $value, 'AND');
     }
 
-    public function whereGreaterThanOrEqual($column, $value = null)
+    public function whereGreaterThanOrEqual($column, $value)
     {
         return $this->_where($column, '>=', $value, 'AND');
     }
 
-    public function whereEqual($column, $value = null)
+    public function whereEqual($column, $value)
     {
         return $this->_where($column, '=', $value, 'AND');
     }
 
-    public function whereNotEqual($column, $value = null)
+    public function whereNotEqual($column, $value)
     {
         return $this->_where($column, '!=', $value, 'AND');
+    }
+
+    public function whereNull($column)
+    {
+        return $this->_where($column, 'IS NULL');
+    }
+
+    public function whereNotNull($column)
+    {
+        return $this->_where($column, 'NOT NULL');
     }
 
     public function orWhere($column, $operatorOrValue = null, $value = null)
     {
         return $this->_where($column, $operatorOrValue, $value, 'OR');
     }
+    
+    public function orWhereIn($column, $values)
+    {
+        return $this->_where($column, 'IN', $values, 'OR');
+    }
+    
+    public function orWhereNotIn($column, $values)
+    {
+        return $this->_where($column, 'NOT IN', $values, 'OR');
+    }
 
-    public function orWhereLike($column, $value = null)
+    public function orWhereLike($column, $value)
     {
         return $this->_where($column, 'LIKE', $value, 'OR');
     }
 
-    public function orWhereNotLike($column, $value = null)
+    public function orWhereNotLike($column, $value)
     {
         return $this->_where($column, 'NOT LIKE', $value, 'OR');
     }
     
-    public function orWhereLessThan($column, $value = null)
+    public function orWhereLessThan($column, $value)
     {
         return $this->_where($column, '<', $value, 'OR');
     }
 
-    public function orWhereGreaterThan($column, $value = null)
+    public function orWhereGreaterThan($column, $value)
     {
         return $this->_where($column, '>', $value, 'OR');
     }
 
-    public function orWhereLessThanOrEqual($column, $value = null)
+    public function orWhereLessThanOrEqual($column, $value)
     {
         return $this->_where($column, '<=', $value, 'OR');
     }
 
-    public function orWhereGreaterThanOrEqual($column, $value = null)
+    public function orWhereGreaterThanOrEqual($column, $value)
     {
         return $this->_where($column, '>=', $value, 'OR');
     }
 
-    public function orWhereEqual($column, $value = null)
+    public function orWhereEqual($column, $value)
     {
         return $this->_where($column, '=', $value, 'OR');
     }
 
-    public function orWhereNotEqual($column, $value = null)
+    public function orWhereNotEqual($column, $value)
     {
         return $this->_where($column, '!=', $value, 'OR');
+    }
+
+    public function orWhereNull($column)
+    {
+        return $this->_where($column, ' IS NULL', boolean: 'OR');
+    }
+
+    public function orWhereNotNull($column)
+    {
+        return $this->_where($column, 'NOT NULL', boolean: 'OR');
     }
 
     public function beginTransaction()
@@ -509,6 +510,11 @@ trait QueryBuilder
     {
         mysqly::rollback();
         $this->transaction_mode = false;
+    }
+
+    public function distinct($column)
+    {
+        is_string($this->operators) ? $this->operators = ["DISTINCT `$column`"] : array_push($this->operators, "DISTINCT `$column`");
     }
 
     /**
@@ -572,8 +578,66 @@ trait QueryBuilder
         return $this;
     }
 
-    public function distinct($column)
+    private function _save($is_protected = true, $select = []): bool|\Eyika\Atom\Framework\Support\Database\Model
     {
-        is_string($this->operators) ? $this->operators = ["DISTINCT `$column`"] : array_push($this->operators, "DISTINCT `$column`");
+        if ($this->isSaved()) {
+            $this->child->boot($this->child, 'saving');
+            $this->child->booted($this->child, 'saving');
+            $this->child->booting($this->child, 'saving');
+
+            $values = Arr::where($this->child->toArray(false, ignore: ['deleted_at', 'created_at']), function ($v, $k) {      // to be used to filter out empty values in future
+                return true;
+            }, ARRAY_FILTER_USE_BOTH);
+
+            if (array_key_exists('updated_at', $values) && empty($values['updated_at']))
+                $values['updated_at'] = Carbon::now();
+
+            $model = $this->_update($values, $this->child->{$this->child->primaryKey}, true, should_fill: false);
+            if (!$model)
+                return false;
+
+            $this->child->{$this->child::UPDATED_AT} = $model[0][$this->child->{$this->child::UPDATED_AT}] ?? null;
+            $this->child->{$this->child->primaryKey} = $model[0][$this->child->{$this->child->primaryKey}] ?? null;
+
+            $this->child->boot($this->child, 'saved');
+            $this->child->booted($this->child, 'saved');
+            $this->child->booting($this->child, 'saved');
+        } else {
+            $this->child->boot($this->child, 'creating');
+            $this->child->booted($this->child, 'creating');
+            $this->child->booting($this->child, 'creating');
+
+            $values = Arr::where($this->child->toArray(false, ignore: ['deleted_at']), function ($v, $k) {      // to be used to filter out empty values in future
+                return true;
+            }, ARRAY_FILTER_USE_BOTH);
+
+            $timestamps = ['created_at', 'updated_at'];
+    
+            foreach ($timestamps as $timestamp) {
+                if (array_key_exists($timestamp, $values) && empty($values[$timestamp]))
+                    $values[$timestamp] = Carbon::now();
+            }
+    
+            if (!$id = mysqly::insert($this->table, $values)) {
+                return false;
+            }
+
+            if (count($select)) {
+                $fields = $select;
+            } else {
+                $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
+            }
+    
+            if (!$model = mysqly::fetch($this->table, ['id' => $id], $fields)) {
+                return true;
+            }
+            $this->child->fill($model[0]);
+    
+            $this->child->boot($this->child, 'created');
+            $this->child->booted($this->child, 'created');
+            $this->child->booting($this->child, 'created');
+    
+            return $this->child;
+        }
     }
 }

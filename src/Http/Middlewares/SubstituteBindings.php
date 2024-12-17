@@ -38,7 +38,6 @@ class SubstituteBindings implements MiddlewareInterface
                     continue;
                 }
                 if ($model) {
-                    logger()->info('model id is: '. $model->id);
                     $routeParams[$key] = $model;
                 } else {
                     throw new ModelNotFoundException("unable to retrieve $key with id $value");

@@ -356,6 +356,16 @@ class DB
         return static::_where($column, '!=', $value, 'AND');
     }
 
+    public function whereNull($column)
+    {
+        return $this->_where($column, ' IS NULL');
+    }
+
+    public function whereNotNull($column)
+    {
+        return $this->_where($column, 'NOT NULL');
+    }
+
     public static function orWhere($column, $operatorOrValue = null, $value = null)
     {
         return static::_where($column, $operatorOrValue, $value, 'OR');
@@ -399,6 +409,16 @@ class DB
     public static function orWhereNotEqual($column, $value = null)
     {
         return static::_where($column, '!=', $value, 'OR');
+    }
+
+    public function orWhereNull($column)
+    {
+        return $this->_where($column, ' IS NULL', boolean: 'OR');
+    }
+
+    public function orWhereNotNull($column)
+    {
+        return $this->_where($column, 'NOT NULL', boolean: 'OR');
     }
 
     /**

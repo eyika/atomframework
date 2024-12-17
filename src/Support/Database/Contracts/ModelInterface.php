@@ -365,11 +365,31 @@ interface ModelInterface extends ModelEventsInterface
      * Add a where clause to the query instance
      * 
      * @param string $column
+     * @param array $values
+     * 
+     * @return self
+     */
+    public function whereIn($column, array $values);
+    
+    /**
+     * Add a where clause to the query instance
+     * 
+     * @param string $column
+     * @param array $values
+     * 
+     * @return self
+     */
+    public function whereNotIn($column, array $values);
+    
+    /**
+     * Add a where clause to the query instance
+     * 
+     * @param string $column
      * @param mixed $value
      * 
      * @return self
      */
-    public function whereLike($column, $value = null);
+    public function whereLike($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -379,7 +399,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function whereNotLike($column, $value = null);
+    public function whereNotLike($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -389,7 +409,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function whereLessThan($column, $value = null);
+    public function whereLessThan($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -399,7 +419,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function whereGreaterThan($column, $value = null);
+    public function whereGreaterThan($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -409,7 +429,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function whereLessThanOrEqual($column, $value = null);
+    public function whereLessThanOrEqual($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -419,7 +439,25 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function whereGreaterThanOrEqual($column, $value = null);
+    public function whereGreaterThanOrEqual($column, $value);
+
+    /**
+     * Add a where clause to the query instance
+     * 
+     * @param string $column
+     * 
+     * @return self
+     */
+    public function whereNull($column);
+
+    /**
+     * Add a where clause to the query instance
+     * 
+     * @param string $column
+     * 
+     * @return self
+     */
+    public function whereNotNull($column);
 
     /**
      * Add a where clause to the query instance
@@ -429,7 +467,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function whereEqual($column, $value = null);
+    public function whereEqual($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -439,7 +477,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function whereNotEqual($column, $value = null);
+    public function whereNotEqual($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -460,7 +498,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhereLike($column, $value = null);
+    public function orWhereLike($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -470,7 +508,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhereNotLike($column, $value = null);
+    public function orWhereNotLike($column, $value);
     
     /**
      * Add a where clause to the query instance
@@ -480,7 +518,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhereLessThan($column, $value = null);
+    public function orWhereLessThan($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -490,7 +528,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhereGreaterThan($column, $value = null);
+    public function orWhereGreaterThan($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -500,7 +538,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhereLessThanOrEqual($column, $value = null);
+    public function orWhereLessThanOrEqual($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -510,7 +548,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhereGreaterThanOrEqual($column, $value = null);
+    public function orWhereGreaterThanOrEqual($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -520,7 +558,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhereEqual($column, $value = null);
+    public function orWhereEqual($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -530,7 +568,25 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhereNotEqual($column, $value = null);
+    public function orWhereNotEqual($column, $value);
+
+    /**
+     * Add an orWhereNull clause to the query instance
+     * 
+     * @param string $column
+     * 
+     * @return self
+     */
+    public function orWhereNull($column);
+
+    /**
+     * Add an orWhereNotNull clause to the query instance
+     * 
+     * @param string $column
+     * 
+     * @return self
+     */
+    public function orWhereNotNull($column);
 
     /**
      * Begin a Transaction (all subsequent statements will be executed in that transaction)

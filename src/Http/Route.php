@@ -19,6 +19,7 @@ class Route
     private static $instantiated = false;
     private static $lastInsertedRouteKeys = '';
     private static $apiRequest = false;
+    private static array $lastGroupMiddleware = [];
 
     public function __construct()
     {
@@ -29,6 +30,20 @@ class Route
     {
         $previousPrefix = self::$groupPrefix;
         self::$groupPrefix = rtrim(self::$groupPrefix, '/') . '/' . ltrim($prefix, '/');
+
+        if (count(self::$lastGroupMiddleware)) {
+            $previousMiddlewares = self::$middlewares;
+            self::$middlewares = count(self::$lastGroupMiddleware) > 1 && is_string(self::$lastGroupMiddleware[0]) ?
+                [ ...self::$middlewares, self::$lastGroupMiddleware ] :
+                array_merge(self::$middlewares, self::$lastGroupMiddleware);
+
+            self::$lastGroupMiddleware = [];
+            call_user_func($method);
+
+            self::$middlewares = $previousMiddlewares;
+            self::$groupPrefix = $previousPrefix;
+            return new static();
+        }
 
         call_user_func($method);
 
@@ -44,7 +59,7 @@ class Route
             if (self::$lastInsertedRouteKeys !== '') {
                 [$last_key, $last_value] = explode(' ::: ', self::$lastInsertedRouteKeys);
 
-                // self::$routes[$last_key][$last_value]['middlewares'] = [...self::$routes[$last_key][$last_value]['middlewares'], $middleware];
+                self::$routes[$last_key][$last_value]['middlewares'] = // [...self::$routes[$last_key][$last_value]['middlewares'], $middleware];
                     count($middleware) > 1 && is_string($middleware[0]) ?
                         [...self::$routes[$last_key][$last_value]['middlewares'], $middleware] :
                         array_merge(self::$routes[$last_key][$last_value]['middlewares'], $middleware);
@@ -54,10 +69,7 @@ class Route
         }
 
         if ($method === false) {
-            self::$middlewares = count($middleware) > 1 && is_string($middleware[0]) ?
-                [ ...self::$middlewares, $middleware ] :
-                array_merge(self::$middlewares, $middleware);
-
+            self::$lastGroupMiddleware = $middleware;
             return new static();
         }
 

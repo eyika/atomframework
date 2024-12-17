@@ -112,6 +112,7 @@ class File
 
     protected function initLocalAdapter(): Filesystem
     {
+        $this->diskconfig['root'] .= str_ends_with("/", $this->diskconfig['root']) ? "" : "/";
         if (!file_exists($this->diskconfig['root']))
             mkdir($this->diskconfig['root'], 0775, true);
 
@@ -130,7 +131,7 @@ class File
             LOCK_EX,
             LocalFilesystemAdapter::SKIP_LINKS
         );
-        return new Filesystem($adapter);
+        return new Filesystem($adapter, publicUrlGenerator: new LocalPublicUrlGenerator());
     }
 
     protected function initS3Adapter(): Filesystem

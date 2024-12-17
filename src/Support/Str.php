@@ -4,6 +4,7 @@ namespace Eyika\Atom\Framework\Support;
 
 use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Concerns\Macroable;
+use InvalidArgumentException;
 use Ramsey\Uuid\Codec\TimestampFirstCombCodec;
 use Ramsey\Uuid\Generator\CombGenerator;
 use Ramsey\Uuid\Uuid;
@@ -559,6 +560,24 @@ class Str
         }
 
         return $string;
+    }
+
+    /**
+     * Generate a more cryptographically secure pseudo-random integers.
+     *
+     * @param  int  $length
+     * @return string
+     */
+    public static function randomDigits($length = 16)
+    {
+        if ($length <= 0) {
+            throw new InvalidArgumentException("The number of digits must be greater than 0.");
+        }
+    
+        $min = (int) str_pad('1', $length, '0') / 10; // Minimum value: 10^(n-1)
+        $max = (int) str_pad('', $length, '9');      // Maximum value: 10^n - 1
+    
+        return random_int($min, $max);
     }
 
     /**

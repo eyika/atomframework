@@ -8,7 +8,7 @@ use Eyika\Atom\Framework\Support\Database\Contracts\ModelRelationshipInterface;
 
 trait HasRelationships
 {
-    public function hasOne(ModelRelationshipInterface | string $class_name, $foreign_key = null, $local_key = null, callable|string $with = null)
+    public function hasOne(string $class_name, $foreign_key = null, $local_key = null, callable|string $with = null)
     {
         try {
             $foreign_model = new $class_name;
@@ -29,7 +29,7 @@ trait HasRelationships
         }
     }
 
-    public function belongsTo(ModelRelationshipInterface | string $class_name, $foreign_key = null, $local_key = null)
+    public function belongsTo(string $class_name, $foreign_key = null, $local_key = null)
     {
         try {
             $parent_model = new $class_name;
@@ -49,7 +49,7 @@ trait HasRelationships
         }
     }
 
-    public function hasMany(ModelRelationshipInterface | string $class_name, $foreign_key = null, $local_key = null)
+    public function hasMany(string $class_name, $foreign_key = null, $local_key = null)
     {
         try {
             $foreign_model = new $class_name;
@@ -75,7 +75,7 @@ trait HasRelationships
         }
     }
 
-    public function belongsToMany(ModelRelationshipInterface | string $class_name, $foreign_key = null, $local_key = null)
+    public function belongsToMany(string $class_name, $foreign_key = null, $local_key = null)
     {
         try {
             $parent_model = new $class_name;
@@ -94,4 +94,9 @@ trait HasRelationships
             logger()->error("got the following error: ".$e->getMessage(), $e->getTrace());
         }
     }
+
+    // public function attach(ModelRelationshipInterface $object)
+    // {
+    //     $object->table;
+    // }
 }

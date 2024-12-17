@@ -5,7 +5,7 @@ namespace Eyika\Atom\Framework\Support\Database\Contracts;
 interface ModelRelationshipInterface extends ModelInterface
 {
     /**
-     * @param ModelInterface|string $class_name
+     * @param string $class_name
      * @param string $foreign_key
      * @param string $local_key
      * 
