@@ -19,7 +19,12 @@ class JsonResponse
 
     public function __construct(int $status_code, $data = null)
     {
-        $data = $data instanceof Model ? $data->toArray() : $data;
+        if (is_array($data) && isset($data['data']) && is_object($data['data']) && method_exists($data['data'], 'toArray')) {
+            $data['data'] = $data['data']->toArray();
+        } else if (is_array($data) && isset($data['data']) && is_object($data['data']) && method_exists($data['data'], '__toArray')) {
+            $data['data'] = $data['data']->__toArray();
+        }
+
         $body = $data ? json_encode($data) : null;
         http_response_code($status_code);
         header("Content-type: application/json");
@@ -83,7 +88,7 @@ class JsonResponse
     public static function unprocessableEntity(string $message = "unprocessable request", string|array $error = ""): bool
     {
         try {
-            new self(self::STATUS_UNAUTHORIZED, ['message' => $message, 'error' => $error]);
+            new self(self::STATUS_UNPROCESSABLE_ENTITY, ['message' => $message, 'error' => $error]);
             return true;
         } catch (Exception $ex) {
         }
@@ -92,7 +97,7 @@ class JsonResponse
     public static function serverError(string $message=""): bool
     {
         try {
-            new self(self::STATUS_UNPROCESSABLE_ENTITY, ['message' => $message]);
+            new self(self::STATUS_INTERNAL_SERVER_ERROR, ['message' => $message]);
             return true;
         } catch (Exception $ex) {
         }
