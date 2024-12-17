@@ -4,7 +4,7 @@ namespace Eyika\Atom\Framework\Foundation\Console\Commands\Vendor;
 
 use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
 use Eyika\Atom\Framework\Foundation\Console\Command;
-use Eyika\Atom\Framework\Support\Storage\File;
+use Eyika\Atom\Framework\Support\Facade\File;
 
 class Publish extends Command
 {
@@ -59,18 +59,18 @@ class Publish extends Command
 
     protected function publishFiles($source, $destination, $force = false)
     {
-        if (!File::exists($source)) {
+        if (!file_exists($source)) {
             $this->error("Source path does not exist: $source");
             return;
         }
 
-        if (File::isDirectory($source)) {
-            File::copyDirectory($source, $destination);
+        if (is_dir($source)) {
+            copy($source, $destination);
         } else {
-            if (File::exists($destination) && !$force) {
+            if (file_exists($destination) && !$force) {
                 $this->warn("File already exists: $destination");
             } else {
-                File::copy($source, $destination);
+                copy($source, $destination);
             }
         }
 
