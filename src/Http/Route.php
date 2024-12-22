@@ -215,8 +215,8 @@ class Route
             $matched = true;
 
             for ($i = 0; $i < count($routeParts); $i++) {
-                if (preg_match("/^[$]/", $routeParts[$i])) {
-                    $routePart = ltrim($routeParts[$i], '$');
+                if (preg_match("/^{.+}$/", $routeParts[$i])) {
+                    $routePart = trim($routeParts[$i], '{}');
                     $parameters[$routePart] = $requestUriParts[$i];
                 } elseif ($routeParts[$i] != $requestUriParts[$i]) {
                     $matched = false;
