@@ -67,7 +67,7 @@ class JsonResponse
         }
     }
 
-    public static function notFound(string $error, array $data = null): bool
+    public static function notFound(string $error, array|null $data = null): bool
     {
         try {
             new self(self::STATUS_NOT_FOUND, ['message' => $error, 'error' => $data]);

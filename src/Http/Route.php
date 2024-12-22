@@ -2,8 +2,7 @@
 
 namespace Eyika\Atom\Framework\Http;
 
-use App\Models\Strategy;
-use Eyika\Atom\Framework\Exceptions\NotFoundException;
+use Eyika\Atom\Framework\Exceptions\Http\NotFoundHttpException;
 use Eyika\Atom\Framework\Support\Arr;
 
 class Route
@@ -51,7 +50,7 @@ class Route
         return new static();
     }
 
-    public static function middleware(string | array $middleware, callable|false $method = null): self
+    public static function middleware(string | array $middleware, callable|false|null $method = null): self
     {
         $middleware = Arr::wrap($middleware);
 
@@ -84,7 +83,7 @@ class Route
         return new static();
     }
 
-    public static function name(string $name, callable $method = null): self
+    public static function name(string $name, callable|null $method = null): self
     {
         $previousName = self::$routeName;
         self::$routeName = $name;
@@ -280,7 +279,7 @@ class Route
                     } elseif (is_string($callback)) {
                         include_once __DIR__ . "/$callback";
                     } else {
-                        throw new NotFoundException('route not found');
+                        throw new NotFoundHttpException('route not found');
                     }
                 // }
 
@@ -289,23 +288,20 @@ class Route
         }
 
         if (isset(self::$routes['ANY']['/404'])) {
-            $data = self::$routes['ANY']['/404'];
-            // foreach ($data['callback'] as $callback) {
-                $callback = $data['callback'];
-                if (is_callable($callback)) {
-                    call_user_func($callback, $request);
-                } elseif (is_array($callback) && count($callback) > 1) {
-                    [$controller, $method] = $callback;
-                    $controllerInstance = new $controller;
-                    call_user_func([$controllerInstance, $method], $request);
-                } elseif (is_string($callback)) {
-                    include_once __DIR__ . "/$callback";
-                } else {
-                    throw new NotFoundException('route not found');
-                }
-            // }
+            $callback = self::$routes['ANY']['/404']['callback'];
+            if (is_callable($callback)) {
+                call_user_func($callback, $request);
+            } elseif (is_array($callback) && count($callback) > 1) {
+                [$controller, $method] = $callback;
+                $controllerInstance = new $controller;
+                call_user_func([$controllerInstance, $method], $request);
+            } elseif (is_string($callback)) {
+                include_once __DIR__ . "/$callback";
+            } else {
+                throw new NotFoundHttpException('requested resource not found');
+            }
         }
-        return true;
+        throw new NotFoundHttpException('requested resource not found');
     }
 
     public static function route($name, $parameters = [])

@@ -2,43 +2,49 @@
 
 namespace Eyika\Atom\Framework\Support;
 
+use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Support\Database\mysqly;
 use Eyika\Atom\Framework\Support\Str;
 
 class Validator {
-    private static array $req_obj;
+    private static array $req_data;
+    public static array $errors;
+    private static array $validated;
 
-    public function __construct(array $_req_obj = [])
+    public function __construct(Request|array $_req_obj = [])
     {
-        self::$req_obj = $_req_obj;
+        self::$req_data = $_req_obj instanceof Request ? $_req_obj->input() : $_req_obj;
+        self::$errors = [];
+        self::$validated = [];
     }
 
-    public static function validate(array $req_obj, array $params, string $separator = '|'): bool|array
+    public static function validate(Request|array $req_obj, array $params, string $separator = '|'): bool|array
     {
-        $errors = [];
         $me = new self($req_obj);
 
         foreach ($params as $paramKey => $paramValue) {
             $validations = explode($separator, $paramValue);
             $resp = $me->validateValue($paramKey, $validations);
-            if (!is_array($resp)) {
+            if ($resp) {
+                static::$errors[$paramKey] = $resp;  //Correction needded, it should be key value pair
                 continue;
-                // array_push($validatedData, [$paramKey => $req_obj[$paramKey]]);
             }
-            $errors[$paramKey] = $resp;  //Correction needded, it should be key value pair
+            if (Arr::keyExists(static::$req_data, $paramKey))
+                static::$validated[$paramKey] = static::$req_data[$paramKey];
         }
 
-        if (count($errors) < 0) {
+        if (count(static::$errors) > 0) {
             return false;
         }
-        return $errors;
+
+        return static::$validated;
     }
 
-    private function validateValue(string $param, array $validations): bool|array
+    private function validateValue(string $param, array $validations): null|array
     {
         $errors = [];
         if ($param === null || $validations === null) {
-            return true;
+            return null;
         }
         foreach ($validations as $validation) {
             $resp = $this->getError($param, $validation);
@@ -49,7 +55,7 @@ class Validator {
             array_push($errors, $resp);
         }
         if (count($errors) < 1)
-            return true;
+            return null;
 
         return $errors;
     }
@@ -66,6 +72,9 @@ class Validator {
                     $resp = '';
                 else
                     $resp = "{$param} is required";
+                break;
+            case 'forbidden':
+                    $resp = "{$param} is forbidden in this request";
                 break;
             case 'string':
                 $stat = is_string($paramval);
@@ -167,9 +176,9 @@ class Validator {
 
     private function getParamValue(string $param): int|bool|float|string|array
     {
-        if (!array_key_exists($param, self::$req_obj)) {
+        if (!array_key_exists($param, self::$req_data)) {
             return false;
         }
-        return self::$req_obj[$param] ?? '';
+        return self::$req_data[$param] ?? '';
     }
 }

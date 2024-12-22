@@ -20,7 +20,7 @@ class Storage
     protected CacheInterface $cache;
     protected File $file;
 
-    public function __construct(string $disk = null, CacheInterface $cache = null)
+    public function __construct(string|null $disk = null, CacheInterface|null $cache = null)
     {
         $this->disks = config('filesystems.disks');
         $disks = Arr::keys($this->disks);

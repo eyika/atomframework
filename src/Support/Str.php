@@ -11,7 +11,7 @@ use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidFactory;
 use voku\helper\ASCII;
 
-class Str
+Class Str
 {
     use Macroable;
 
@@ -870,7 +870,7 @@ class Str
      * @param  callable|null  $factory
      * @return void
      */
-    public static function createUuidsUsing(callable $factory = null)
+    public static function createUuidsUsing(callable|null $factory = null)
     {
         static::$uuidFactory = $factory;
     }

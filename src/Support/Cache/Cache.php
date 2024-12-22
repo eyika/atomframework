@@ -21,7 +21,7 @@ class Cache implements CacheInterface
     protected array $store_config;
     protected CacheInterface $cache_store;
 
-    public function __construct(string $store = null)
+    public function __construct(string|null $store = null)
     {
         $this->setStoreConfig($store);
 
@@ -39,13 +39,13 @@ class Cache implements CacheInterface
         return $this->cache_store;
     }
 
-    public function setStore(string $store = null)
+    public function setStore(string|null $store = null)
     {
         $this->setStoreConfig($store);
         $this->initAdapter();
     }
 
-    protected function setStoreConfig(string $store = null)
+    protected function setStoreConfig(string|null $store = null)
     {
         $this->store_config = is_null($store) ? config('cache.stores')[config('cache.default')] : config('cache.stores')[$store];
     }

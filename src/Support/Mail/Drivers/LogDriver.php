@@ -19,7 +19,7 @@ class LogDriver implements MailerInterface
         $this->logger = $config['logger'] ?? new \Monolog\Logger('mail');
     }
 
-    public function to(string $address, string $name = null): self
+    public function to(string $address, string|null $name = null): self
     {
         array_push($this->tos, $address);
         return $this;

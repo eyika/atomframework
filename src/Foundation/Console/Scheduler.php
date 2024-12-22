@@ -11,7 +11,7 @@ class Scheduler
     protected $tasks = [];
     protected $current_name = '';
 
-    public function command(string $name, string $expression = null): self
+    public function command(string $name, string|null $expression = null): self
     {
         empty($expression) ?
             $this->current_name = $name :

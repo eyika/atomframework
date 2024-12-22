@@ -179,7 +179,7 @@ Class Arrayable implements ArrayAccess
      * @param  mixed  $default
      * @return mixed
      */
-    public function first(callable $callback = null, $default = null)
+    public function first(callable|null $callback = null, $default = null)
     {
         return Arr::first($this->data, $callback, $default);
     }
@@ -191,7 +191,7 @@ Class Arrayable implements ArrayAccess
      * @param  mixed  $default
      * @return mixed
      */
-    public function last(callable $callback = null, $default = null)
+    public function last(callable|null $callback = null, $default = null)
     {
         Arr::last($this->data, $callback, $default);
     }

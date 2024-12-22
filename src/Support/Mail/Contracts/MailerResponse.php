@@ -10,7 +10,7 @@ class MailerResponse
     public string | null $error;
     public Exception | null $exception;
 
-    public function __construct(bool $success, int | string $message_id = null, string $error = null, Exception $exception = null)
+    public function __construct(bool $success, int | string|null $message_id = null, string|null $error = null, Exception|null $exception = null)
     {
         $this->success = $success;
         $this->message_id = $message_id;

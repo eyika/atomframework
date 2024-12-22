@@ -111,7 +111,7 @@ trait ShouldQueue
      * @param int $delay in minutes
      * @return void                      
      */
-    private function bury(int $delay = null)
+    private function bury(int|null $delay = null)
     {
         $id = $this->job['id'];
         unset($this->job);

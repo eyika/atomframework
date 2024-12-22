@@ -46,7 +46,7 @@ class File
     protected string $visibility;
     protected string $contents;
 
-    public function __construct(Filesystem $filesystem = null, $disk = null)
+    public function __construct(Filesystem|null $filesystem = null, $disk = null)
     {
         $this->setDiskConfig($disk);
 
@@ -69,13 +69,13 @@ class File
         return $this->filesystem;
     }
 
-    public function setDisk(string $disk = null)
+    public function setDisk(string|null $disk = null)
     {
         $this->setDiskConfig($disk);
         $this->initAdapter();
     }
 
-    protected function setDiskConfig(string $disk = null)
+    protected function setDiskConfig(string|null $disk = null)
     {
         $this->diskconfig = is_null($disk) ? config('filesystems.disks')[config('filesystems.default')] : config('filesystems.disks')[$disk];
     }
@@ -855,7 +855,7 @@ class File
      * @throws UnableToCreateDirectory
      * @throws FilesystemException
      */
-    public function copyDirectory($source, $destination, int $options = null)
+    public function copyDirectory($source, $destination, int|null $options = null)
     {
         $overwrite = $options['overwrite'] ?? true; // Option to overwrite existing files
         $includeHidden = $options['include_hidden'] ?? true; // Option to include hidden files

@@ -39,7 +39,7 @@ namespace Eyika\Atom\Framework\Support\Facade;
  * @method static string getScheme()
  * @method static string getHost()
  * @method static string getSchemeAndHttpHost()
- * @method static void setTrustedProxies(array $proxies, int $headers = null)
+ * @method static void setTrustedProxies(array $proxies, int|null $headers = null)
  * @method static bool isFromTrustedProxy()
  * @method static mixed retrieveItem($source, $key = null, $default = null)
  * @method static void setItem($source, string $key, string|array $value)

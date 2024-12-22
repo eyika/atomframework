@@ -6,6 +6,7 @@ use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Arrayable;
 use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
+use Eyika\Atom\Framework\Support\Validator;
 
 class Request
 {
@@ -263,7 +264,7 @@ class Request
         return $this->getScheme() . '://' . $this->getHost();
     }
 
-    public function setTrustedProxies(array $proxies, int $headers = null)
+    public function setTrustedProxies(array $proxies, int|null $headers = null)
     {
         $this->trustedProxies = $proxies;
 
@@ -297,6 +298,11 @@ class Request
     protected function validateSignature(array $ignoredParams = []): bool
     {
         throw new NotImplementedException('this method validateSignature is not yet implemented');
+    }
+
+    public function validate(array $params, string $separator = '|'): bool|array
+    {
+        return Validator::validate($this->input(), $params, $separator);
     }
 
     protected function retrieveItem($source, $key = null, $default = null)

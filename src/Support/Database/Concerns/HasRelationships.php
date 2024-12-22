@@ -8,7 +8,7 @@ use Eyika\Atom\Framework\Support\Database\Contracts\ModelRelationshipInterface;
 
 trait HasRelationships
 {
-    public function hasOne(string $class_name, $foreign_key = null, $local_key = null, callable|string $with = null)
+    public function hasOne(string $class_name, $foreign_key = null, $local_key = null, callable|string|null $with = null)
     {
         try {
             $foreign_model = new $class_name;

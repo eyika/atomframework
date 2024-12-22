@@ -449,7 +449,7 @@ class DB
         return $model[0];
     }
 
-    private function _where(string $column, string $operatorOrValue = null, $value = null, $boolean = "AND")
+    private function _where(string $column, string|null $operatorOrValue = null, $value = null, $boolean = "AND")
     {
         if (! self::$instantiated)
             static::init();
