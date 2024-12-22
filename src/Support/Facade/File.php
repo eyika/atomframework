@@ -42,7 +42,7 @@ use League\Flysystem\Filesystem;
  * @method static bool directoryExists(string $path)
  * @method static void ensureDirectoryExists($path, int $mode = 0755, bool $recursive = true)
  * @method static bool makeDirectory($path, $visibility = null, bool $recursive = false, bool $force = false)
- * @method static bool copyDirectory($source, $destination, int $options = null)
+ * @method static bool copyDirectory($source, $destination, int|null $options = null)
  * @method static bool moveDirectory(string $from, string $to, bool $overwrite = false)
  * @method static bool deleteDirectory(string $directory, bool $preserve = false)
  * @method static bool cleanDirectory(string $directory)

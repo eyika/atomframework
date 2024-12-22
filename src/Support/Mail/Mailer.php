@@ -25,7 +25,7 @@ class Mailer
     /**
      * @param array $config  The config data of the intended mailer driver
      */
-    public function __construct(array $config = null, string|MailerInterface $driver = null)
+    public function __construct(array|null $config = null, string|MailerInterface|null $driver = null)
     {
         if (self::$instantiated) {
             // Prevent multiple instantiations
@@ -43,7 +43,7 @@ class Mailer
         self::setDriver(self::$config['transport']);
     }
 
-    public static function init(string $driver = null, array $config = null): self
+    public static function init(string|null $driver = null, array|null $config = null): self
     {
         if (!self::$instantiated) {
             return new static($config, $driver); // Only instantiate if not already instantiated
@@ -85,7 +85,7 @@ class Mailer
         // return new static;
     }
 
-    public static function to(string $address, string $name = null): self
+    public static function to(string $address, string|null $name = null): self
     {
         if (!self::$instantiated) {
             new static;
@@ -94,7 +94,7 @@ class Mailer
         return new static(self::$config, self::$driver);
     }
 
-    public static function replyTo(string $address, string $name = null): self
+    public static function replyTo(string $address, string|null $name = null): self
     {
         if (!self::$instantiated) {
             new static;
@@ -107,7 +107,7 @@ class Mailer
         return new static(self::$config, self::$driver);
     }
 
-    public static function from(string $address, string $name = null): self
+    public static function from(string $address, string|null $name = null): self
     {
         if (!self::$instantiated) {
             new static;
@@ -121,7 +121,7 @@ class Mailer
         return new static(static::$config, static::$driver);
     }
 
-    public static function buildHtml(string $templateName, array $data = [], string $resourcePath = null): self
+    public static function buildHtml(string $templateName, array $data = [], string|null $resourcePath = null): self
     {
         if (!self::$instantiated) {
             new static;

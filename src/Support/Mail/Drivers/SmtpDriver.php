@@ -40,13 +40,13 @@ class SmtpDriver implements MailerInterface
         };
     }
 
-    public function to(string $address, string $name = null): self
+    public function to(string $address, string|null $name = null): self
     {
         $this->mailer->addAddress($address, $name ?? '');
         return $this;
     }
 
-    public function replyTo(string $address, string $name = null): self
+    public function replyTo(string $address, string|null $name = null): self
     {
         $this->mailer->addReplyTo($address, $name ?? '');
         return $this;

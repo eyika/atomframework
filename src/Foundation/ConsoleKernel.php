@@ -85,7 +85,7 @@ class ConsoleKernel implements ContractsConsoleKernel
     /**
      * Load all the defined commands into console kernel registry
      */
-    protected function loadCommands(string $fullPath = null, string $namespace = null, $base_folder = 'src')
+    protected function loadCommands(string|null $fullPath = null, string|null $namespace = null, $base_folder = 'src')
     {
         try {
             $fullPath = $fullPath ?? base_path("vendor/eyika/atom-framework/src/Foundation/Console/Commands");

@@ -4,7 +4,7 @@ namespace Eyika\Atom\Framework\Support;
 
 class NamespaceHelper
 {
-    public static function getBaseNamespace(string $composerJsonPath = null): string
+    public static function getBaseNamespace(string|null $composerJsonPath = null): string
     {
         if (!$composerJsonPath)
             $composerJsonPath = self::findComposerJsonPath();

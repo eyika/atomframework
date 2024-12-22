@@ -21,7 +21,7 @@ class TrustProxies implements MiddlewareInterface
      */
     protected $headers;
 
-    public function __construct(array $proxies = null, int $headers = null)
+    public function __construct(array|null $proxies = null, int|null $headers = null)
     {
         $this->proxies = $proxies;
 

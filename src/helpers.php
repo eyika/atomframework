@@ -96,7 +96,7 @@ if (! function_exists('storage')) {
     /**
      * Return the current storage object
      */
-    function storage(string $disk = null, CacheInterface $cache = null) {
+    function storage(string|null $disk = null, CacheInterface|null $cache = null) {
         if (is_null($disk))
             $disk = config('filesystems.default');
         $storage = Storage::disk($disk);
@@ -319,7 +319,7 @@ if (!function_exists('is_windows')) {
 }
 
 if (! function_exists('logger')) {
-    function logger(string $path = null, Monolog\Level $level = Monolog\Level::Debug, $bubble = true, $filePermission = 0664, $useLocking = false)
+    function logger(string|null $path = null, Monolog\Level $level = Monolog\Level::Debug, $bubble = true, $filePermission = 0664, $useLocking = false)
     {
         $path = $path ?? storage_path("logs/custom.log");
         // echo $path;

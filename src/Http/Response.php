@@ -76,13 +76,13 @@ class Response extends BaseResponse
         return true;
     }
 
-    public static function redirect(string $to, $code = 301, int $delay = null): bool
+    public static function redirect(string $to, $code = 301, int|null $delay = null): bool
     {
         $delay ? header('Refresh: 5; URL=' . $to, true, $code) : header('Location: ' . $to, true, $code);
         return true;
     }
 
-    public static function download(string $file_path, string $file_name = null): bool
+    public static function download(string $file_path, string|null $file_name = null): bool
     {
         if (!file_exists($file_path)) {
             die('File not found.');

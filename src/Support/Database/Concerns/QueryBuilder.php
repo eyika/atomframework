@@ -552,7 +552,7 @@ trait QueryBuilder
         return $model[0];
     }
 
-    private function _where(string $column, string $operatorOrValue = null, $value = null, $boolean = "AND")
+    private function _where(string $column, string|null $operatorOrValue = null, $value = null, $boolean = "AND")
     {
         $bind_or_filter = $this->bind_or_filter;
         if ($bind_or_filter != null) {

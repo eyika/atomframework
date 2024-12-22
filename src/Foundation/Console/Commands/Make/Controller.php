@@ -38,7 +38,7 @@ class Controller extends Command
     
             $controller_template =
 "<?php
-namespace App\Http\Controllers$api;
+namespace App\Http\Controllers\\$api;
 
 use Eyika\Atom\Framework\Http\JsonResponse;
 use Eyika\Atom\Framework\Support\Validator;
@@ -89,19 +89,18 @@ final class {$name}Controller
                 return JsonResponse::badRequest('bad request', 'body is required');
             }
 
-            \$body = sanitize_data(\$request->input());
             \$status = 'some, values';
 
-            if (\$validated = Validator::validate(\$body, [
+            if (\$validated = \$request->validate([
                 'foo' => 'required|string',
                 'bar' => 'sometimes|numeric',
                 'baz' => \"sometimes|string|in:\$status\",
                 //add more validation rules here
             ])) {
-                return JsonResponse::badRequest('errors in request', \$validated);
+                return JsonResponse::badRequest('errors in request', Validator::\$errors);
             }
 
-            if (!\$$controller_str = $name::getBuilder()->create(\$body)) {
+            if (!\$$controller_str = $name::getBuilder()->create(\$validated)) {
                 return JsonResponse::serverError('unable to create $controller_str_spc');
             }
 
@@ -124,26 +123,22 @@ final class {$name}Controller
                 return JsonResponse::badRequest('bad request', 'body is required');
             }
 
-            \$id = sanitize_data(\$id);
-
-            \$body = sanitize_data(\$request->input());
-
             \$status = 'some, values';
 
-            if (\$validated = Validator::validate(\$body, [
+            if (\$validated = Validator::validate(\$request, [
                 'foo' => 'sometimes|boolean',
                 'bar' => 'sometimes|numeric',
                 'baz' => \"sometimes|string|in:\$status\",
                 //add more validation rules here
             ])) {
-                return JsonResponse::badRequest('errors in request', \$validated);
+                return JsonResponse::badRequest('errors in request', Validator::\$errors);
             }
 
-            if (!\$$controller_str = $name::getBuilder()->update(\$body, (int)\$id)) {
+            if (!\$$controller_str = $name::getBuilder()->update(\$validated, (int)\$id)) {
                 return JsonResponse::notFound('unable to update $controller_str_spc not found');
             }
 
-            return JsonResponse::ok('$controller_str_spc updated successfull', \${$controller_str}->toArray());
+            return JsonResponse::ok('$controller_str_spc updated successfull', \${$controller_str});
         } catch (PDOException \$e) {
             if (str_contains(\$e->getMessage(), 'Unknown column'))
                 return JsonResponse::badRequest('column does not exist');

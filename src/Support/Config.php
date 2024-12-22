@@ -38,7 +38,7 @@ class Config
      *
      * @param bool $enabled
      */
-    public static function setCache(CacheInterface $cache = null): self
+    public static function setCache(CacheInterface|null $cache = null): self
     {
         self::$cacheEnabled = true;
         self::$cache = $cache ?? new DbCache();

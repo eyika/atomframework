@@ -33,7 +33,7 @@ class SesDriver implements MailerInterface
         ]);
     }
 
-    public function to(string $address, string $name = null): self
+    public function to(string $address, string|null $name = null): self
     {
         array_push($this->tos, $address);
         return $this;

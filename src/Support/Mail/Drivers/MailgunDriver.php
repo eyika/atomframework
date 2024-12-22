@@ -30,7 +30,7 @@ class MailgunDriver implements MailerInterface
         $this->client = new Mailgun($configurator, new ArrayHydrator); // Assuming Guzzle as the HTTP client
     }
 
-    public function to(string $address, string $name = null): self
+    public function to(string $address, string|null $name = null): self
     {
         array_push($this->tos, $address);
         return $this;
