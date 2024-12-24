@@ -280,6 +280,7 @@ class Route
                         $resp = call_user_func_array($callback, array_merge([$request], is_array($parameters) ? array_values($parameters) : []));
                     } elseif (is_array($callback) && count($callback) > 1) {
                         [$controller, $method] = $callback;
+                        $controller = "\\" . $controller;
                         $controllerInstance = new $controller;
                         $resp = call_user_func_array([$controllerInstance, $method], array_merge([$request], is_array($parameters) ? array_values($parameters) : []));
                     } elseif (is_string($callback)) {
