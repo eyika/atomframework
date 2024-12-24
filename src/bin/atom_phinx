@@ -24,7 +24,7 @@
  * IN THE SOFTWARE.
  */
 
- $log_path = storage_path("logs/php_error.log"); //__DIR__."/../../storage/logs/php_error.log";
+ $log_path = __DIR__."/../../storage/logs/php_error.log";
 ini_set('error_log', $log_path);
 $env = getenv();
 
@@ -35,5 +35,5 @@ foreach ($env as $key => $value) {
     }
 }
 
-$app = require base_path("vendor/robmorgan/phinx/app/phinx.php"); // __DIR__ . "/../../../../robmorgan/phinx/app/phinx.php";
+$app = require __DIR__ . "/../../../../robmorgan/phinx/app/phinx.php";
 $app->run();
