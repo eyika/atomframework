@@ -310,6 +310,8 @@ class Route
             } else {
                 throw new NotFoundHttpException('requested resource not found');
             }
+        } else {
+            throw new NotFoundHttpException('requested resource not found');
         }
         if (is_string($resp)) {
             echo $resp;
