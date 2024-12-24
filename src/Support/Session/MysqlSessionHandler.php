@@ -15,7 +15,7 @@ class MysqlSessionHandler implements SessionHandlerInterface, SessionIdInterface
 
     public function __construct()
     {
-        $this->table = "session";
+        $this->table = config('session.table');
         $dbname = env('DB_DATABASE');
         $dbhost = env('DB_HOST');
         $dbadapter = env('DB_ADAPTER');

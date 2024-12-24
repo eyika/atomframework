@@ -105,7 +105,6 @@ class ExceptionHandler implements ContractExceptionHandler
                 ], $code);
             }
         } else {
-            echo "got here";
             $code = $exception->getCode();
             $message = $exception->getMessage();
             if ($code < 100 || $code >= 600) {
@@ -139,6 +138,7 @@ class ExceptionHandler implements ContractExceptionHandler
                     'message' => $message,
                 ], $code);
             }
+            return true; //TODO: redirect to error page
         }
     }
 

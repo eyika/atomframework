@@ -156,7 +156,6 @@ class Route
     public static function dispatch(Request $request)
     {
         url()->setRoutes(self::$routes);
-        url()->storeCurrent();
         if (! self::$instantiated)
             new static;
 
@@ -208,15 +207,22 @@ class Route
             $requestUriParts = explode('/', $requestUri);
 
             if (count($routeParts) != count($requestUriParts)) {
-                continue;
+                $is_optional = false;
+                foreach ($routeParts as $key => $part) {
+                    if (preg_match("/^{[^}]*\?}$/", $part, $matches)) {
+                        $is_optional = true;
+                    }
+                }
+                if (!$is_optional)
+                    continue;
             }
 
             $parameters = [];
             $matched = true;
 
-            for ($i = 0; $i < count($routeParts); $i++) {
-                if (preg_match("/^{.+}$/", $routeParts[$i])) {
-                    $routePart = trim($routeParts[$i], '{}');
+            for ($i = 0; $i < count($requestUriParts); $i++) {
+                if (preg_match("/^{([^}]+)\??}$/", $routeParts[$i], $matches)) {
+                    $routePart = $matches[1];
                     $parameters[$routePart] = $requestUriParts[$i];
                 } elseif ($routeParts[$i] != $requestUriParts[$i]) {
                     $matched = false;
@@ -271,18 +277,22 @@ class Route
                 // foreach ($data['callback'] as $callback) {
                     $callback = $data['callback'];
                     if (is_callable($callback)) {
-                        call_user_func_array($callback, array_merge([$request], is_array($parameters) ? array_values($parameters) : []));
+                        $resp = call_user_func_array($callback, array_merge([$request], is_array($parameters) ? array_values($parameters) : []));
                     } elseif (is_array($callback) && count($callback) > 1) {
                         [$controller, $method] = $callback;
                         $controllerInstance = new $controller;
-                        call_user_func_array([$controllerInstance, $method], array_merge([$request], is_array($parameters) ? array_values($parameters) : []));
+                        $resp = call_user_func_array([$controllerInstance, $method], array_merge([$request], is_array($parameters) ? array_values($parameters) : []));
                     } elseif (is_string($callback)) {
-                        include_once __DIR__ . "/$callback";
+                        $resp = include_once __DIR__ . "/$callback";
                     } else {
                         throw new NotFoundHttpException('route not found');
                     }
                 // }
 
+                if (is_string($resp)) {
+                    echo $resp;
+                    return true;
+                }
                 return true;
             }
         }
@@ -290,18 +300,22 @@ class Route
         if (isset(self::$routes['ANY']['/404'])) {
             $callback = self::$routes['ANY']['/404']['callback'];
             if (is_callable($callback)) {
-                call_user_func($callback, $request);
+                $resp = call_user_func($callback, $request);
             } elseif (is_array($callback) && count($callback) > 1) {
                 [$controller, $method] = $callback;
                 $controllerInstance = new $controller;
-                call_user_func([$controllerInstance, $method], $request);
+                $resp = call_user_func([$controllerInstance, $method], $request);
             } elseif (is_string($callback)) {
-                include_once __DIR__ . "/$callback";
+                $resp = include_once __DIR__ . "/$callback";
             } else {
                 throw new NotFoundHttpException('requested resource not found');
             }
         }
-        throw new NotFoundHttpException('requested resource not found');
+        if (is_string($resp)) {
+            echo $resp;
+            return true;
+        }
+        return true;
     }
 
     public static function route($name, $parameters = [])
@@ -320,9 +334,19 @@ class Route
         return null;
     }
 
-    public static function current()
+    public static function current($fullpath = true)
     {
-        return url()->current();
+        return url()->current($fullpath);
+    }
+
+    public static function storeCurrent()
+    {
+        url()->storeCurrent();
+    }
+
+    public static function previous(bool $store = false)
+    {
+        return url()->previous($store);
     }
 
     public static function out($text, bool $strip_tags = false)
@@ -342,8 +366,11 @@ class Route
         echo '<input type="hidden" name="csrf" value="' . $_SESSION["csrf"] . '">';
     }
 
-    public static function isApiRequest(bool $value)
+    public static function isApiRequest(bool|null $value = null)
     {
+        if ($value === null) {
+            return static::$apiRequest;
+        }
         static::$apiRequest = $value;
     }
 

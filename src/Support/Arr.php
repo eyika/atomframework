@@ -281,6 +281,30 @@ Class Arr
     }
 
     /**
+     * Flatten a multi-dimensional array into a single level using dot notation for the keys.
+     *
+     * @param  iterable  $array
+     * @param  int  $depth
+     * @return array
+     */
+    public static function flattenArray(array $array, string $prefix = ''): array
+    {
+        $result = [];
+    
+        foreach ($array as $key => $value) {
+            $fullKey = $prefix === '' ? $key : $prefix . '.' . $key;
+    
+            if (is_array($value)) {
+                $result += static::flattenArray($value, $fullKey);
+            } else {
+                $result[$fullKey] = $value;
+            }
+        }
+    
+        return $result;
+    }
+
+    /**
      * Remove one or many array items from a given array using "dot" notation.
      *
      * @param  array  $array
@@ -811,5 +835,24 @@ Class Arr
                 $array[] = $value;
             }
         }
+    }
+
+    /**
+     * Get the next item in the array given a key
+     * 
+     * @param array $array
+     * @param string $targetKey
+     * 
+     * @return mixed
+     */
+    public static function nextItem($array, $targetKey): mixed
+    {
+        $flattened = static::flattenArray($array);
+        $keys = array_keys($flattened);
+        $currentKeyIndex = array_search($targetKey, $keys);
+
+        return ($currentKeyIndex !== false && isset($keys[$currentKeyIndex + 1]))
+            ? $flattened[$keys[$currentKeyIndex + 1]]
+            : null;
     }
 }

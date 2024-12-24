@@ -37,11 +37,11 @@ use App\Models\Model;
 
 final class {$name} extends Model
 {
-    protected \$softdeletes = true;
+    public \$softdeletes = true;
 
-    protected \$table = '$name_lower';
+    public \$table = '$name_lower';
 
-    protected \$primaryKey = 'id';
+    public \$primaryKey = 'id';
 
     //object properties
     public \$id;
