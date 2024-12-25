@@ -62,7 +62,7 @@ trait RunsOnConsole
             $options[] = $config;
         }
 
-        return base_path("/vendor/bin/atom_phinx " . implode(' ', $options));
+        return 'php '. base_path("/vendor/bin/atom_phinx " . implode(' ', $options));
     }
 
     function phpInbuiltServerCommander($options = [])
@@ -87,6 +87,6 @@ trait RunsOnConsole
 
     function phpUnitCommander($options = [])
     {
-        return base_path("vendor/bin/atom_phpunit " . implode(' ', $options));
+        return 'php ' . base_path("vendor/bin/atom_phpunit " . implode(' ', $options));
     }
 }

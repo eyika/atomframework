@@ -12,6 +12,8 @@ use Eyika\Atom\Framework\Support\Facade\Storage;
 use Eyika\Atom\Framework\Support\Str;
 use Eyika\Atom\Framework\Support\Stringable;
 use Eyika\Atom\Framework\Support\Url;
+use Eyika\Atom\Framework\Support\View\Blade;
+use Eyika\Atom\Framework\Support\View\Twig;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
@@ -418,5 +420,27 @@ if (! function_exists('get_weeks_in_year')) {
             // Otherwise, the week containing January 1st belongs to the previous year
             return $january4WeekNumber - 1;
         }
+    }
+}
+
+if (!function_exists('view')) {
+    /**
+     * Get the html output from a view file
+     * 
+     * @param string $name
+     * @param array $data
+     * 
+     * @return string
+     */
+    function view($file_name, $data = []) {
+        $path = resource_path('views');
+
+        if (config('view.use_advance_engine')) {
+            $view = new Blade($path);
+            $code = $view->run("$file_name", $data);
+        } else {
+            $code = Twig::make("$file_name.blade.php", "$path/", $data, true);
+        }
+        return $code;
     }
 }

@@ -1,14 +1,28 @@
 <?php
 namespace Eyika\Atom\Framework\Http;
 
+use Eyika\Atom\Framework\Support\Session\FileSessionHandler;
 use Eyika\Atom\Framework\Support\Session\MysqlSessionHandler;
+use Eyika\Atom\Framework\Support\Session\RedisSessionHandler;
 
 class Session
 {
     public function __construct()
     {
         if (session_status() === PHP_SESSION_NONE) {
-            session_set_save_handler(new MysqlSessionHandler, true);
+            switch (config('session.driver')) {
+                case 'file':
+                    session_set_save_handler(new FileSessionHandler, true);
+                    break;
+                case 'redis':
+                    session_set_save_handler(new RedisSessionHandler, true);
+                    break;
+                case 'mysql':
+                    session_set_save_handler(new MysqlSessionHandler, true);
+                    break;
+                default:
+                    break;
+            }
         }
     }
 

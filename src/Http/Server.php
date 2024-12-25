@@ -41,7 +41,7 @@ class Server
             static::$app->instance('request', $request);
             if (preg_match('/^.*$/i', $request->getRequestUri())) {
                 //register controllers
-                if (!str_contains($request->getPathInfo(), '/api') && !$request->expectsJson() && !$request->isXmlHttpRequest() && !$request->isJson() && !$request->isOptions()) {
+                if (!str_contains($request->getPathInfo(), '/api') && !$request->wantsJson() && !$request->isXmlHttpRequest() && !$request->isOptions()) {
                     static::loadMiddlewares('web');
                     ///TODO: load all default web middlewares
                     require_once base_path().'/routes/web.php';
@@ -51,7 +51,9 @@ class Server
                     ///TODO: load all default api middlewares
                     require_once base_path().'/routes/api.php';
                 }
-                return Route::dispatch($request);
+                $status = Route::dispatch($request);
+                Route::storeCurrent();
+                return $status;
             } else {
                 return false; // Let php bultin server serve
             }
