@@ -842,17 +842,18 @@ Class Arr
      * 
      * @param array $array
      * @param string $targetKey
+     * @param bool $returnKey
      * 
      * @return mixed
      */
-    public static function nextItem($array, $targetKey): mixed
+    public static function nextItem($array, $targetKey, $returnKey = false): mixed
     {
         $flattened = static::flattenArray($array);
         $keys = array_keys($flattened);
         $currentKeyIndex = array_search($targetKey, $keys);
 
         return ($currentKeyIndex !== false && isset($keys[$currentKeyIndex + 1]))
-            ? $flattened[$keys[$currentKeyIndex + 1]]
+            ? ($returnKey ? $keys[$currentKeyIndex + 1] : $flattened[$keys[$currentKeyIndex + 1]])
             : null;
     }
 
