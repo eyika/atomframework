@@ -15,6 +15,7 @@ use Eyika\Atom\Framework\Support\Url;
 use Eyika\Atom\Framework\Support\View\Blade;
 use Eyika\Atom\Framework\Support\View\Twig;
 use Monolog\Formatter\LineFormatter;
+use Monolog\Handler\NoopHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 
@@ -321,11 +322,14 @@ if (!function_exists('is_windows')) {
 }
 
 if (! function_exists('logger')) {
-    function logger(string|null $path = null, Monolog\Level $level = Monolog\Level::Debug, $bubble = true, $filePermission = 0664, $useLocking = false)
+    function logger(string|null $path = null, Monolog\Level $level = Monolog\Level::Debug, $bubble = true, $filePermission = 0664, $useLocking = false, $internal = false)
     {
+        if ($internal && config('app.debug') == false) {
+            return (new Logger(''))->pushHandler(new NoopHandler());
+        }
         $path = $path ?? storage_path("logs/custom.log");
         // echo $path;
-        $log = new Logger('tradingio');
+        $log = new Logger(config('app.name'));
         // Define the date format to match Laravel's
         $dateFormat = "Y-m-d H:i:s";
 

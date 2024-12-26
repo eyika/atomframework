@@ -529,9 +529,10 @@ trait QueryBuilder
     {
         $id = $id > 0 ? $id : $this->child->{$this->child->primaryKey};
         
+        if ($this->bind_or_filter === null)
+            $this->bind_or_filter['id'] = $id;
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
-        $query_arr['id'] = $id;
         if ($this->child->softdeletes && !$internal) {
             $query_arr['deleted_at'] = "IS NULL";
             is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
