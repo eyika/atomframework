@@ -80,7 +80,6 @@ trait QueryBuilder
 
         $items = $guard ? array_diff($fillables, array_merge($this->child::guarded, $ignore)) : array_diff($fillables, $ignore);
 
-        logger()->info('fillables are ', $items);
         foreach ($items as $item) {
             $result[$item] = $this->child->{$item};
         }
