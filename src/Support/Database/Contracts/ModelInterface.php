@@ -176,22 +176,21 @@ interface ModelInterface extends ModelEventsInterface
      * @param bool $is_protected 'wether to hide or show protected values'
      * @param array $select 'what parameters of model to fetch in results'
      * 
-     * @return array|bool
+     * @return self|bool
      */
     public function firstOrCreate($search, $keyvalues, $is_protected = true, $select = []);
 
     /**
-     * Retrieve model by key value or instantiate it if it doesn't exist from array values
+     * Retrieve model its current values or instantiate it if it doesn't exist from array values
      * The model still needs to be save to the DB by calling save()
      * search and keyvalues will be used together while creating the model
-     * @param array $search
      * @param array $keyvalues
      * @param bool $is_protected 'wether to hide or show protected values'
      * @param array $select 'what parameters of model to fetch in results'
      * 
-     * @return array|bool
+     * @return self|bool
      */
-    public function firstOrNew($search, $keyvalues, $is_protected = true, $select = []);
+    public function firstOrNew($keyvalues, $is_protected = true, $select = []);
 
     /**
      * Find a model by key and value
@@ -201,7 +200,7 @@ interface ModelInterface extends ModelEventsInterface
      * @param bool $is_protected 'wether to hide or show protected values'
      * @param array $select 'what parameters of model to fetch in results'
      * 
-     * @return array|false
+     * @return self|false
      */
     public function findBy($key, $value, $is_protected = true, $select = []);
     
@@ -214,7 +213,7 @@ interface ModelInterface extends ModelEventsInterface
      * @param bool $is_protected 'wether to hide or show protected values'
      * @param array $select 'what parameters of model to fetch in results'
      * 
-     * @return array|false
+     * @return self|false
      */
     public function findByArray($keys, $values, $or_and = "AND", $is_protected = true, $select = []);
 

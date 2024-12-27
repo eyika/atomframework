@@ -126,13 +126,27 @@ trait QueryBuilder
             $this->resetInstance();
             return false;
         }
+
+        $this->fill($model[0]);
+
+        if (!empty($this->with_model_name)) {
+            $column = Str::singular($this->child->table)."_".$this->child->primarKey;
+            $method = Str::isSingular($this->with_model_name) ? 'first' : 'get';
+            if ($item = DB::where($column, $this->child[$this->child->primaryKey])->{$method}(Str::plural($this->with_model_name))) {
+                $this->child->{$this->with_model_name} = $item;
+            }
+        }
         $this->resetInstance();
-        return $this->fill($model[0]);
+        return $this->child;
     }
 
     public function findOr($id = 0, $is_protected = true, $callable = null)
     {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
+        if (!$model = $this->find($id, $is_protected)) {
+            $model = $callable($id, $is_protected);
+        }
+
+        return $model;
     }
 
     public function first($is_protected = true)
@@ -142,16 +156,23 @@ trait QueryBuilder
 
     public function firstWhere($column, $operatorOrValue = null, $value = null, $is_protected = true)
     {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
+        return $this->where($column, $operatorOrValue, $value)->first($is_protected);
     }
 
     public function firstOrCreate($search, $keyvalues, $is_protected = true, $select = [])
     {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
+        if (!$model = $this->findByArray(array_keys($search), array_values($search), 'AND', $is_protected, $select)) {
+            $model = $this->create($search, $is_protected, $select);
+        }
+        return $model;
     }
 
-    public function firstOrNew($search, $keyvalues, $is_protected = true, $select = [])
+    public function firstOrNew($keyvalues, $is_protected = true, $select = [])
     {
+        if ($this->isSaved()) {
+            return $this;
+        }
+        return $this->save();
         throw new NotImplementedException('oops! this feature is yet to be implemented');
     }
 
@@ -177,8 +198,17 @@ trait QueryBuilder
             $this->resetInstance();
             return false;
         }
+        $this->fill($model[0]);
+
+        if (!empty($this->with_model_name)) {
+            $column = Str::singular($this->child->table)."_".$this->child->primarKey;
+            $method = Str::isSingular($this->with_model_name) ? 'first' : 'get';
+            if ($item = DB::where($column, $this->child[$this->child->primaryKey])->{$method}(Str::plural($this->with_model_name))) {
+                $this->child->{$this->with_model_name} = $item;
+            }
+        }
         $this->resetInstance();
-        return $model;
+        return $this->child;
     }
 
     public function findByArray($keys, $values, $or_and = "AND", $is_protected = true, $select = [])
@@ -206,7 +236,18 @@ trait QueryBuilder
         if (!$fields = mysqly::fetch($this->table, $query_arr, $fields)) {
             return false;
         }
-        return $fields;
+
+        $this->fill($fields[0]);
+
+        if (!empty($this->with_model_name)) {
+            $column = Str::singular($this->child->table)."_".$this->child->primarKey;
+            $method = Str::isSingular($this->with_model_name) ? 'first' : 'get';
+            if ($item = DB::where($column, $this->child[$this->child->primaryKey])->{$method}(Str::plural($this->with_model_name))) {
+                $this->child->{$this->with_model_name} = $item;
+            }
+        }
+        $this->resetInstance();
+        return $this->child;
     }
 
     public function all($is_protected = true, $select = [])
@@ -235,12 +276,13 @@ trait QueryBuilder
             foreach ($fields as $key => $field) {
                 $column = Str::singular($this->child->table)."_".$this->child->primarKey;
                 $method = Str::isSingular($this->with_model_name) ? 'first' : 'get';
-                if ($item = DB::where($column, $field[$this->child->{$this->child->primaryKey}])->{$method}($this->with_model_name)) {
-                    $fields[$key] = $item;
+                if ($item = DB::where($column, $field[$this->child->primaryKey])->{$method}(Str::plural($this->with_model_name))) {
+                    $fields[$key][$this->with_model_name] = $item;
                 }
             }
         }
         $this->resetInstance();
+        logger()->info('fields are: ', $fields);
         return $fields;
     }
 
