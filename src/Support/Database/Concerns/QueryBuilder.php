@@ -57,14 +57,16 @@ trait QueryBuilder
         return $this->child;
     }
 
-    public function toArray($guard = true, $select = [], $ignore = [])
+    public function toArray($guard = true, $select = [], $ignore = [], $includeDynamicProperties = false)
     {
         $result = array();
 
-        $obj_props = array_diff(array_keys(get_object_vars($this->child)), [
+        $ignore = array_merge($ignore, [
             'fillable', 'guarded', 'table', 'primaryKey', 'exists', 'db', 'builder', 'dynamicProperties',
             'connection', 'keyType', 'incrementing', 'perPage', 'wasRecentlyCreated', 'child'
         ]);
+
+        $obj_props = array_diff(array_keys(get_object_vars($this->child)), $ignore);
         if (count($select)) {
             foreach ($select as $item) {
                 if (Arr::exists($obj_props, $item)) {
@@ -73,11 +75,14 @@ trait QueryBuilder
             }
             return $result;
         }
-        $items = $guard ? array_diff($this->child::fillable, array_merge($this->child::guarded, $ignore)) : array_diff($this->child::fillable, $ignore);
+
+        $fillables = $includeDynamicProperties ? array_merge($this->child::fillable, array_keys($this->child->dynamicProperties)) : $this->child::fillable;
+
+        $items = $guard ? array_diff($fillables, array_merge($this->child::guarded, $ignore)) : array_diff($fillables, $ignore);
+
+        logger()->info('fillables are ', $items);
         foreach ($items as $item) {
-            if (Arr::exists($obj_props, $item)) {
-                $result[$item] = $this->child->{$item};
-            }
+            $result[$item] = $this->child->{$item};
         }
 
         return $result;
@@ -132,7 +137,7 @@ trait QueryBuilder
         if (!empty($this->with_model_name)) {
             $column = Str::singular($this->child->table)."_".$this->child->primarKey;
             $method = Str::isSingular($this->with_model_name) ? 'first' : 'get';
-            if ($item = DB::where($column, $this->child[$this->child->primaryKey])->{$method}(Str::plural($this->with_model_name))) {
+            if ($item = DB::where($column, $this->child->{$this->child->primaryKey})->{$method}(Str::plural($this->with_model_name))) {
                 $this->child->{$this->with_model_name} = $item;
             }
         }
@@ -203,7 +208,7 @@ trait QueryBuilder
         if (!empty($this->with_model_name)) {
             $column = Str::singular($this->child->table)."_".$this->child->primarKey;
             $method = Str::isSingular($this->with_model_name) ? 'first' : 'get';
-            if ($item = DB::where($column, $this->child[$this->child->primaryKey])->{$method}(Str::plural($this->with_model_name))) {
+            if ($item = DB::where($column, $this->child->{$this->child->primaryKey})->{$method}(Str::plural($this->with_model_name))) {
                 $this->child->{$this->with_model_name} = $item;
             }
         }
@@ -242,7 +247,7 @@ trait QueryBuilder
         if (!empty($this->with_model_name)) {
             $column = Str::singular($this->child->table)."_".$this->child->primarKey;
             $method = Str::isSingular($this->with_model_name) ? 'first' : 'get';
-            if ($item = DB::where($column, $this->child[$this->child->primaryKey])->{$method}(Str::plural($this->with_model_name))) {
+            if ($item = DB::where($column, $this->child->{$this->child->primaryKey})->{$method}(Str::plural($this->with_model_name))) {
                 $this->child->{$this->with_model_name} = $item;
             }
         }

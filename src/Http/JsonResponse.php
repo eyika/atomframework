@@ -20,7 +20,7 @@ class JsonResponse
     public function __construct(int $status_code, $data = null)
     {
         if (is_array($data) && isset($data['data']) && is_object($data['data']) && method_exists($data['data'], 'toArray')) {
-            $data['data'] = $data['data']->toArray();
+            $data['data'] = $data['data']->toArray(includeDynamicProperties: true);
         } else if (is_array($data) && isset($data['data']) && is_object($data['data']) && method_exists($data['data'], '__toArray')) {
             $data['data'] = $data['data']->__toArray();
         }

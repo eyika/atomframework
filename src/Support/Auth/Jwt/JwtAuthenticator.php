@@ -47,7 +47,7 @@ final class JwtAuthenticator
         if (!$role = Role::getBuilder()->orderBy()->findBy('id', $user->role_id)) {
             return false;
         }
-        if (Arr::exists($_role, $role[0]['name'])) {
+        if (Arr::exists($_role, $role->name)) {
             return true;
         }
         return false;
