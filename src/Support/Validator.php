@@ -10,12 +10,14 @@ class Validator {
     private static array $req_data;
     public static array $errors;
     private static array $validated;
+    private static array $confirms;
 
     public function __construct(Request|array $_req_obj = [])
     {
         self::$req_data = $_req_obj instanceof Request ? $_req_obj->input() : $_req_obj;
         self::$errors = [];
         self::$validated = [];
+        self::$confirms = [];
     }
 
     public static function validate(Request|array $req_obj, array $params, string $separator = '|'): bool|array
@@ -26,11 +28,22 @@ class Validator {
             $validations = explode($separator, $paramValue);
             $resp = $me->validateValue($paramKey, $validations);
             if ($resp) {
-                static::$errors[$paramKey] = $resp;  //Correction needded, it should be key value pair
+                static::$errors[$paramKey] = $resp;
                 continue;
             }
             if (Arr::keyExists(static::$req_data, $paramKey))
                 static::$validated[$paramKey] = static::$req_data[$paramKey];
+        }
+
+        foreach (static::$confirms as $paramKey => $paramValue) {
+            $validations = explode($separator, $params[$paramKey]);
+            $prevValue = static::$req_data[$paramKey];
+            $validations[] = "equals:$prevValue";
+            $resp = $me->validateValue("{$paramKey}_confirm", $validations);
+            if ($resp) {
+                static::$errors[$paramKey] = $resp;
+                continue;
+            }
         }
 
         if (count(static::$errors) > 0) {
@@ -74,7 +87,7 @@ class Validator {
                     $resp = "{$param} is required";
                 break;
             case 'forbidden':
-                    $resp = "{$param} is forbidden in this request";
+                $resp = "{$param} is forbidden in this request";
                 break;
             case 'string':
                 $stat = is_string($paramval);
@@ -121,8 +134,32 @@ class Validator {
                 $resp = !$stat ? "{$param} should be an array" : '';
                 break;
             case 'json':
-                $stat = Str::isJson($paramval);
+                $stat = is_string($paramval) && Str::isJson($paramval);
                 $resp = !$stat ? "{$param} should be a valid json string" : '';
+                break;
+            case 'uuid':
+                $stat = is_string($paramval) && Str::isUuid($paramval);
+                $resp = !$stat ? "{$param} should be a valid uuid string" : '';
+                break;
+            case 'ascii':
+                $stat = is_string($paramval) && Str::isAscii($paramval);
+                $resp = !$stat ? "{$param} should be a valid ascii string" : '';
+                break;
+            case 'phone':
+                $stat = is_string($paramval) && Str::isPhoneNumber($paramval);
+                $resp = !$stat ? "{$param} should be a valid phone string" : '';
+                break;
+            case 'email':
+                $stat = is_string($paramval) && Str::isEmail($paramval);
+                $resp = !$stat ? "{$param} should be a valid email string" : '';
+                break;
+            case 'base64':
+                $stat = is_string($paramval) && Str::isBase64($paramval);
+                $resp = !$stat ? "{$param} should be a valid base64 string" : '';
+                break;
+            case 'confirm':
+                static::$confirms[$param] = $paramval;
+                $resp = '';
                 break;
             default:
                 $resp = $this->performAdvanceValidation($type, $param, $paramval);
@@ -143,6 +180,12 @@ class Validator {
                     break;
                 case 'min':
                     $resp = $paramval < (int)$items[1] ? "{$param} should not be less than {$items[1]}" : '';
+                    break;
+                case 'equals':
+                    $resp = $paramval === $items[1] ? '' : "{$param} should be same as " . str_replace('_confirm', '', $param);
+                    break;
+                case 'not_equals':
+                    $resp = $paramval === $items[1] ? "{$param} should not be same as " . str_replace('_confirm', '', $param) : '';
                     break;
                 case 'in':
                     $resp = !Arr::exists(explode(', ', $items[1]), $paramval, true) ? "{$param} should contain one of {$items[1]}" : '';

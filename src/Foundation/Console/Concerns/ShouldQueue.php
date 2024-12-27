@@ -109,7 +109,7 @@ trait ShouldQueue
      * Release the job to a different Queue
      * 
      * @param int $delay in minutes
-     * @return void                      
+     * @return void
      */
     private function bury(int|null $delay = null)
     {

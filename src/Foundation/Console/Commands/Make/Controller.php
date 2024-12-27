@@ -57,7 +57,7 @@ final class {$name}Controller
             if (!\$$controller_str = $name::getBuilder()->find((int)\$id))
                 return JsonResponse::notFound('unable to retrieve $controller_str_spc');
 
-            return JsonResponse::ok('$controller_str_spc retrieved success', \${$controller_str}->toArray());
+            return JsonResponse::ok('$controller_str_spc retrieved success', \${$controller_str});
         } catch (PDOException \$e) {
             return JsonResponse::serverError('we encountered a db problem');
         } catch (LogicException \$e) {

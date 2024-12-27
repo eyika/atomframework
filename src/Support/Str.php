@@ -159,7 +159,7 @@ Class Str
     }
 
     /**
-     * Convert a value to camel case.
+     * Convert a value to camelCase.
      *
      * @param  string  $value
      * @return string
@@ -174,7 +174,7 @@ Class Str
     }
 
     /**
-     * Convert a value to pascal case.
+     * Convert a value to PascalCase.
      * 
      * @param string $value
      * @return string
@@ -186,6 +186,96 @@ Class Str
         }
 
         return static::$pascalCache[$value] = ucfirst(static::studly($value));
+    }
+
+    /**
+     * Convert a string to snake_case.
+     *
+     * @param  string  $value
+     * @param  string  $delimiter
+     * @return string
+     */
+    public static function snake($value, $delimiter = '_')
+    {
+        $key = $value;
+
+        if (isset(static::$snakeCache[$key][$delimiter])) {
+            return static::$snakeCache[$key][$delimiter];
+        }
+
+        if (! ctype_lower($value)) {
+            $value = preg_replace('/\s+/u', '', ucwords($value));
+
+            $value = static::lower(preg_replace('/(.)(?=[A-Z])/u', '$1'.$delimiter, $value));
+        }
+
+        return static::$snakeCache[$key][$delimiter] = $value;
+    }
+
+    /**
+     * Convert a string to kebab-case.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public static function kebab($value)
+    {
+        return static::snake($value, '-');
+    }
+
+    /**
+     * Convert a string to dot.case.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public static function dot($value)
+    {
+        return static::snake($value, '.');
+    }
+
+    /**
+     * Convert a string to SCREAMING_SNAKE_CASE.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public static function screamingSnake($value)
+    {
+        return strtoupper(static::snake($value));
+    }
+
+    /**
+     * Convert a string to TRAIN-CASE.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public static function train($value)
+    {
+        return ucwords(static::kebab($value), '-');
+    }
+
+    /**
+     * Convert a string to Title Case.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public static function title($value)
+    {
+        return ucwords(str_replace(['-', '_'], ' ', $value));
+    }
+
+    /**
+     * Convert a string to flatcase.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public static function flat($value)
+    {
+        return strtolower(preg_replace('/\s+/u', '', $value));
     }
 
     /**
@@ -302,8 +392,7 @@ Class Str
      */
     public static function isAscii($value)
     {
-        throw new \Exception("The method is not implemented yet", 1);
-        //return ASCII::is_ascii((string) $value);
+        return mb_check_encoding($value, 'ASCII');
     }
 
     /**
@@ -333,14 +422,45 @@ Class Str
     }
 
     /**
-     * Convert a string to kebab case.
+     * Validate if a string is a valid email address.
      *
-     * @param  string  $value
-     * @return string
+     * @param string $email
+     * @return bool
      */
-    public static function kebab($value)
+    public static function isEmail($email): bool
     {
-        return static::snake($value, '-');
+        return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+    }
+
+    /**
+     * Validate if a string is a valid phone number.
+     *
+     * @param string $phone
+     * @return bool
+     */
+    public static function isPhoneNumber(string $phone): bool
+    {
+        // Matches international and local phone numbers with optional spaces, dashes, or parentheses
+        $pattern = '/^\+?[1-9]\d{1,14}$|^(\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}$/';
+
+        return preg_match($pattern, $phone) === 1;
+    }
+
+    /**
+     * Check if a string is valid Base64 encoded.
+     *
+     * @param string $value
+     * @return bool
+     */
+    public static function isBase64(string $value): bool
+    {
+        // Base64 strings should only contain A-Z, a-z, 0-9, +, /, and =
+        // The length of the string should be a multiple of 4
+        if (preg_match('/^[A-Za-z0-9+\/]+={0,2}$/', $value) && strlen($value) % 4 === 0) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -673,17 +793,6 @@ Class Str
     }
 
     /**
-     * Convert the given string to title case.
-     *
-     * @param  string  $value
-     * @return string
-     */
-    public static function title($value)
-    {
-        return mb_convert_case($value, MB_CASE_TITLE, 'UTF-8');
-    }
-
-    /**
      * Get the singular form of an English word.
      *
      * @param  string  $value
@@ -722,30 +831,6 @@ Class Str
         $title = preg_replace('!['.preg_quote($separator).'\s]+!u', $separator, $title);
 
         return trim($title, $separator);
-    }
-
-    /**
-     * Convert a string to snake case.
-     *
-     * @param  string  $value
-     * @param  string  $delimiter
-     * @return string
-     */
-    public static function snake($value, $delimiter = '_')
-    {
-        $key = $value;
-
-        if (isset(static::$snakeCache[$key][$delimiter])) {
-            return static::$snakeCache[$key][$delimiter];
-        }
-
-        if (! ctype_lower($value)) {
-            $value = preg_replace('/\s+/u', '', ucwords($value));
-
-            $value = static::lower(preg_replace('/(.)(?=[A-Z])/u', '$1'.$delimiter, $value));
-        }
-
-        return static::$snakeCache[$key][$delimiter] = $value;
     }
 
     /**
