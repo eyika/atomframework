@@ -6,6 +6,8 @@ use Carbon\Carbon;
 use Exception;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Support\Arr;
+use Eyika\Atom\Framework\Support\Str;
+use Eyika\Atom\Framework\Support\Database\DB;
 use Eyika\Atom\Framework\Support\Database\mysqly;
 use Eyika\Atom\Framework\Support\Database\PaginatedData;
 
@@ -36,6 +38,7 @@ trait QueryBuilder
         $this->operators = '=';
         $this->order = '';
         $this->transaction_mode = false;
+        $this->with_model_name = '';
     }
 
     public function orderBy($column = "id", $direction = "ASC")
@@ -228,14 +231,23 @@ trait QueryBuilder
             $this->resetInstance();
             return false;
         }
+        if (!empty($this->with_model_name)) {
+            foreach ($fields as $key => $field) {
+                $column = Str::singular($this->child->table)."_".$this->child->primarKey;
+                $method = Str::isSingular($this->with_model_name) ? 'first' : 'get';
+                if ($item = DB::where($column, $field[$this->child->{$this->child->primaryKey}])->{$method}($this->with_model_name)) {
+                    $fields[$key] = $item;
+                }
+            }
+        }
         $this->resetInstance();
         return $fields;
     }
 
     public function with($model)
     {
-        throw new NotImplementedException('method not fully implemented');
         $this->with_model_name = $model;
+        return $this;
     }
 
     public function get($is_protected = true, $select = [])

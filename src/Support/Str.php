@@ -464,6 +464,39 @@ Class Str
     }
 
     /**
+     * Determine if a string is a valid word and check if it is singular.
+     *
+     * @param string $word
+     * @return string|null Returns true, false, or null if not a valid word.
+     */
+    public static function isSingular(string $word): ?string
+    {
+        // Check if the string is a valid word (letters only)
+        if (!preg_match('/^[a-zA-Z]+$/', $word)) {
+            return null; // Not a valid word
+        }
+
+        // Check plurality
+        // Basic rule: Words ending in 's' but not 'ss' are usually plural
+        if (substr($word, -1) === 's' && substr($word, -2) !== 'ss') {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Determine if a string is a valid word and check if it is plural.
+     *
+     * @param string $word
+     * @return string|null Returns true, false, or null if not a valid word.
+     */
+    public static function isPlural(string $word): ?string
+    {
+        return !static::isSingular($word);
+    }
+
+    /**
      * Return the length of the given string.
      *
      * @param  string  $value
@@ -580,85 +613,61 @@ Class Str
     /**
      * Get the plural form of an English word.
      *
-     * @param  string  $word
-     * @param  int  $count
+     * @param string  $word
+     * @param string $lang
      * @return string
      */
-    public static function plural($word, $count = 2)
+    public static function plural($word, $lang = 'english')
     {
-        $plural = array(
-            array('/(quiz)$/i',               "$1zes"),
-            array('/^(ox)$/i',                "$1en"),
-            array('/([m|l])ouse$/i',          "$1ice"),
-            array('/(matr|vert|ind)ix|ex$/i', "$1ices"),
-            array('/(x|ch|ss|sh)$/i',         "$1es"),
-            array('/([^aeiouy]|qu)y$/i',      "$1ies"),
-            array('/(hive)$/i',               "$1s"),
-            array('/(?:([^f])fe|([lr])f)$/i', "$1$2ves"),
-            array('/sis$/i',                  "ses"),
-            array('/([ti])um$/i',             "$1a"),
-            array('/(buffal|tomat)o$/i',      "$1oes"),
-            array('/(bu)s$/i',                "$1ses"),
-            array('/(alias|status)$/i',       "$1es"),
-            array('/(octop|vir)us$/i',        "$1i"),
-            array('/(ax|test)is$/i',          "$1es"),
-            array('/s$/i',                    "s"),
-            array('/$/',                      "s")
-        );
-    
-        $irregular = array(
-            array('move',   'moves'),
-            array('foot',   'feet'),
-            array('goose',  'geese'),
-            array('sex',    'sexes'),
-            array('child',  'children'),
-            array('man',    'men'),
-            array('tooth',  'teeth'),
-            array('person', 'people')
-        );
-    
-        $uncountable = array(
-            'sheep', 'fish', 'deer', 'series', 'species', 'money', 'rice', 'information', 'equipment'
-        );
-    
-        // Check for uncountable words
-        foreach ($uncountable as $uncount) {
-            if (strtolower($uncount) == strtolower($word)) {
-                return $word;
-            }
-        }
-    
-        // Check for irregular words
-        foreach ($irregular as $noun) {
-            if (strtolower($noun[0]) == strtolower($word)) {
-                return $noun[1];
-            }
-        }
-    
-        // Check for matches using regular expressions
-        foreach ($plural as $pattern) {
-            if (preg_match($pattern[0], $word)) {
-                return preg_replace($pattern[0], $pattern[1], $word);
-            }
-        }
-    
-        return $word;
+        //TODO: ensure lang is among supported languages
+        return StrHelpers::{$lang}()->pluralize($word);
+    }
+
+    /**
+     * Get the singular form of an English word.
+     *
+     * @param string  $word
+     * @param string $lang
+     * @return string
+     */
+    public static function singular($word, $lang = 'english')
+    {
+        //TODO: ensure lang is among supported languages
+        return StrHelpers::{$lang}()->singularize($word);
     }
 
     /**
      * Pluralize the last word of an English, studly caps case string.
      *
      * @param  string  $value
-     * @param  int  $count
+     * @param  string  $lang
      * @return string
      */
-    public static function pluralStudly($value, $count = 2)
+    public static function pluralStudly($value, $lang = 'english')
     {
+        //TODO: ensure lang is among supported languages
         $parts = preg_split('/(.)(?=[A-Z])/u', $value, -1, PREG_SPLIT_DELIM_CAPTURE);
 
         $lastWord = array_pop($parts);
 
-        return implode('', $parts).self::plural($lastWord, $count);
+        return implode('', $parts).self::plural($lastWord, $lang);
+    }
+
+    /**
+     * Singularize the last word of an English, studly caps case string.
+     *
+     * @param  string  $value
+     * @param  string  $lang
+     * @return string
+     */
+    public static function singularStudly($value, $lang = 'english')
+    {
+        //TODO: ensure lang is among supported languages
+        $parts = preg_split('/(.)(?=[A-Z])/u', $value, -1, PREG_SPLIT_DELIM_CAPTURE);
+
+        $lastWord = array_pop($parts);
+
+        return implode('', $parts).self::singular($lastWord, $lang);
     }
 
     /**
@@ -790,18 +799,6 @@ Class Str
     public static function upper($value)
     {
         return mb_strtoupper($value, 'UTF-8');
-    }
-
-    /**
-     * Get the singular form of an English word.
-     *
-     * @param  string  $value
-     * @return string
-     */
-    public static function singular($value)
-    {
-        throw new \Exception("The method is not implemented yet", 1);
-        // return Pluralizer::singular($value);
     }
 
     /**
