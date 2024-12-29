@@ -47,7 +47,6 @@ class ExceptionHandler implements ContractExceptionHandler
      */
     public function render($request, \Throwable $exception): bool
     {
-        logger()->info($exception->getMessage(), $exception->getTrace());
         if ($request->wantsJson()) {
             $code = $exception->getCode();
             $message = $exception->getMessage();

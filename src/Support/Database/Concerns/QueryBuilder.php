@@ -59,32 +59,7 @@ trait QueryBuilder
 
     public function toArray($guard = true, $select = [], $ignore = [], $includeDynamicProperties = false)
     {
-        $result = array();
-
-        $ignore = array_merge($ignore, [
-            'fillable', 'guarded', 'table', 'primaryKey', 'exists', 'db', 'builder', 'dynamicProperties',
-            'connection', 'keyType', 'incrementing', 'perPage', 'wasRecentlyCreated', 'child'
-        ]);
-
-        $obj_props = array_diff(array_keys(get_object_vars($this->child)), $ignore);
-        if (count($select)) {
-            foreach ($select as $item) {
-                if (Arr::exists($obj_props, $item)) {
-                    $result[$item] = $this->child->{$item};
-                }
-            }
-            return $result;
-        }
-
-        $fillables = $includeDynamicProperties ? array_merge($this->child::fillable, array_keys($this->child->dynamicProperties)) : $this->child::fillable;
-
-        $items = $guard ? array_diff($fillables, array_merge($this->child::guarded, $ignore)) : array_diff($fillables, $ignore);
-
-        foreach ($items as $item) {
-            $result[$item] = $this->child->{$item};
-        }
-
-        return $result;
+        return $this->_toArray($guard, $select, $ignore, $includeDynamicProperties, false);
     }
 
     public function raw($sql, $bind)
@@ -286,7 +261,6 @@ trait QueryBuilder
             }
         }
         $this->resetInstance();
-        logger()->info('fields are: ', $fields);
         return $fields;
     }
 
@@ -666,7 +640,7 @@ trait QueryBuilder
             $this->child->booted($this->child, 'creating');
             $this->child->booting($this->child, 'creating');
 
-            $values = Arr::where($this->child->toArray(false, ignore: ['deleted_at']), function ($v, $k) {      // to be used to filter out empty values in future
+            $values = Arr::where($this->_toArray(false, ignore: ['deleted_at']), function ($v, $k) {      // to be used to filter out empty values in future
                 return true;
             }, ARRAY_FILTER_USE_BOTH);
 
@@ -698,5 +672,36 @@ trait QueryBuilder
     
             return $this->child;
         }
+    }
+
+    private function _toArray($guard = true, $select = [], $ignore = [], $includeDynamicProperties = false, $ignore_null = true)
+    {
+        $result = array();
+
+        $ignore = array_merge($ignore, [
+            'fillable', 'guarded', 'table', 'primaryKey', 'exists', 'db', 'builder', 'dynamicProperties',
+            'connection', 'keyType', 'incrementing', 'perPage', 'wasRecentlyCreated', 'child'
+        ]);
+
+        $obj_props = array_diff(array_keys(get_object_vars($this->child)), $ignore);
+        if (count($select)) {
+            foreach ($select as $item) {
+                if (Arr::exists($obj_props, $item)) {
+                    $result[$item] = $this->child->{$item};
+                }
+            }
+            return $result;
+        }
+
+        $fillables = $includeDynamicProperties ? array_merge($this->child::fillable, array_keys($this->child->dynamicProperties)) : $this->child::fillable;
+
+        $items = $guard ? array_diff($fillables, array_merge($this->child::guarded, $ignore)) : array_diff($fillables, $ignore);
+
+        foreach ($items as $item) {
+            if (!$ignore_null || ($ignore_null && !is_null($this->child->{$item})))
+                $result[$item] = $this->child->{$item};
+        }
+
+        return $result;
     }
 }
