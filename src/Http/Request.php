@@ -82,6 +82,11 @@ class Request
         return $this->retrieveItem($this->body, $key, $default);
     }
 
+    public function merge(array $data)
+    {
+        $this->body = array_merge($this->body, $data);
+    }
+
     public function only(array $keys)
     {
         return Arr::only($this->input(), $keys);
