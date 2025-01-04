@@ -406,15 +406,12 @@ trait QueryBuilder
         $method = $method == 'count' ? $method : $method."_".$column;
 
         if (!$aggregate = mysqly::{$method}($this->table, $query_arr, $this->operators, $this->or_ands)) {
-            logger()->info('failed'.$aggregate);
             if ($reset_instance)
                 $this->resetInstance();
             return false;
         }
         if ($reset_instance)
             $this->resetInstance();
-
-        logger()->info($aggregate);
 
         return $aggregate;
     }
