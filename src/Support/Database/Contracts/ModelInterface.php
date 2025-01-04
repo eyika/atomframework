@@ -271,7 +271,7 @@ interface ModelInterface extends ModelEventsInterface
      * Count total number of elements in a model from results of a query
      * @param string $column
      * 
-     * @return int|false
+     * @return int
      */
     public function count(string $column = '');
     
@@ -280,7 +280,7 @@ interface ModelInterface extends ModelEventsInterface
      * column from results of a query
      * @param string $column
      * 
-     * @return int|false
+     * @return int
      */
     public function avg(string $column);
     
@@ -289,7 +289,7 @@ interface ModelInterface extends ModelEventsInterface
      * column from results of a query
      * @param string $column
      * 
-     * @return int|false
+     * @return int
      */
     public function max(string $column);
         
@@ -298,9 +298,72 @@ interface ModelInterface extends ModelEventsInterface
      * column from results of a query
      * @param string $column
      * 
-     * @return int|false
+     * @return int
      */
     public function min(string $column);
+
+    /**
+     * Given a column, return the mathematical sum of all values of that
+     * column from results of a query
+     * @param string $column
+     * 
+     * @return int
+     */
+    public function sum($column);
+
+    /**
+     * Given a column, return the string result of concatinating all values of that
+     * column from results of a query
+     * @param string $column
+     * 
+     * @return string
+     */
+    public function group_concat($column);
+    
+    /**
+     * Given a column, return the statistical variance population evaluation of all values of that
+     * column from results of a query
+     * @param string $column
+     * 
+     * @return int
+     */
+    public function var_pop($column);
+
+    /**
+     * Given a column, return the standard deviation evaluation of all values of that
+     * column from results of a query
+     * @param string $column
+     * 
+     * @return int
+     */
+    public function stddev($column);
+    
+    /**
+     * Given a column, return the bit_and evaluation of all values of that
+     * column from results of a query
+     * @param string $column
+     * 
+     * @return int
+     */
+    public function bit_and($column);
+
+    /**
+     * Given a column, return the bit_or evaluation of all values of that
+     * column from results of a query
+     * @param string $column
+     * 
+     * @return int
+     */
+    public function bit_or($column);
+
+    /**
+     * Given a column, return the bit_xor evaluation of all values of that
+     * column from results of a query
+     * @param string $column
+     * 
+     * @return int
+     */
+    public function bit_xor($column);
 
     /**
      * update a model

@@ -6,7 +6,7 @@ use ArrayAccess;
 use Eyika\Atom\Framework\Support\Concerns\Macroable;
 use InvalidArgumentException;
 
-Class Arr
+final Class Arr
 {
     use Macroable;
 

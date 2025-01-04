@@ -11,7 +11,7 @@ use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidFactory;
 use voku\helper\ASCII;
 
-Class Str
+final Class Str
 {
     use Macroable;
 

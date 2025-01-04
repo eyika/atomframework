@@ -399,11 +399,12 @@ class mysqly {
   
   public static function count($sql_or_table, $bind_or_filter = [], array|string $operators = '=', array|string $or_ands = "AND")
   {
+    logger()->info('got to count');
     $_select_str = '*';
     $operators = Arr::wrap($operators);
 
     foreach ($operators as $key => $op) {
-      if ($op && str_starts_with($op, 'DISTINCT ')) {
+      if ($op && str_starts_with(strtoupper($op), 'DISTINCT ')) {
         $_select_str = Arr::pull($operators, $key) ?? '*';
         break;
       }
@@ -619,8 +620,40 @@ class mysqly {
   }
   
   
-  
-  /* --- Dynamic methods --- */
+  /**
+   * Dynamic methods
+   * 
+   * Examples
+   * 
+   * **Get rows from table by parametric filters**
+   * `mysqly::{table}($filters)` e.g `mysqly::{users}([ 'id' => 1, 'status' => 'active' ])`
+   * 
+   * **Get single row from table by "ID" column**
+   * `mysqly::{table}_($id)` e.g `mysqly::{users}_(2)`
+   * 
+   * **Get single column value by paremetric filter**
+   * `mysqly::{table}_{column}($filters)` e.g `mysqly::{users}_{gender}([ 'id' => 1, 'status' => 'active' ])`
+   * 
+   * **'min', 'max', 'avg', 'sum', 'group_concat', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor' column values**
+   * ```php
+   *    mysqly::min_{column}();  //Get the minimun value of a column in a table
+   *    mysqly::max_{column}();  //Get the maximun value of a column in a table
+   *    mysqly::avg_{column}();  //Get the average of values of a column in a table
+   *    mysqly::sum_{column}();  //Get the sum of all values of a column in a table
+   *    mysqly::group_concat_{column}();  //Get the group_concat of values of a column in a table
+   *    mysqly::var_pop_{column}();  //Get the var_pop of values of a column in a table
+   *    mysqly::stddev_{column}();  //Get the standard deviation value of a column in a table
+   *    mysqly::bit_and_{column}();  //Get the maximun value of a column in a table
+   *    // ...etc
+   * 
+   *   /// you can use 'DISTINCT' or 'distinct' keyword to make the result distinct ///
+   *   mysqly::sum_{column}('users', [], 'distinct');  //Get the sum of all distinct values of a column in a table
+   *   mysqly::sum_{column}('users', ['status' => 'active'], 'distinct');  //Get the sum of all values of a column in a table
+   * 
+   *   /// you can use perform a more refined filter ///
+   *   mysqly::sum_{column}('users', ['age' => '40', 'country' => 'nigeria'], ['<', '='], ['AND', 'AND'], 'distinct');  //Get the sum of all values of a column in a table
+   * ```
+   **/
   
   public static function __callStatic($name, $args) {
     
@@ -635,11 +668,20 @@ class mysqly {
     }
     
     # get aggregates by filters
-    else if ( $args[0] && (count($args) == 2) && strpos($name, '_') && in_array(explode('_', $name)[0], ['min', 'max', 'avg']) ) {
+    else if ( $args[0] && (count($args) == 2 || count($args) == 3) && strpos($name, '_') && in_array(strtolower(explode('_', $name)[0] ?? ''), ['min', 'max', 'avg', 'sum', 'group_concat', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor']) ) {
       list($agr, $col) = explode('_', $name);
       $table = $args[0];
       list($where, $bind) = static::filter($args[1]);
-      $row = static::fetch('SELECT ' . $agr . '( ' . $col . ') FROM `' . $table . '` ' . $where, $bind)[0];
+      $distinct = isset($args[2]) ? 'DISTINCT' : '';
+      $row = static::fetch('SELECT ' . $agr . "($distinct " . $col . ') FROM `' . $table . '` ' . $where, $bind)[0];
+      return array_shift($row);
+    }
+    else if ( $args[0] && (count($args) > 1 || count($args) < 6) && strpos($name, '_') && in_array(strtolower(explode('_', $name)[0] ?? ''), ['min', 'max', 'avg', 'sum', 'group_concat', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor']) ) {
+      list($agr, $col) = explode('_', $name);
+      $table = $args[0];
+      list($where, $bind) = static::filter($args[1], $args[3], $args[2]);
+      $distinct = isset($args[4]) ? 'DISTINCT' : '';
+      $row = static::fetch('SELECT ' . $agr . "($distinct " . $col . ') FROM `' . $table . '` ' . $where, $bind)[0];
       return array_shift($row);
     }
     
@@ -653,7 +695,6 @@ class mysqly {
       throw new PDOException($name . '() method is unknown' );
     }
   }
-  
   
   
   /**

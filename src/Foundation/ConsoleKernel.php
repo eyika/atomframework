@@ -42,9 +42,9 @@ class ConsoleKernel implements ContractsConsoleKernel
 
     protected $status = false;
 
-    public function register(string $name, Command|callable $command, array $options = [])
+    public function register(string $name, Command|callable $command, array $options = [], $purpose = '')
     {
-        $this->commands[$name] = [ 'command' => $command, 'options' => $options, 'purpose' => '' ];
+        $this->commands[$name] = [ 'command' => $command, 'options' => $options, 'purpose' => $purpose ];
     }
 
     public function purpose(string $purpose)
@@ -95,7 +95,7 @@ class ConsoleKernel implements ContractsConsoleKernel
                 $command_obj = new $command;
     
                 $args = explode(' ', $command_obj->signature);
-                $signature = array_shift($args) ?? '';
+                $signature = array_shift($args) ?? strtolower($class_name);
                 $this->register($signature, $command_obj, $args);
             }, $base_folder);
         } catch (Exception $e) {

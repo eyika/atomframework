@@ -280,7 +280,7 @@ trait QueryBuilder
         $currentPage = $currentPage ?? 1;
         $recordsPerPage = $recordsPerPage ?? $this->recordsPerPage;
 
-        $totalRecords = $this->_count($this->child->primaryKey, false);
+        $totalRecords = $this->_aggregate($this->child->primaryKey, 'count', false);
         // Calculate total pages
         $totalPages = ceil($totalRecords / $recordsPerPage);
         // Calculate the offset
@@ -299,29 +299,114 @@ trait QueryBuilder
 
     public function random()
     {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
+        return $this->_aggregate(method: 'random');
     }
 
     public function count($column = "*")
     {
-        return $this->_count($column);
+        if (!$dat = $this->_aggregate($column)) {
+            return 0;
+        }
+        return $dat;
     }
 
-    public function _count($column = "*", $reset_instance = true)
+    public function avg($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'avg')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function max($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'max')) {
+            return 0;
+        }
+        return $dat;
+    }
+    
+    public function min($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'min')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function sum($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'sum')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function group_concat($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'group_concat')) {
+            return '';
+        }
+        return $dat;
+    }
+    
+    public function var_pop($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'var_pop')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function stddev($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'stddev')) {
+            return 0;
+        }
+        return $dat;
+    }
+    
+    public function bit_and($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'bit_and')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function bit_or($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'bit_or')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function bit_xor($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'bit_xor')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function _aggregate($column = "*", $method = 'count', $reset_instance = true)
     {
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
-        $i = 0;
-        // foreach ($keys as $key) {
-        //     $query_arr[$key] = $values[$i];
-        //     $i++;
-        // }
         if ($this->child->softdeletes) {
             $query_arr['deleted_at'] = "IS NULL";
             is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
         }
 
-        if (!$count = mysqly::count($this->table, $query_arr, $this->operators, $this->or_ands)) {
+        if ($method == 'count' && $column != '*') {
+            $this->operators[] = "DISTINCT $column";
+        }
+
+        $method = $method == 'count' ? $method : $method."_".$column;
+
+        if (!$aggregate = mysqly::{$method}($this->table, $query_arr, $this->operators, $this->or_ands)) {
+            logger()->info('failed'.$aggregate);
             if ($reset_instance)
                 $this->resetInstance();
             return false;
@@ -329,22 +414,9 @@ trait QueryBuilder
         if ($reset_instance)
             $this->resetInstance();
 
-        return $count;
-    }
+        logger()->info($aggregate);
 
-    public function avg($column)
-    {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
-    }
-
-    public function max($column)
-    {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
-    }
-    
-    public function min($column)
-    {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
+        return $aggregate;
     }
 
     public function update($values, $id=0, $is_protected = true)
