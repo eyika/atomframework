@@ -54,6 +54,13 @@ trait QueryBuilder
                 $this->child->{$item} = $values[$item];
             }
         }
+        foreach ($values as $key => $value) {
+            if (Arr::keyExists($this->child::fillable, $key)) {
+                $this->child->{$key} = $value;
+                continue;
+            }
+            $this->child->dynamicProperties[$key] = $value;
+        }
         return $this->child;
     }
 
@@ -106,17 +113,139 @@ trait QueryBuilder
             return false;
         }
 
-        $this->fill($model[0]);
+        return $this->fetchRelationship($model[0], true, $is_protected);
+        // $this->fill($model[0]);
 
-        if (!empty($this->with_model_name)) {
-            $column = Str::singular($this->child->table)."_".$this->child->primarKey;
-            $method = Str::isSingular($this->with_model_name) ? 'first' : 'get';
-            if ($item = DB::where($column, $this->child->{$this->child->primaryKey})->{$method}(Str::plural($this->with_model_name))) {
-                $this->child->{$this->with_model_name} = $item;
-            }
+        // if (!empty($this->with_model_name)) {
+        //     $column = Str::singular($this->child->table)."_".$this->child->primarKey;
+        //     $method = Str::isSingular($this->with_model_name) ? 'first' : 'get';
+        //     if ($item = DB::where($column, $this->child->{$this->child->primaryKey})->{$method}(Str::plural($this->with_model_name))) {
+        //         $this->child->{$this->with_model_name} = $item;
+        //     }
+        // }
+        // $this->resetInstance();
+        // return $this->child;
+    }
+
+    private function fetchRelationship($fields, $fill_models = false, $is_protected = true)
+    {
+        if (empty($this->with_model_name)) {
+            $this->resetInstance();
+            if ($fill_models)
+                return $this->fill($fields);
+
+            return $fields;
         }
+
+        $is_nested_array = Arr::isArrayOfArrays($fields);
+        $with_model_name = $this->with_model_name;
         $this->resetInstance();
-        return $this->child;
+
+        if (method_exists($this->child, $with_model_name)) {
+            if ($is_nested_array) {
+                foreach ($fields as $key => $field) {
+                    $this->child->{$with_model_name."_id"} = $field[$with_model_name."_id"];
+                    $item = $this->{$with_model_name}();
+                    $fields[$key][$with_model_name] = $item ? $item->toArray($is_protected) : $item;
+                    $this->resetInstance();
+                }
+                $this->resetInstance();
+                return $fields;
+            }
+
+            $this->child->{$with_model_name."_id"} = $fields[$with_model_name."_id"];
+            $item = $this->{$with_model_name}();
+            $fields[$with_model_name] = $item ? $item->toArray($is_protected) : $item;
+            $this->resetInstance();
+            if ($fill_models)
+                return $this->fill($fields);
+
+            return $fields;
+        }
+        $plural_camel = Str::camel(Str::plural($with_model_name));
+        if (method_exists($this, $plural_camel)) {
+            if ($is_nested_array) {
+                foreach ($fields as $key => $field) {
+                    $this->child->{$with_model_name."_id"} = $field[$with_model_name."_id"];
+                    $item = $this->{$plural_camel}();
+                    $fields[$key][$with_model_name] = $item ? $item->toArray($is_protected) : $item;
+                }
+                $this->resetInstance();
+                return $fields;
+            }
+
+            $this->child->{$with_model_name."_id"} = $fields[$with_model_name."_id"];
+            $item = $this->{$plural_camel}();
+            $fields[$with_model_name] = $item ? $item->toArray($is_protected) : $item;
+            $this->resetInstance();
+            if ($fill_models)
+                return $this->fill($fields);
+
+            return $fields;
+        }
+        $plural_snake = Str::snake(Str::plural($with_model_name));
+        if (method_exists($this, $plural_snake)) {
+            if ($is_nested_array) {
+                foreach ($fields as $key => $field) {
+                    $this->child->{$with_model_name."_id"} = $field[$with_model_name."_id"];
+                    $item = $this->{$plural_snake}();
+                    $fields[$key][$with_model_name] = $item ? $item->toArray($is_protected) : $item;
+                }
+                $this->resetInstance();
+                return $fields;
+            }
+
+            $this->child->{$with_model_name."_id"} = $fields[$with_model_name."_id"];
+            $item = $this->{$plural_snake}();
+            $fields[$with_model_name] = $item ? $item->toArray($is_protected) : $item;
+            $this->resetInstance();
+            if ($fill_models)
+                return $this->fill($fields);
+
+            return $fields;
+        }
+        $singular_camel = Str::camel(Str::singular($with_model_name));
+        if (method_exists($this, $singular_camel)) {
+            if ($is_nested_array) {
+                foreach ($fields as $key => $field) {
+                    $this->child->{$with_model_name."_id"} = $field[$with_model_name."_id"];
+                    $item = $this->{$singular_camel}();
+                    $fields[$key][$with_model_name] = $item ? $item->toArray($is_protected) : $item;
+                }
+                $this->resetInstance();
+                return $fields;
+            }
+
+            $this->child->{$with_model_name."_id"} = $fields[$with_model_name."_id"];
+            $item = $this->{$singular_camel}();
+            $fields[$with_model_name] = $item ? $item->toArray($is_protected) : $item;
+            $this->resetInstance();
+            if ($fill_models)
+                return $this->fill($fields);
+
+            return $fields;
+        }
+        $singular_snake = Str::snake(Str::singular($with_model_name));
+        if (method_exists($this, $singular_snake)) {
+            if ($is_nested_array) {
+                foreach ($fields as $key => $field) {
+                    $this->child->{$with_model_name."_id"} = $field[$with_model_name."_id"];
+                    $item = $this->{$singular_snake}();
+                    $fields[$key][$with_model_name] = $item ? $item->toArray($is_protected) : $item;
+                }
+                $this->resetInstance();
+                return $fields;
+            }
+
+            $this->child->{$with_model_name."_id"} = $fields[$with_model_name."_id"];
+            $item = $this->{$singular_snake}();
+            $fields[$with_model_name] = $item ? $item->toArray($is_protected) : $item;
+            $this->resetInstance();
+            if ($fill_models)
+                return $this->fill($fields);
+
+            return $fields;
+        }
     }
 
     public function findOr($id = 0, $is_protected = true, $callable = null)
@@ -177,17 +306,7 @@ trait QueryBuilder
             $this->resetInstance();
             return false;
         }
-        $this->fill($model[0]);
-
-        if (!empty($this->with_model_name)) {
-            $column = Str::singular($this->child->table)."_".$this->child->primarKey;
-            $method = Str::isSingular($this->with_model_name) ? 'first' : 'get';
-            if ($item = DB::where($column, $this->child->{$this->child->primaryKey})->{$method}(Str::plural($this->with_model_name))) {
-                $this->child->{$this->with_model_name} = $item;
-            }
-        }
-        $this->resetInstance();
-        return $this->child;
+        return $this->fetchRelationship($model[0], true, $is_protected);
     }
 
     public function findByArray($keys, $values, $or_and = "AND", $is_protected = true, $select = [])
@@ -216,17 +335,7 @@ trait QueryBuilder
             return false;
         }
 
-        $this->fill($fields[0]);
-
-        if (!empty($this->with_model_name)) {
-            $column = Str::singular($this->child->table)."_".$this->child->primarKey;
-            $method = Str::isSingular($this->with_model_name) ? 'first' : 'get';
-            if ($item = DB::where($column, $this->child->{$this->child->primaryKey})->{$method}(Str::plural($this->with_model_name))) {
-                $this->child->{$this->with_model_name} = $item;
-            }
-        }
-        $this->resetInstance();
-        return $this->child;
+        return $this->fetchRelationship($fields[0], true, $is_protected);
     }
 
     public function all($is_protected = true, $select = [])
@@ -247,21 +356,36 @@ trait QueryBuilder
         } else {
             $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
         }
+
         if (!$fields = mysqly::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
             $this->resetInstance();
             return false;
         }
-        if (!empty($this->with_model_name)) {
-            foreach ($fields as $key => $field) {
-                $column = Str::singular($this->child->table)."_".$this->child->primarKey;
-                $method = Str::isSingular($this->with_model_name) ? 'first' : 'get';
-                if ($item = DB::where($column, $field[$this->child->primaryKey])->{$method}(Str::plural($this->with_model_name))) {
-                    $fields[$key][$this->with_model_name] = $item;
-                }
-            }
-        }
-        $this->resetInstance();
-        return $fields;
+
+        return $this->fetchRelationship($fields, is_protected: $is_protected);
+        // if (!empty($this->with_model_name)) {
+        //     $getRelationship = function ($relationship = 0) {
+        //         try {
+        //             $classname =  "App\Models\\".Str::pascal($this->with_model_name);
+        //             $column = $relationship == 0 ?
+        //                 Str::singular($this->table)."_".$this->primaryKey :
+        //                 Str::singular($this->with_model_name)."_".(new $classname)->primaryKey;
+
+                    
+        //             $item = DB::where($column, $value);
+        //         } catch (Exception $e) {
+
+        //         }
+        //     }
+        //     foreach ($fields as $key => $field) {
+        //         $column = Str::singular($this->table)."_".$this->primaryKey;
+        //         logger()->info('column is: '. $column);
+        //         $method = Str::isSingular($this->with_model_name) ? 'first' : 'get';
+        //         if ($item = DB::where($column, $field[$this->primaryKey])->{$method}(Str::plural($this->with_model_name))) {
+        //             $fields[$key][$this->with_model_name] = $item;
+        //         }
+        //     }
+        // }
     }
 
     public function with($model)
@@ -299,7 +423,9 @@ trait QueryBuilder
 
     public function random()
     {
-        return $this->_aggregate(method: 'random');
+        $data = $this->_aggregate(method: 'random', reset_instance: false);
+
+        return $this->fetchRelationship($data);
     }
 
     public function count($column = "*")

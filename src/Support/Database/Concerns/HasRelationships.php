@@ -40,7 +40,7 @@ trait HasRelationships
             $foreign_key = $foreign_key ?? Str::lower($class_name) . '_id';
             $local_key = $local_key ?? 'id';
 
-            $parent_model = $parent_model->where($local_key, $this->{$foreign_key})->first(true);
+            $parent_model = $parent_model->where($local_key, $this->{$foreign_key})->first(false);
 
             if (!$parent_model) {
                 return null;

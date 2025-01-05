@@ -467,6 +467,36 @@ final Class Arr
     }
 
     /**
+     * Determines if an array is an array of arrays.
+     *
+     * @param  array  $array
+     * @return bool
+     */
+    public static function isArrayOfArrays(array $input): bool
+    {
+        $allArrays = true;
+        $hasMixed = false;
+
+        foreach ($input as $value) {
+            if (is_array($value)) {
+                continue;
+            } else {
+                $allArrays = false;
+                $hasMixed = true;
+                break; // If mixed type detected, exit early.
+            }
+        }
+
+        if ($allArrays) {
+            return true;
+        } elseif ($hasMixed) {
+            return false;
+        } else {
+            return false;
+        }
+    }
+
+    /**
      * Get a subset of the items from the given array.
      *
      * @param  array  $array

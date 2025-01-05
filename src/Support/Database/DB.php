@@ -89,13 +89,31 @@ class DB
         return $model;
     }
 
-    public static function find(string $table, $id, array|string $fields = '*')
+    public static function find(string $table, int $id, array|string $fields = '*')
+    {
+        return static::_find($table, $id, $fields);
+    }
+
+    public static function findOr(string $table, $id = 0, $callable = null)
+    {
+        throw new NotImplementedException('oops! this feature is yet to be implemented');
+    }
+
+    public static function first(string $table, array|string $fields = '*')
+    {
+        return static::_find($table, null, $fields);
+    }
+
+    private static function _find(string $table, int|null $id, array|string $fields = '*')
     {
         if (! self::$instantiated)
             static::init();
         $query_arr = [];
+
+        if (static::$bind_or_filter)
+            $query_arr = static::$bind_or_filter;
         
-        if ($id > 0)
+        if ($id && $id > 0)
             $query_arr['id'] = $id;
 
         if (!$model = mysqly::fetch($table, $query_arr, $fields, static::$operators, static::$or_ands)) {
@@ -104,16 +122,6 @@ class DB
         }
         static::resetInstance();
         return $model[0];
-    }
-
-    public static function findOr(string $table, $id = 0, $callable = null)
-    {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
-    }
-
-    public static function first(string $table, $id = 1, array|string $fields = '*')
-    {
-        return static::find($table, $id, $fields);
     }
 
     public static function firstWhere(string $table, $column, $operatorOrValue = null, $value = null, $id = 1)
