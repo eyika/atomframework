@@ -4,10 +4,13 @@ namespace Eyika\Atom\Framework\Support\Cache;
 
 use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
 use Eyika\Atom\Framework\Support\Database\mysqly;
+use Psr\Cache\CacheItemInterface;
+use Psr\Cache\InvalidArgumentException;
 
 class DbCache implements CacheInterface
 {
     protected string $table;
+    protected array $deferredItems = [];
 
     public function __construct()
     {
@@ -16,29 +19,103 @@ class DbCache implements CacheInterface
         $this->table = $config['table'] ?? '_cache';
     }
 
-    public function get(string $key)
+    /**
+     * @param string $key
+     * 
+     * @throws InvalidArgumentException
+     */
+    public function getItem($key): CacheItem
     {
         $value = mysqly::cache($key, table: $this->table);
-        return $value === false ? null : $value;
+        return new CacheItem($key, $value, $value !== null);
     }
 
-    public function set(string $key, $value, int $ttl = 3600): bool
+    /**
+     * @param string[] $keys
+     * 
+     * @return CacheItemInterface[]
+     * 
+     * @throws InvalidArgumentException
+     */
+    public function getItems($keys = []): iterable
     {
-        return mysqly::cache($key, $value, $ttl, $this->table) ? true : false;
+        $items = [];
+        foreach ($keys as $key) {
+            $items[$key] = $this->getItem($key);
+        }
+        return $items;
     }
 
-    public function delete(string $key): bool
+    /**
+     * @throws InvalidArgumentException
+     */
+    public function hasItem(string $key): bool
     {
-        return mysqly::uncache($key, $this->table);
+        return mysqly::cache($key, table: $this->table) ? true : false;
     }
 
+    /**
+     * @throws InvalidArgumentException
+     */
     public function clear(): bool
     {
         return mysqly::clear_cache($this->table);
     }
 
-    public function has(string $key): bool
+    /**
+     * @throws InvalidArgumentException
+     */
+    public function deleteItem(string $key): bool
     {
-        return mysqly::cache($key, table: $this->table) ? true : false;
+        return mysqly::uncache($key, $this->table);
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    public function deleteItems($keys = []): bool
+    {
+        foreach ($keys as $key) {
+            if (!$this->deleteItem($key))
+                return false;
+        }
+        return true;
+    }
+
+    /**
+     * @param CacheItem $item
+     */
+    public function save($item): bool
+    {
+        return mysqly::cache($item->getKey(), $item->get(), $item->getExpiration(), $this->table) ? true : false;
+    }
+
+    /**
+     * @param CacheItem $item
+     */
+    public function saveDeferred($item): bool
+    {
+        if (!$item instanceof CacheItem) {
+            return false;
+        }
+
+        $this->deferredItems[$item->getKey()] = $item;
+        return true;
+    }
+
+    public function commit(): bool
+    {
+        $allSaved = true;
+
+        foreach ($this->deferredItems as $key => $item) {
+            if (!$this->save($item)) {
+                $allSaved = false;
+            }
+        }
+
+        // Clear deferred items after attempting to save
+        $this->deferredItems = [];
+
+        return $allSaved;
     }
 }

@@ -8,6 +8,7 @@ use Eyika\Atom\Framework\Foundation\Application;
 use Eyika\Atom\Framework\Foundation\Console\Scheduler;
 use Eyika\Atom\Framework\Foundation\Contracts\ExceptionHandler;
 use Eyika\Atom\Framework\Foundation\Contracts\Kernel;
+use Eyika\Atom\Framework\Support\Cache\Cache;
 use Eyika\Atom\Framework\Support\Encrypter;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\Storage\File;
@@ -18,11 +19,13 @@ class Server
     public static Application $app;
     protected const ignore_facades = ['console', 'app', 'application'];
     protected const facadables = [
+        'cache' => Cache::class,
         'encrypter' => Encrypter::class,
         'file' => File::class,
-        'storage' => Storage::class,
         'request' => Request::class,
-        'scheduler' => Scheduler::class
+        'scheduler' => Scheduler::class,
+        'session' => Session::class,
+        'storage' => Storage::class
     ];
 
     public function __construct(Application $app)

@@ -9,6 +9,7 @@ use Predis\Client;
 class RedisCache implements CacheInterface
 {
     private $redis;
+    protected array $deferredItems = [];
 
     public function __construct()
     {
@@ -18,32 +19,104 @@ class RedisCache implements CacheInterface
         $this->redis->connect('127.0.0.1', 6379);
     }
 
-    public function get(string $key)
+    /**
+     * {@inheritdoc}
+     */
+    public function getItem(string $key): CacheItem
     {
         $value = $this->redis->get($key);
-        return $value === false ? null : json_decode($value);
+        return $value === false ? new CacheItem($key, null, false) : new CacheItem($key, json_decode($value), true);
     }
 
-    public function set(string $key, $value, int $ttl = 3600): bool
+    /**
+     * @param string[] $keys
+     * 
+     * @return CacheItemInterface[]
+     * 
+     * @throws InvalidArgumentException
+     */
+    public function getItems($keys = []): iterable
     {
-        if (Str::contains($this->redis->setex($key, $ttl, json_encode($value)), ['OK', 'QUEUED'])) {
-            return true;
+        $items = [];
+        foreach ($keys as $key) {
+            $items[$key] = $this->getItem($key);
         }
-        return false;
+        return $items;
     }
 
-    public function delete(string $key): bool
+    /**
+     * {@inheritdoc}
+     */
+    public function hasItem(string $key): bool
     {
-        return $this->redis->del($key) > 0;
+        return $this->redis->exists($key);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function clear(): bool
     {
         return $this->redis->flushDB();
     }
 
-    public function has(string $key): bool
+    /**
+     * {@inheritdoc}
+     */
+    public function deleteItem(string $key): bool
     {
-        return $this->redis->exists($key);
+        return $this->redis->del($key) > 0;
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    public function deleteItems($keys = []): bool
+    {
+        foreach ($keys as $key) {
+            if (!$this->deleteItem($key))
+                return false;
+        }
+        return true;
+    }
+
+    /**
+     * @param CacheItem $item
+     */
+    public function save($item): bool
+    {
+        if (Str::contains($this->redis->setex($item->getKey(), $item->getExpiration(), json_encode($item->get())), ['OK', 'QUEUED'])) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @param CacheItem $item
+     */
+    public function saveDeferred($item): bool
+    {
+        if (!$item instanceof CacheItem) {
+            return false;
+        }
+
+        $this->deferredItems[$item->getKey()] = $item;
+        return true;
+    }
+
+    public function commit(): bool
+    {
+        $allSaved = true;
+
+        foreach ($this->deferredItems as $key => $item) {
+            if (!$this->save($item)) {
+                $allSaved = false;
+            }
+        }
+
+        // Clear deferred items after attempting to save
+        $this->deferredItems = [];
+
+        return $allSaved;
     }
 }

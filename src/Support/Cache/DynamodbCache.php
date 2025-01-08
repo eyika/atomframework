@@ -22,6 +22,8 @@ class DynamoDbCache implements CacheInterface
      */
     protected $table;
 
+    protected array $deferredItems = [];
+
     /**
      * Constructor to initialize the DynamoDb connection.
      *
@@ -47,7 +49,7 @@ class DynamoDbCache implements CacheInterface
     /**
      * {@inheritdoc}
      */
-    public function get(string $key)
+    public function getItem(string $key): CacheItem
     {
         try {
             $result = $this->dynamoDb->getItem([
@@ -56,41 +58,65 @@ class DynamoDbCache implements CacheInterface
                     'id' => ['S' => $key],
                 ],
             ]);
+            $value = null;
 
             if (isset($result['Item'])) {
                 // Check if the item has expired
                 $expiresAt = (int) $result['Item']['expires_at']['N'];
                 if ($expiresAt === 0 || $expiresAt > time()) {
-                    return $result['Item']['value']['S'] ?? null;
+                    $value = $result['Item']['value']['S'] ?? null;
                 } else {
                     // Item has expired, delete it
-                    $this->delete($key);
-                    return null;
+                    $this->deleteItem($key);
+                    $value =  null;
                 }
             }
 
-            return null;
+            return new CacheItem($key, $value, $value !== null);
         } catch (DynamoDbException $e) {
-            return null;
+            return new CacheItem($key, null, false);
         }
+    }
+
+    /**
+     * @param string[] $keys
+     * 
+     * @return CacheItemInterface[]
+     * 
+     * @throws InvalidArgumentException
+     */
+    public function getItems($keys = []): iterable
+    {
+        $items = [];
+        foreach ($keys as $key) {
+            $items[$key] = $this->getItem($key);
+        }
+        return $items;
     }
 
     /**
      * {@inheritdoc}
      */
-    public function set(string $key, $value, int $ttl = 3600): bool
+    public function hasItem(string $key): bool
     {
-        $expiresAt = ($ttl > 0) ? time() + $ttl : 0; // 0 means no expiration
+        return $this->getItem($key)->isHit();
+    }
 
+    /**
+     * {@inheritdoc}
+     */
+    public function clear(): bool
+    {
+        // DynamoDB doesn't support a "truncate" operation directly.
+        // You need to scan the table and delete items individually.
         try {
-            $this->dynamoDb->putItem([
+            $result = $this->dynamoDb->scan([
                 'TableName' => $this->table,
-                'Item' => [
-                    'id' => ['S' => $key],
-                    'value' => ['S' => (string)$value],
-                    'expires_at' => ['N' => (string)$expiresAt],
-                ],
             ]);
+
+            foreach ($result['Items'] as $item) {
+                $this->deleteItem($item['id']['S']);
+            }
 
             return true;
         } catch (DynamoDbException $e) {
@@ -101,7 +127,7 @@ class DynamoDbCache implements CacheInterface
     /**
      * {@inheritdoc}
      */
-    public function delete(string $key): bool
+    public function deleteItem(string $key): bool
     {
         try {
             $this->dynamoDb->deleteItem([
@@ -118,20 +144,33 @@ class DynamoDbCache implements CacheInterface
     }
 
     /**
-     * {@inheritdoc}
+     * @throws InvalidArgumentException
      */
-    public function clear(): bool
+    public function deleteItems($keys = []): bool
     {
-        // DynamoDB doesn't support a "truncate" operation directly.
-        // You need to scan the table and delete items individually.
-        try {
-            $result = $this->dynamoDb->scan([
-                'TableName' => $this->table,
-            ]);
+        foreach ($keys as $key) {
+            if (!$this->deleteItem($key))
+                return false;
+        }
+        return true;
+    }
 
-            foreach ($result['Items'] as $item) {
-                $this->delete($item['id']['S']);
-            }
+    /**
+     * @param CacheItem $item
+     */
+    public function save($item): bool
+    {
+        $expiresAt = ($item->getExpiration() > 0) ? time() + $item->getExpiration() : 0; // 0 means no expiration
+
+        try {
+            $this->dynamoDb->putItem([
+                'TableName' => $this->table,
+                'Item' => [
+                    'id' => ['S' => $item->getKey()],
+                    'value' => ['S' => (string)$item->get()],
+                    'expires_at' => ['N' => (string)$expiresAt],
+                ],
+            ]);
 
             return true;
         } catch (DynamoDbException $e) {
@@ -140,10 +179,31 @@ class DynamoDbCache implements CacheInterface
     }
 
     /**
-     * {@inheritdoc}
+     * @param CacheItem $item
      */
-    public function has(string $key): bool
+    public function saveDeferred($item): bool
     {
-        return $this->get($key) !== null;
+        if (!$item instanceof CacheItem) {
+            return false;
+        }
+
+        $this->deferredItems[$item->getKey()] = $item;
+        return true;
+    }
+
+    public function commit(): bool
+    {
+        $allSaved = true;
+
+        foreach ($this->deferredItems as $key => $item) {
+            if (!$this->save($item)) {
+                $allSaved = false;
+            }
+        }
+
+        // Clear deferred items after attempting to save
+        $this->deferredItems = [];
+
+        return $allSaved;
     }
 }

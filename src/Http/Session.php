@@ -23,13 +23,7 @@ class Session
                 default:
                     break;
             }
-        }
-    }
-
-    public function start()
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+            $this->start();
         }
     }
 
@@ -63,6 +57,13 @@ class Session
     {
         if ($this->has($key)) {
             unset($_SESSION[$key]);
+        }
+    }
+
+    protected function start()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
         }
     }
 }

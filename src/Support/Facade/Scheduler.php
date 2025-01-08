@@ -2,8 +2,6 @@
 
 namespace Eyika\Atom\Framework\Support\Facade;
 
-use Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel;
-
 /**
  * @method static \Eyika\Atom\Framework\Foundation\Console\Scheduler command(string $name, string $expression = null)
  * @method static \Eyika\Atom\Framework\Foundation\Console\Scheduler expression(string $expression)
