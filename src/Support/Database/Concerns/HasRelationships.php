@@ -60,7 +60,7 @@ trait HasRelationships
             $classname = get_called_class();
             $classname = basename(str_replace('\\', '/', $classname));
 
-            $foreign_key = $foreign_key ?? Str::lower($classname) . '_id';
+            $foreign_key = $foreign_key ?? Str::snake($classname) . '_id';
             $local_key = $local_key ?? 'id';
 
             $foreign_models = $foreign_model->where($foreign_key, $this->{$local_key})->all(true);
