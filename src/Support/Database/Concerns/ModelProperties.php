@@ -138,9 +138,9 @@ trait ModelProperties
     /**
      * Name of relationship model to get with current query
      * 
-     * @property string
+     * @property string[]
      */
-    protected $with_model_name = "";
+    protected $with_model_names = [];
 
     /**
      * The placeholder for model dynamic properties

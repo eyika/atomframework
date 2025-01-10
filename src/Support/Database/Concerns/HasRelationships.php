@@ -4,6 +4,7 @@ namespace Eyika\Atom\Framework\Support\Database\Concerns;
 
 use Eyika\Atom\Framework\Support\Str;
 use Exception;
+use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Database\Contracts\ModelRelationshipInterface;
 
 trait HasRelationships
@@ -37,10 +38,10 @@ trait HasRelationships
             $parent_model = new $class_name;
             $class_name = basename(str_replace('\\', '/', $class_name));
 
-            $foreign_key = $foreign_key ?? Str::lower($class_name) . '_id';
+            $foreign_key = $foreign_key ?? Str::snake($class_name) . '_id';
             $local_key = $local_key ?? 'id';
 
-            $parent_model = $parent_model->where($local_key, $this->{$foreign_key})->first(false);
+            $parent_model = $parent_model->where($local_key, $this->child->{$foreign_key})->first(false);
 
             if (!$parent_model) {
                 return null;

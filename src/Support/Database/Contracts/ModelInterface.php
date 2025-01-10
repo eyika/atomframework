@@ -170,9 +170,9 @@ interface ModelInterface extends ModelEventsInterface
 
     /**
      * Retrieve model by key value or create it if it doesn't exist from array values
-     * search and keyvalues will be used together while creating the model
-     * @param array $search
-     * @param array $keyvalues
+     * 
+     * @param array $search will be used to filter wether to create or not and
+     * @param array $keyvalues the values to be insterted if search returns empty
      * @param bool $is_protected 'wether to hide or show protected values'
      * @param array $select 'what parameters of model to fetch in results'
      * 
@@ -183,14 +183,10 @@ interface ModelInterface extends ModelEventsInterface
     /**
      * Retrieve model its current values or instantiate it if it doesn't exist from array values
      * The model still needs to be save to the DB by calling save()
-     * search and keyvalues will be used together while creating the model
-     * @param array $keyvalues
-     * @param bool $is_protected 'wether to hide or show protected values'
-     * @param array $select 'what parameters of model to fetch in results'
      * 
      * @return self|bool
      */
-    public function firstOrNew($keyvalues, $is_protected = true, $select = []);
+    public function firstOrNew();
 
     /**
      * Find a model by key and value
@@ -230,12 +226,12 @@ interface ModelInterface extends ModelEventsInterface
     /**
      * Attach the related model to a model's query result
      * 
-     * @param string $model
+     * @param array<string>|string $models
      * 
      * @return self
      */
 
-    public function with($model);
+    public function with($models);
 
     
     /**

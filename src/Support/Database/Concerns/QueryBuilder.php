@@ -127,9 +127,39 @@ trait QueryBuilder
         // return $this->child;
     }
 
+    private function processRelationship (array $fields, string $with_model_name, bool $is_nested_array, bool $is_protected)
+    {
+        $key_name = Str::snake($with_model_name);
+
+        if ($is_nested_array) {
+            foreach ($fields as $key => $field) {
+                $this->child->{$key_name."_id"} = $field[$key_name."_id"];
+
+                if (empty($this->child->{$key_name."_id"})) {
+                    $fields[$key][$with_model_name] = null;
+                    continue;
+                }
+                $item = $this->{$with_model_name}();
+                $fields[$key][$with_model_name] = $item ? $item->toArray($is_protected) : $item;
+            }
+            return $fields;
+        }
+
+        $this->child->{$key_name."_id"} = $fields[$key_name."_id"];
+        if (empty($this->child->{$key_name."_id"})) {
+            $fields[$with_model_name] = null;
+            return $fields;
+        }
+        $item = $this->{$with_model_name}();
+        $fields[$with_model_name] = $item ? $item->toArray($is_protected) : $item;
+        $this->resetInstance();
+
+        return $fields;
+    }
+
     private function fetchRelationship($fields, $fill_models = false, $is_protected = true)
     {
-        if (empty($this->with_model_name)) {
+        if (empty($this->with_model_names)) {
             $this->resetInstance();
             if ($fill_models)
                 return $this->fill($fields);
@@ -138,114 +168,53 @@ trait QueryBuilder
         }
 
         $is_nested_array = Arr::isArrayOfArrays($fields);
-        $with_model_name = $this->with_model_name;
+        /** @var string[] $with_model_names */
+        $with_model_names = $this->with_model_names;
         $this->resetInstance();
 
-        if (method_exists($this->child, $with_model_name)) {
-            if ($is_nested_array) {
-                foreach ($fields as $key => $field) {
-                    $this->child->{$with_model_name."_id"} = $field[$with_model_name."_id"];
-                    $item = $this->{$with_model_name}();
-                    $fields[$key][$with_model_name] = $item ? $item->toArray($is_protected) : $item;
-                    $this->resetInstance();
-                }
-                $this->resetInstance();
-                return $fields;
+        foreach ($with_model_names as $with_model_name) {
+            if (method_exists($this->child, $with_model_name)) {
+                $fields = $this->processRelationship($fields, $with_model_name, $is_nested_array, $is_protected);
+                continue;
             }
 
-            $this->child->{$with_model_name."_id"} = $fields[$with_model_name."_id"];
-            $item = $this->{$with_model_name}();
-            $fields[$with_model_name] = $item ? $item->toArray($is_protected) : $item;
-            $this->resetInstance();
-            if ($fill_models)
-                return $this->fill($fields);
-
-            return $fields;
-        }
-        $plural_camel = Str::camel(Str::plural($with_model_name));
-        if (method_exists($this, $plural_camel)) {
-            if ($is_nested_array) {
-                foreach ($fields as $key => $field) {
-                    $this->child->{$with_model_name."_id"} = $field[$with_model_name."_id"];
-                    $item = $this->{$plural_camel}();
-                    $fields[$key][$with_model_name] = $item ? $item->toArray($is_protected) : $item;
-                }
-                $this->resetInstance();
-                return $fields;
+            $plural_camel = Str::camel(Str::plural($with_model_name));
+            if (method_exists($this, $plural_camel)) {
+                $fields = $this->processRelationship($fields, $plural_camel, $is_nested_array, $is_protected);
+                continue;
+            }
+            
+            $plural_snake = Str::snake(Str::plural($with_model_name));
+            if (method_exists($this, $plural_snake)) {
+                $fields = $this->processRelationship($fields, $plural_snake, $is_nested_array, $is_protected);
+                continue;
             }
 
-            $this->child->{$with_model_name."_id"} = $fields[$with_model_name."_id"];
-            $item = $this->{$plural_camel}();
-            $fields[$with_model_name] = $item ? $item->toArray($is_protected) : $item;
-            $this->resetInstance();
-            if ($fill_models)
-                return $this->fill($fields);
-
-            return $fields;
-        }
-        $plural_snake = Str::snake(Str::plural($with_model_name));
-        if (method_exists($this, $plural_snake)) {
-            if ($is_nested_array) {
-                foreach ($fields as $key => $field) {
-                    $this->child->{$with_model_name."_id"} = $field[$with_model_name."_id"];
-                    $item = $this->{$plural_snake}();
-                    $fields[$key][$with_model_name] = $item ? $item->toArray($is_protected) : $item;
-                }
-                $this->resetInstance();
-                return $fields;
+            $singular_camel = Str::camel(Str::singular($with_model_name));
+            if (method_exists($this, $singular_camel)) {
+                $fields = $this->processRelationship($fields, $singular_camel, $is_nested_array, $is_protected);
+                continue;
             }
 
-            $this->child->{$with_model_name."_id"} = $fields[$with_model_name."_id"];
-            $item = $this->{$plural_snake}();
-            $fields[$with_model_name] = $item ? $item->toArray($is_protected) : $item;
-            $this->resetInstance();
-            if ($fill_models)
-                return $this->fill($fields);
-
-            return $fields;
-        }
-        $singular_camel = Str::camel(Str::singular($with_model_name));
-        if (method_exists($this, $singular_camel)) {
+            $singular_snake = Str::snake(Str::singular($with_model_name));
+            if (method_exists($this, $singular_snake)) {
+                $fields = $this->processRelationship($fields, $singular_snake, $is_nested_array, $is_protected);
+                continue;
+            }
+            
             if ($is_nested_array) {
                 foreach ($fields as $key => $field) {
-                    $this->child->{$with_model_name."_id"} = $field[$with_model_name."_id"];
-                    $item = $this->{$singular_camel}();
-                    $fields[$key][$with_model_name] = $item ? $item->toArray($is_protected) : $item;
+                    $fields[$key][$with_model_name] = null;
                 }
-                $this->resetInstance();
-                return $fields;
+            } else {
+                $fields[$with_model_name] = null;
             }
-
-            $this->child->{$with_model_name."_id"} = $fields[$with_model_name."_id"];
-            $item = $this->{$singular_camel}();
-            $fields[$with_model_name] = $item ? $item->toArray($is_protected) : $item;
-            $this->resetInstance();
-            if ($fill_models)
-                return $this->fill($fields);
-
-            return $fields;
+            continue;
         }
-        $singular_snake = Str::snake(Str::singular($with_model_name));
-        if (method_exists($this, $singular_snake)) {
-            if ($is_nested_array) {
-                foreach ($fields as $key => $field) {
-                    $this->child->{$with_model_name."_id"} = $field[$with_model_name."_id"];
-                    $item = $this->{$singular_snake}();
-                    $fields[$key][$with_model_name] = $item ? $item->toArray($is_protected) : $item;
-                }
-                $this->resetInstance();
-                return $fields;
-            }
+        if ($fill_models)
+            return $this->fill($fields);
 
-            $this->child->{$with_model_name."_id"} = $fields[$with_model_name."_id"];
-            $item = $this->{$singular_snake}();
-            $fields[$with_model_name] = $item ? $item->toArray($is_protected) : $item;
-            $this->resetInstance();
-            if ($fill_models)
-                return $this->fill($fields);
-
-            return $fields;
-        }
+        return $fields;
     }
 
     public function findOr($id = 0, $is_protected = true, $callable = null)
@@ -269,19 +238,18 @@ trait QueryBuilder
 
     public function firstOrCreate($search, $keyvalues, $is_protected = true, $select = [])
     {
-        if (!$model = $this->findByArray(array_keys($search), array_values($search), 'AND', $is_protected, $select)) {
-            $model = $this->create($search, $is_protected, $select);
+        if (!$model = $this->findByArray(array_keys($keyvalues), array_values($keyvalues), 'AND', $is_protected, $select)) {
+            $model = $this->create($keyvalues, $is_protected, $select);
         }
         return $model;
     }
 
-    public function firstOrNew($keyvalues, $is_protected = true, $select = [])
+    public function firstOrNew()
     {
         if ($this->isSaved()) {
             return $this;
         }
         return $this->save();
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
     }
 
     public function findBy($key, $value, $is_protected = true, $select = [])
@@ -388,9 +356,13 @@ trait QueryBuilder
         // }
     }
 
-    public function with($model)
+    public function with($models)
     {
-        $this->with_model_name = $model;
+        if (is_array($models))
+            $this->with_model_names = empty($this->with_model_names) ? $models : Arr::merge($this->with_model_names, $models);
+        else
+            $this->with_model_names[] = $models;
+
         return $this;
     }
 

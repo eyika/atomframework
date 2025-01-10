@@ -399,7 +399,7 @@ class mysqly {
   
   public static function count($sql_or_table, $bind_or_filter = [], array|string $operators = '=', array|string $or_ands = "AND")
   {
-    logger()->info('got to count');
+    // logger()->info('got to count');
     $_select_str = '*';
     $operators = Arr::wrap($operators);
 
