@@ -53,12 +53,3 @@ class TrimStrings implements MiddlewareInterface
         }, $data);
     }
 }
-
-// Example usage
-// $request = Request::createFromGlobals();
-// $middleware = new TrimStrings();
-
-// $response = $middleware->handle($request, function ($req) {
-//     // Further processing...
-//     return new Response('OK', 200);
-// });

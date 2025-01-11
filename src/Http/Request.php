@@ -2,10 +2,12 @@
 
 namespace Eyika\Atom\Framework\Http;
 
+use Eyika\Atom\Framework\Exceptions\BaseException;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Arrayable;
 use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
+use Eyika\Atom\Framework\Support\Facade\Session as FacadeSession;
 use Eyika\Atom\Framework\Support\Validator;
 
 class Request
@@ -31,8 +33,8 @@ class Request
 
     public function __construct()
     {
-        $this->query = sanitize_data($_GET);
-        $this->body = sanitize_data($_POST);
+        $this->query = $_GET;
+        $this->body = $_POST;
         $this->attributes = [];
         $this->route_params = [];
         $this->cookies = $_COOKIE;
@@ -105,6 +107,20 @@ class Request
     public function replaceQuery(array $query)
     {
         $this->query = $query;
+    }
+
+    public function replace(string $bodyOrQuery, array $data)
+    {
+        switch ($bodyOrQuery) {
+            case 'query':
+                $this->query = $data;
+                break;
+            case 'body':
+                $this->body = $data;
+                break;
+            default:
+                throw new BaseException("request data grou $bodyOrQuery does not exist");
+        }
     }
 
     public function all()
@@ -327,6 +343,20 @@ class Request
     protected function setItem($source, string $key, string|array $value)
     {
         $this->{$source}[$key] = $value;
+    }
+
+    public function validateCsrf()
+    {
+        $session_csrf = FacadeSession::get('csrf');
+        $request_csrf = $this->input('csrf');
+
+        if (!$session_csrf || !$request_csrf) {
+            return false;
+        }
+        if ($session_csrf != $request_csrf) {
+            return false;
+        }
+        return true;
     }
 }
 

@@ -3,6 +3,7 @@
 namespace Eyika\Atom\Framework\Http;
 
 use Exception;
+use Eyika\Atom\Framework\Support\Facade\Session;
 use Eyika\Atom\Framework\Support\View\Blade;
 use Eyika\Atom\Framework\Support\View\Twig;
 
@@ -111,5 +112,10 @@ class Response extends BaseResponse
         readfile($file_path);
         exit;
         return true;
+    }
+
+    public static function setCsrf()
+    {
+        Csrf::setCsrf();
     }
 }

@@ -10,10 +10,10 @@ class XSSProtection
      * @param Request $request
      * @return bool
      */
-    public function handle(Request $request): bool
+    public function handle(Request &$request): bool
     {
         // Sanitize the request inputs
-        $this->sanitizeInputs($request);
+        $request = $this->sanitizeInputs($request);
 
         // Proceed with the next middleware or request handler
         return false;
@@ -23,17 +23,19 @@ class XSSProtection
      * Sanitize request inputs to prevent XSS attacks.
      *
      * @param Request $request
-     * @return void
+     * @return Request
      */
-    protected function sanitizeInputs(Request $request): void
+    protected function sanitizeInputs(Request $request): Request
     {
-        $data = $request->request->all(); // Get all POST data
+        $data = $request->input(); // Get all POST data
         $data = $this->sanitize($data);
-        $request->request->replace($data); // Replace POST data with sanitized data
+        $request->replaceInput($data); // Replace POST data with sanitized data
 
-        $query = $request->query->all(); // Get all GET data
+        $query = $request->query(); // Get all GET data
         $query = $this->sanitize($query);
-        $request->query->replace($query); // Replace GET data with sanitized data
+        $request->replaceQuery($query); // Replace GET data with sanitized data
+
+        return $request;
     }
 
     /**

@@ -36,7 +36,7 @@ class VerifyCsrfToken implements MiddlewareInterface
         ];
 
         foreach ($except as $pattern) {
-            if ($this->match($pattern, $request->getPathInfo())) {
+            if ($this->match($pattern, $request->pathInfo())) {
                 return false;
             }
         }
@@ -53,7 +53,7 @@ class VerifyCsrfToken implements MiddlewareInterface
      */
     protected function verifyCsrfToken(Request $request): void
     {
-        $token = $request->header('X-CSRF-TOKEN') ?? $request->query('_token');
+        $token = $request->headers('X-CSRF-TOKEN') ?? $request->query('csrf_token');
 
         if (!$this->isValidCsrfToken($token)) {
             throw new AccessDeniedHttpException('Invalid CSRF token.');

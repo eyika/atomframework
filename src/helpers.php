@@ -1,5 +1,6 @@
 <?php
 
+use Eyika\Atom\Framework\Http\Csrf;
 use Eyika\Atom\Framework\Http\Response;
 use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
 use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
@@ -269,7 +270,7 @@ if (! function_exists('project_namespace')) {
 if (! function_exists('asset')) {
     function asset(string $folder = ''): string
     {
-        $server_url = Request::getSchemeAndHttpHost();
+        $server_url = Request::schemeAndHttpHost();
         $folder = empty($folder) ? '' : "/$folder";
         return $server_url.$folder;
     }
@@ -446,5 +447,15 @@ if (!function_exists('view')) {
             $code = Twig::make("$file_name.blade.php", "$path/", $data, true);
         }
         return $code;
+    }
+}
+
+if (!function_exists('csrf_token')) {
+    /**
+     * set the csrf token to the view response
+     */
+    function csrf_token ()
+    {
+        Csrf::setCsrf();
     }
 }

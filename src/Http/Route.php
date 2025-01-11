@@ -351,14 +351,6 @@ class Route
         }
     }
 
-    public static function set_csrf()
-    {
-        if (!isset($_SESSION["csrf"])) {
-            $_SESSION["csrf"] = bin2hex(random_bytes(50));
-        }
-        echo '<input type="hidden" name="csrf" value="' . $_SESSION["csrf"] . '">';
-    }
-
     public static function isApiRequest(bool|null $value = null)
     {
         if ($value === null) {
@@ -367,21 +359,8 @@ class Route
         static::$apiRequest = $value;
     }
 
-    public static function is_csrf_valid()
-    {
-        if (!isset($_SESSION['csrf']) || !isset($_POST['csrf'])) {
-            return false;
-        }
-        if ($_SESSION['csrf'] != $_POST['csrf']) {
-            return false;
-        }
-        return true;
-    }
-
     private static function domainIsValid(Request $request, $data)
     {
-        logger()->info($request->host(), $data);
-
         if (empty($data['domains']))
             return true;
         return Arr::exists($data['domains'], $request->host());
