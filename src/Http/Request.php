@@ -195,17 +195,17 @@ class Request
         return strtolower($this->server('HTTP_X_REQUESTED_WITH', '')) === 'xmlhttprequest';
     }
 
-    public function getPathInfo()
+    public function pathInfo()
     {
         return $this->server('REQUEST_URI', '');
     }
 
-    public function getOriginPathInfo()
+    public function originPathInfo()
     {
         return $this->server('ORIG_PATH_INFO', '');
     }
 
-    public function getRequestUri()
+    public function requestUri()
     {
         return $this->server('REQUEST_URI', '');
     }
@@ -230,8 +230,8 @@ class Request
      */
     public function is(string $regex)
     {
-        // preg_match($regex, $this->getPathInfo(), $matches);
-        strpos($this->getPathInfo(), $regex) === true;
+        // preg_match($regex, $this->pathInfo(), $matches);
+        strpos($this->pathInfo(), $regex) === true;
     }
 
     public function url()
@@ -246,7 +246,7 @@ class Request
         return $this->url();
     }
 
-    public function getScheme()
+    public function scheme()
     {
         if ($this->isFromTrustedProxy() && $this->headers('X-Forwarded-Proto')) {
             return $this->headers['X-Forwarded-Proto'];
@@ -255,7 +255,7 @@ class Request
         return $this->headers('HTTPS') && $this->headers['HTTPS'] === 'on' ? 'https' : 'http';
     }
 
-    public function getHost()
+    public function host()
     {
         if ($this->isFromTrustedProxy() && $this->headers('X-Forwarded-Host')) {
             return $this->headers['X-Forwarded-Host'];
@@ -264,9 +264,14 @@ class Request
         return $this->server['HTTP_HOST'];
     }
 
-    public function getSchemeAndHttpHost()
+    public function address()
     {
-        return $this->getScheme() . '://' . $this->getHost();
+        return $this->server('REMOTE_ADDR', '');
+    }
+
+    public function schemeAndHttpHost()
+    {
+        return $this->scheme() . '://' . $this->host();
     }
 
     public function setTrustedProxies(array $proxies, int|null $headers = null)
@@ -285,7 +290,7 @@ class Request
             return false;
         }
 
-        $clientIp = $this->headers['REMOTE_ADDR'] ?? '';
+        $clientIp = $this->server('REMOTE_ADDR', '');
 
         return in_array($clientIp, $this->trustedProxies);
     }

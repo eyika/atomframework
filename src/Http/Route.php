@@ -13,6 +13,7 @@ class Route
     public static $middlewareAliases = [];
     public static $middlewarePriority = [];
     protected static $groupPrefix = '';
+    protected static $groupDomains = [];
     protected static $routeName = '';
     protected static $currentRoute = '';
     private static $instantiated = false;
@@ -27,27 +28,7 @@ class Route
 
     public static function group(string $prefix, callable $method): self
     {
-        $previousPrefix = self::$groupPrefix;
-        self::$groupPrefix = rtrim(self::$groupPrefix, '/') . '/' . ltrim($prefix, '/');
-
-        if (count(self::$lastGroupMiddleware)) {
-            $previousMiddlewares = self::$middlewares;
-            self::$middlewares = count(self::$lastGroupMiddleware) > 1 && is_string(self::$lastGroupMiddleware[0]) ?
-                [ ...self::$middlewares, self::$lastGroupMiddleware ] :
-                array_merge(self::$middlewares, self::$lastGroupMiddleware);
-
-            self::$lastGroupMiddleware = [];
-            call_user_func($method);
-
-            self::$middlewares = $previousMiddlewares;
-            self::$groupPrefix = $previousPrefix;
-            return new static();
-        }
-
-        call_user_func($method);
-
-        self::$groupPrefix = $previousPrefix;
-        return new static();
+        return static::_group($prefix, $method);
     }
 
     public static function middleware(string | array $middleware, callable|false|null $method = null): self
@@ -83,6 +64,11 @@ class Route
         return new static();
     }
 
+    public static function domain(string | array $domain, callable $method): self
+    {
+        return static::_group(Arr::wrap($domain), $method, true);
+    }
+
     public static function name(string $name, callable|null $method = null): self
     {
         $previousName = self::$routeName;
@@ -116,6 +102,7 @@ class Route
             'callback' => $path_to_include,
             'middlewares' => self::$middlewares,
             'name' => $name,
+            'domains' => self::$groupDomains
         ];
         self::$lastInsertedRouteKeys = "$method ::: $route";
 
@@ -160,7 +147,7 @@ class Route
             new static;
 
         $requestMethod = $request->method();
-        $requestUri = rtrim(filter_var($request->server('REQUEST_URI'), FILTER_SANITIZE_URL), '/');
+        $requestUri = rtrim(filter_var($request->requestUri(), FILTER_SANITIZE_URL), '/');
         $requestUri = strtok($requestUri, '?');
 
         for (;;) {
@@ -203,6 +190,9 @@ class Route
         // }
 
         foreach (self::$routes[$requestMethod] ?? [] as $route => $data) {
+            if (static::domainNotValid($request, $data)) {
+                throw new NotFoundHttpException('requested resource not found');
+            }
             $routeParts = explode('/', $route);
             $requestUriParts = explode('/', $requestUri);
 
@@ -294,7 +284,7 @@ class Route
                     echo $resp;
                     return true;
                 }
-                return true;
+                return $resp;
             }
         }
 
@@ -318,7 +308,7 @@ class Route
             echo $resp;
             return true;
         }
-        return true;
+        return $resp;
     }
 
     public static function route($name, $parameters = [])
@@ -386,5 +376,55 @@ class Route
             return false;
         }
         return true;
+    }
+
+    private static function domainIsValid(Request $request, $data)
+    {
+        logger()->info($request->host(), $data);
+
+        if (empty($data['domains']))
+            return true;
+        return Arr::exists($data['domains'], $request->host());
+    }
+
+    private static function domainNotValid(Request $request, $data)
+    {
+        return !self::domainIsValid($request, $data);
+    }
+
+    private static function _group(string | array $prefix, callable $method, $is_domain = false): self
+    {
+        if ($is_domain) {
+            self::$groupDomains = $prefix;
+        } else {
+            $previousPrefix = self::$groupPrefix;
+            self::$groupPrefix = rtrim(self::$groupPrefix, '/') . '/' . ltrim($prefix, '/');
+        }
+
+        if (count(self::$lastGroupMiddleware)) {
+            $previousMiddlewares = self::$middlewares;
+            self::$middlewares = count(self::$lastGroupMiddleware) > 1 && is_string(self::$lastGroupMiddleware[0]) ?
+                [ ...self::$middlewares, self::$lastGroupMiddleware ] :
+                array_merge(self::$middlewares, self::$lastGroupMiddleware);
+
+            self::$lastGroupMiddleware = [];
+            call_user_func($method);
+
+            self::$middlewares = $previousMiddlewares;
+            if ($is_domain)
+                self::$groupDomains = [];
+            else
+                self::$groupPrefix = $previousPrefix;
+            return new static();
+        }
+
+        call_user_func($method);
+
+        if ($is_domain)
+            self::$groupDomains = [];
+        else
+            self::$groupPrefix = $previousPrefix;
+
+        return new static();
     }
 }
