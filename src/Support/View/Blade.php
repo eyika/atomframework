@@ -5,6 +5,7 @@ use eftec\bladeone\BladeOne;
 use eftec\bladeone\BladeOneCache;
 use eftec\bladeone\BladeOneCacheRedis;
 use eftec\bladeonehtml\BladeOneHtml;
+use Eyika\Atom\Framework\Http\Csrf;
 
 class Blade extends BladeOne
 {
@@ -29,5 +30,10 @@ class Blade extends BladeOne
             mkdir($compiledPath, 0744, true);
         }
         parent::__construct($templatePath, $compiledPath, $mode);
+    }
+
+    public function compileCsrf_Token()
+    {
+        return Csrf::setCsrf();
     }
 }
