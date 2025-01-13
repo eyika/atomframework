@@ -66,4 +66,9 @@ class Session
             session_start();
         }
     }
+
+    public function regenerate()
+    {
+        session_regenerate_id(true);
+    }
 }

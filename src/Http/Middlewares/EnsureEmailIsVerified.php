@@ -44,7 +44,7 @@ class EnsureEmailIsVerified implements MiddlewareInterface
      * Mock method to get the user from the request.
      *
      * @param Request $request
-     * @return \Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface|null
+     * @return Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface|null
      */
     protected function getUser(Request $request)
     {

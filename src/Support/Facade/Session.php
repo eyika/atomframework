@@ -9,6 +9,7 @@ namespace Eyika\Atom\Framework\Support\Facade;
  * @method static mixed get(string $key, $default = null)
  * @method static void unset(string $key)
  * @method static void start()
+ * @method static void regenerate()
  */
 class Session extends Facade
 {

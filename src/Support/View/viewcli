@@ -2,8 +2,9 @@
 
 namespace eftec;
 
+use Eyika\Atom\Framework\Support\View\Blade;
+
 // this code only runs on CLI but only if bladeonecli.php is called directly and via command line.
-use Eyika\Atom\Framework\Support\View\View;
 
 if (!defined('PHPUNIT_COMPOSER_INSTALL') && !defined('__PHPUNIT_PHAR__')
     && isset($_SERVER['PHP_SELF']) &&
@@ -13,15 +14,15 @@ if (!defined('PHPUNIT_COMPOSER_INSTALL') && !defined('__PHPUNIT_PHAR__')
     // we also excluded it if it is called by phpunit.
     include_once __DIR__ . '/BladeOne.php';
 
-    $compilepath = View::getParameterCli('compilepath', null);
-    $templatepath = View::getParameterCli('templatepath', null);
-    if (!View::isAbsolutePath($compilepath)) {
+    $compilepath = Blade::getParameterCli('compilepath', null);
+    $templatepath = Blade::getParameterCli('templatepath', null);
+    if (!Blade::isAbsolutePath($compilepath)) {
         $compilepath = getcwd() . '/' . $compilepath;
     }
-    if (!View::isAbsolutePath($templatepath)) {
+    if (!Blade::isAbsolutePath($templatepath)) {
         $templatepath = getcwd() . '/' . $templatepath;
     }
-    $inst = new View($templatepath, $compilepath);
+    $inst = new Blade($templatepath, $compilepath);
     $inst->cliEngine();
 } else {
     @http_response_code(404);

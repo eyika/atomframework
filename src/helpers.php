@@ -2,6 +2,9 @@
 
 use Eyika\Atom\Framework\Http\Csrf;
 use Eyika\Atom\Framework\Http\Response;
+use Eyika\Atom\Framework\Http\Route;
+use Eyika\Atom\Framework\Support\Auth\Auth;
+use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
 use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
 use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
 use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
@@ -45,22 +48,6 @@ if (! function_exists("array_key_last")) {
         }
 
         return array_keys($array)[count($array)-1];
-    }
-}
-
-if (! function_exists('json_response')) {
-    /**
-     * Returns a json response for PHP http request
-     * 
-     * @param int $status_code
-     * @param array $data
-     */
-    function json_response(int $status_code, array $data)
-    {
-        http_response_code($status_code);
-        header("Content-type: application/json");
-        echo json_encode($data);
-        return true;
     }
 }
 
@@ -114,8 +101,17 @@ if (! function_exists('database')) {
     /**
      * Return the current database object
      */
-    function database() {
-        return DB::init();
+    function database(string $table) {
+        return DB::table($table);
+    }
+}
+
+if (! function_exists('db')) {
+    /**
+     * Return the current database object
+     */
+    function db(string $table) {
+        return database($table);
     }
 }
 
@@ -148,6 +144,28 @@ if (!function_exists('str')) {
 if (!function_exists('response')) {
     function response() {
         return new Response();
+    }
+}
+
+if (!function_exists('redirect')) {
+    function redirect(string $to, int $code = 301, int|null $delay = null) {
+        return (new Response())->redirect($to, $code, $delay);
+    }
+}
+
+if (! function_exists('json_response')) {
+    /**
+     * Returns a json response for PHP http request
+     * 
+     * @param int $status_code
+     * @param array $data
+     */
+    function json_response(int $status_code, array $data)
+    {
+        http_response_code($status_code);
+        header("Content-type: application/json");
+        echo json_encode($data);
+        return true;
     }
 }
 
@@ -457,5 +475,32 @@ if (!function_exists('csrf_token')) {
     function csrf_token ()
     {
         Csrf::setCsrf();
+    }
+}
+
+if (!function_exists('route')) {
+    /**
+     * resolve a named route into its url value
+     * 
+     * @param string $name
+     * @param array $parameters
+     * 
+     * @return string|null
+     */
+    function route (string $name, array $parameters = [])
+    {
+        return Route::route($name, $parameters);
+    }
+}
+
+if (!function_exists('auth_user')) {
+    /**
+     * set the csrf token to the view response
+     * 
+     * @return AuthenticatableInterface
+     */
+    function auth_user ()
+    {
+        return Auth::user();
     }
 }

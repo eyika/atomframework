@@ -3,118 +3,113 @@
 namespace Eyika\Atom\Framework\Http;
 
 use Exception;
-use Eyika\Atom\Framework\Support\Facade\Session;
-use Eyika\Atom\Framework\Support\View\Blade;
-use Eyika\Atom\Framework\Support\View\Twig;
+use Eyika\Atom\Framework\Support\Facade\Request as FacadeRequest;
 
 class Response extends BaseResponse
 {
-    public const STATUS_OK = 200;
-    public const STATUS_NO_CONTENT = 204;
-    public const STATUS_CREATED = 201;
-    public const NOT_MODIFIED = 304;
-    public const STATUS_BAD_REQUEST = 400;
-    public const STATUS_NOT_FOUND = 404;
-    public const STATUS_UNAUTHORIZED = 401;
-    public const STATUS_INTERNAL_SERVER_ERROR = 500;
-
-    private const methodToFunc = [
-        self::STATUS_OK => 'ok',
-        self::STATUS_NO_CONTENT => 'noContent',
-        self::STATUS_CREATED => 'created',
-        self::NOT_MODIFIED => 'notModified',
-        self::STATUS_BAD_REQUEST => 'badRequest',
-        self::STATUS_NOT_FOUND => 'notFound',
-        self::STATUS_UNAUTHORIZED => 'unauthorized',
-        self::STATUS_INTERNAL_SERVER_ERROR => 'serverError'
-    ];
-
-    public function __construct(int $status_code = 200)
+    public static function plain(string $message, int $statusCode = self::STATUS_OK): self
     {
+        if ((! self::$instantiated))
+            new static;
 
+        return static::status($statusCode)->body($message)
+            ->setHeader('Content-Type', 'text/plain; charset=utf-8')
+            ->status($statusCode);
     }
 
-    public static function plain(string $message, array|int $method = 200): bool
+    public static function json(array|string $message, array|int $dataOrStatus = self::STATUS_OK, int|null $statusCode = null): self
     {
-        header("Content-Type: text/plain; charset=utf-8", $method);
-        echo $message;
-        return true;
-    }
+        if ((! self::$instantiated))
+            new static;
 
-    public static function json(string $message, array|int $data_or_method = 200, $method = 200): bool
-    {
-        if (is_array($data_or_method)) {
-            $data = $data_or_method;
-        } else {
-            $data = null;
-            $method = $data_or_method;
+        $data = is_array($dataOrStatus) ? $dataOrStatus : null;
+        $statusCode = $statusCode ?? (is_int($dataOrStatus) ? $dataOrStatus : self::STATUS_OK);
+
+        if (!isset(self::METHOD_TO_FUNC[$statusCode])) {
+            throw new Exception("Invalid HTTP status code: $statusCode");
         }
-        if (!method_exists(JsonResponse::class, self::methodToFunc[$method])) {
-            ///TODO throw an exception
+
+        $responseBody = $data ? ['message' => $message, 'data' => $data] : ['message' => $message];
+
+        return static::status($statusCode)->body(json_encode($responseBody))
+            ->setHeader('Content-Type', 'application/json; charset=utf-8');
+    }
+
+    public static function view(string $file_name, array $data = []): self
+    {
+        if ((! self::$instantiated))
+            new static;
+
+        static::$viewFileName = $file_name;
+        static::$viewData = $data;
+
+        return new static;
+    }
+
+    public static function redirect(string $to, int $code = 301, int|null $delay = null): self
+    {
+        if ((! self::$instantiated))
+            (new static)->status($code);
+
+        self::$isRedirect = true;
+
+        if ($delay) {
+            return self::status($code)->setHeader('Refresh', "$delay; URL={$to}", $code);
         }
-        return $data === null ?
-            JsonResponse::{self::methodToFunc[$method]}($message) :
-            JsonResponse::{self::methodToFunc[$method]}($message, $data);
+
+        return self::setHeader('Location', $to, $code);
     }
 
-    public static function view(string $file_name, $data = [])
+    public function back(int $code = 301, int|null $delay = null)
     {
-        $path = resource_path('views');
-        try {
-            if (config('view.use_advance_engine')) {
-                $view = new Blade($path);
-                $code = $view->run("$file_name", $data);
-            } else {
-                $code = Twig::make("$file_name.blade.php", "$path/", $data, true);
-            }
-        } catch (Exception $e) {
-            header("Content-Type: text/html; charset=utf-8", self::STATUS_INTERNAL_SERVER_ERROR);
-            echo "Server Error ". $e->getMessage();
-            return true;
+        if ((! self::$instantiated))
+            (new static)->status($code);
+
+        $to = null;
+
+        // Redirect to the previous page
+        if (!empty(FacadeRequest::header('HTTP_REFERER'))) {
+            $to = filter_var(FacadeRequest::header('HTTP_REFERER'), FILTER_VALIDATE_URL);
         }
-        header("Content-Type: text/html; charset=utf-8", self::STATUS_OK);
-        echo $code;
-        return true;
+        // Fallback if the referrer is not valid
+        if (!$to) {
+            $to = Route::previous();
+        }
+        self::$isRedirect = true;
+
+        if ($delay) {
+            return self::setHeader('Refresh', "$delay; URL={$to}", $code);
+        }
+
+        return self::setHeader('Location', $to, $code);
     }
 
-    public static function redirect(string $to, $code = 301, int|null $delay = null): bool
+    public static function download(string $file_path, string|null $file_name = null): self
     {
-        $delay ? header('Refresh: 5; URL=' . $to, true, $code) : header('Location: ' . $to, true, $code);
-        return true;
-    }
+        $status = self::STATUS_OK;
 
-    public static function download(string $file_path, string|null $file_name = null): bool
-    {
         if (!file_exists($file_path)) {
-            die('File not found.');
+            $status = self::STATUS_NOT_FOUND;
+            return self::body('File not found.')->setHeader('Content-Type', 'text/plan', $status);
         }
-    
-        // Set the file name for the download
-        if (!$file_name) {
-            $file_name = basename($file_path);
-        }
-    
-        // Set headers to prompt the browser to download the file
-        header('Content-Description: File Transfer');
-        header('Content-Type: application/octet-stream');
-        header('Content-Disposition: attachment; filename=' . $file_name);
-        header('Content-Transfer-Encoding: binary');
-        header('Expires: 0');
-        header('Cache-Control: must-revalidate');
-        header('Pragma: public');
-        header('Content-Length: ' . filesize($file_path));
-    
-        // Clear the output buffer
-        ob_clean();
-        flush();
-    
-        // Read the file and write it to the output buffer
-        readfile($file_path);
-        exit;
-        return true;
+
+        if ((! self::$instantiated))
+            (new static)->status($status);
+
+        $file_name = $file_name ?? basename($file_path);
+
+        return self::setIsFileResponse($file_path)
+            ->setHeader('Content-Description', 'File Transfer')
+            ->setHeader('Content-Type', 'application/octet-stream', $status)
+            ->setHeader('Content-Disposition', 'attachment; filename=' . $file_name)
+            ->setHeader('Content-Transfer-Encoding', 'binary')
+            ->setHeader('Expires', '0')
+            ->setHeader('Cache-Control', 'must-revalidate')
+            ->setHeader('Pragma', 'public')
+            ->setHeader('Content-Length', filesize($file_path));
     }
 
-    public static function setCsrf()
+    public static function setCsrf(): void
     {
         Csrf::setCsrf();
     }

@@ -2,11 +2,14 @@
 
 namespace Eyika\Atom\Framework\Http\Middlewares;
 
+use Exception;
 use Eyika\Atom\Framework\Exceptions\Http\UnauthorizedHttpException;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Support\Database\DB;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
 use Eyika\Atom\Framework\Http\JsonResponse;
+use Eyika\Atom\Framework\Support\Auth\Auth;
+use Eyika\Atom\Framework\Support\Facade\Session as FacadeSession;
 
 class AuthenticateSession implements MiddlewareInterface
 {
@@ -36,14 +39,26 @@ class AuthenticateSession implements MiddlewareInterface
      */
     protected function isAuthenticated(Request $request): bool
     {
-        if (!$id = $request->getSession()->get('user_id')) {
+        try {
+            // Check if user_id exists in session
+            $id = $request->getSession()->get('user_id');
+            if (!$id || !is_numeric($id)) {
+                return false;
+            }
+    
+            // Validate user exists in the database
+            $user = DB::table('users')->find($id);
+            if (!$user) {
+                return false;
+            }
+    
+            // Store authenticated user in a centralized place
+            $request->auth_user = $user;
+            Auth::setUser($user);
+            return true;
+        } catch (Exception $e) {
             return false;
         }
-        if (!$user = DB::find('users', $id)) {
-            return false;
-        }
-        $request->auth_user = $user;
-        return true;
     }
 
     /**
@@ -72,7 +87,7 @@ class AuthenticateSession implements MiddlewareInterface
     protected function regenerateSession(Request $request): void
     {
         // Regenerate the session ID to prevent session fixation
-        session_regenerate_id(true);
+        FacadeSession::regenerate();
 
         // Store the time the session was regenerated
         $request->getSession()->set('session_regenerated_at', time());

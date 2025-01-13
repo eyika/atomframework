@@ -3,21 +3,10 @@
 namespace Eyika\Atom\Framework\Http;
 
 use Exception;
-use Eyika\Atom\Framework\Support\Database\Model;
 
-class JsonResponse
+class JsonResponse extends BaseResponse
 {
-    public const STATUS_OK = 200;
-    public const STATUS_NO_CONTENT = 204;
-    public const STATUS_CREATED = 201;
-    public const NOT_MODIFIED = 304;
-    public const STATUS_BAD_REQUEST = 400;
-    public const STATUS_NOT_FOUND = 404;
-    public const STATUS_UNAUTHORIZED = 401;
-    public const STATUS_UNPROCESSABLE_ENTITY = 422;
-    public const STATUS_INTERNAL_SERVER_ERROR = 500;
-
-    public function __construct(int $status_code, $data = null)
+    public static function create(mixed $data = null, int $statusCode = 200): self
     {
         if (is_array($data) && isset($data['data']) && is_object($data['data']) && method_exists($data['data'], 'toArray')) {
             $data['data'] = $data['data']->toArray(includeDynamicProperties: true);
@@ -25,82 +14,53 @@ class JsonResponse
             $data['data'] = $data['data']->__toArray();
         }
 
-        $body = $data ? json_encode($data) : null;
-        http_response_code($status_code);
-        header("Content-type: application/json");
-        echo $body;
+
+        if (! self::$instantiated)
+            new static;
+
+        $jsonData = json_encode($data);
+        return self::body($jsonData)->status($statusCode)
+                        ->setHeader('Content-Type', 'application/json; charset=utf-8');
     }
 
-    public static function ok($message = "", $data = null): bool
+    public static function ok($data = []): self
     {
-        try {
-            new self(self::STATUS_OK, ['message' => $message, 'data' => $data]);
-            return true;
-        } catch (Exception $ex) {
-        }
+        return self::create($data, self::STATUS_OK);
     }
 
-    public static function noContent(): bool
+    public static function noContent(): self
     {
-        try {
-            new self(self::STATUS_NO_CONTENT);
-            return true;
-        } catch (Exception $ex) {
-        }
+        return self::create(statusCode: self::STATUS_CREATED);
     }
 
-    public static function created(string $message = '', $data = []): bool
+    public static function created(string $message = '', $data = []): self
     {
-        try {
-            new self(self::STATUS_CREATED, ['message' => $message, 'data' => $data]);
-            return true;
-        } catch (Exception $ex) {
-        }
+        return self::create($data, self::STATUS_CREATED);
     }
 
-    public static function badRequest(string $message="", string|array $error = ""): bool
+    public static function notFound(string $message, array|null $data = null): self
     {
-        try {
-            new self(self::STATUS_BAD_REQUEST, ['message' => $message, 'error' => $error]);
-            return true;
-        } catch (Exception $ex) {
-        }
+        return self::create(['message' => $message, 'errors' => $data], self::STATUS_NOT_FOUND);
     }
 
-    public static function notFound(string $error, array|null $data = null): bool
+    public static function unprocessableEntity(string $message = "unprocessable request", string|array $errors = ""): self
     {
-        try {
-            new self(self::STATUS_NOT_FOUND, ['message' => $error, 'error' => $data]);
-            return true;
-        } catch (Exception $ex) {
-        }
+        return self::create(['message' => $message, 'errors' => $errors], self::STATUS_UNPROCESSABLE_ENTITY);
     }
 
-    public static function unauthorized(string $message = "unauthorized request"): bool
+    public static function serverError(string $message=""): self
     {
-        try {
-            new self(self::STATUS_UNAUTHORIZED, ['message' => $message]);
-            return true;
-        } catch (Exception $ex) {
-        }
+        return self::create(['message' => $message], self::STATUS_INTERNAL_SERVER_ERROR);
     }
 
-    public static function unprocessableEntity(string $message = "unprocessable request", string|array $error = ""): bool
+    public static function badRequest(string $message = "", array $errors = []): self
     {
-        try {
-            new self(self::STATUS_UNPROCESSABLE_ENTITY, ['message' => $message, 'error' => $error]);
-            return true;
-        } catch (Exception $ex) {
-        }
+        return self::create(['message' => $message, 'errors' => $errors], self::STATUS_BAD_REQUEST);
     }
 
-    public static function serverError(string $message=""): bool
+    public static function unauthorized(string $message = "Unauthorized"): self
     {
-        try {
-            new self(self::STATUS_INTERNAL_SERVER_ERROR, ['message' => $message]);
-            return true;
-        } catch (Exception $ex) {
-        }
+        return self::create(['message' => $message], self::STATUS_UNAUTHORIZED);
     }
 
     // private function respond(int $statusCode, $body = null)

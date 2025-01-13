@@ -41,8 +41,8 @@ class Route
 
                 self::$routes[$last_key][$last_value]['middlewares'] = // [...self::$routes[$last_key][$last_value]['middlewares'], $middleware];
                     count($middleware) > 1 && is_string($middleware[0]) ?
-                        [...self::$routes[$last_key][$last_value]['middlewares'], $middleware] :
-                        array_merge(self::$routes[$last_key][$last_value]['middlewares'], $middleware);
+                    [...self::$routes[$last_key][$last_value]['middlewares'], $middleware] :
+                    array_merge(self::$routes[$last_key][$last_value]['middlewares'], $middleware);
             }
 
             return new static();
@@ -55,7 +55,7 @@ class Route
 
         $previousMiddlewares = self::$middlewares;
         self::$middlewares = count($middleware) > 1 && is_string($middleware[0]) ?
-            [ ...self::$middlewares, $middleware ] :
+            [...self::$middlewares, $middleware] :
             array_merge(self::$middlewares, $middleware);
 
         call_user_func($method);
@@ -94,8 +94,8 @@ class Route
     {
         // $slash = static::$apiRequest ? "/api/" : '/';
         $slash = '/';
-        $route = self::$groupPrefix . $slash . ltrim($route, '/');
-        $route = rtrim($route, '/');
+        $route = self::$groupPrefix . $slash . ltrim($route, $slash);
+        $route = rtrim($route, $slash);
         $name = self::$routeName ? self::$routeName : $route;
 
         self::$routes[$method][$route] = [
@@ -140,175 +140,58 @@ class Route
         return self::addRoute('ANY', $route, $path_to_include);
     }
 
+    public static function custom(string $method, string $route, callable|string|array $path_to_include): self
+    {
+        return self::addRoute($method, $route, $path_to_include);
+    }
+
     public static function dispatch(Request $request)
     {
+        // Initialize routes and ensure instantiation
         url()->setRoutes(self::$routes);
-        if (! self::$instantiated)
+        if (!self::$instantiated) {
             new static;
+        }
 
         $requestMethod = $request->method();
         $requestUri = rtrim(filter_var($request->requestUri(), FILTER_SANITIZE_URL), '/');
         $requestUri = strtok($requestUri, '?');
 
-        for (;;) {
-            if (($middleware = array_shift(static::$defaultMiddlewares)) === '*') {
-                break;
-            }
+        // Set up the middleware pipeline
+        $middlewares = array_merge(
+            static::$defaultMiddlewares,
+            static::findRouteMiddlewares($requestMethod, $requestUri)
+        );
 
-            $middlewares = explode(':', $middleware);
-            $middleware = array_shift($middlewares);
-            $params = explode(',', $middlewares[0] ?? '');
-            $middlewareInstance = new $middleware;
+        // Core handler for the pipeline
+        $coreHandler = function ($request) use ($requestMethod, $requestUri) {
+            foreach (self::$routes[$requestMethod] ?? [] as $route => $data) {
+                if (self::matchesRoute($request, $route, $requestUri, $parameters)) {
+                    $request->route_params = Arr::wrap(sanitize_data($parameters));
+                    self::$currentRoute = $route;
 
-            if (method_exists($middlewareInstance, 'handle') && $status = $middlewareInstance->handle($request, ...$params)) {
-                if ($status)
-                    return true;
-            }
-        }
-
-        // if ($request->isOptions()) {
-        $keys = [];
-        foreach (static::$defaultMiddlewares as $key => $middleware) {
-            $_middleware = explode('\\', $middleware);
-            $_middleware = strtolower($_middleware[count($_middleware) - 1]);
-            if (in_array($_middleware, ['handlecors', 'servepublicassets'])) {
-                $keys[] = $key;
-                $middlewares = explode(':', $middleware);
-                $middleware = array_shift($middlewares);
-                $params = explode(',', $middlewares[0] ?? '');
-                $middlewareInstance = new $middleware;
-    
-                if (method_exists($middlewareInstance, 'handle') && $status = $middlewareInstance->handle($request, ...$params)) {
-                    if ($status)
-                        return true;
-                }
-            }
-        }
-        foreach($keys as $key) {
-            unset(static::$defaultMiddlewares[$key]);
-        }
-        // }
-
-        foreach (self::$routes[$requestMethod] ?? [] as $route => $data) {
-            if (static::domainNotValid($request, $data)) {
-                throw new NotFoundHttpException('requested resource not found');
-            }
-            $routeParts = explode('/', $route);
-            $requestUriParts = explode('/', $requestUri);
-
-            if (count($routeParts) != count($requestUriParts)) {
-                $is_optional = false;
-                foreach ($routeParts as $key => $part) {
-                    if (preg_match("/^{[^}]*\?}$/", $part, $matches)) {
-                        $is_optional = true;
-                    }
-                }
-                if (!$is_optional)
-                    continue;
-            }
-
-            $parameters = [];
-            $matched = true;
-
-            for ($i = 0; $i < count($requestUriParts); $i++) {
-                if (preg_match("/^{([^}]+)\??}$/", $routeParts[$i], $matches)) {
-                    $routePart = $matches[1];
-                    $parameters[$routePart] = $requestUriParts[$i];
-                } elseif ($routeParts[$i] != $requestUriParts[$i]) {
-                    $matched = false;
-                    break;
-                }
-            }
-
-            $request->route_params = Arr::wrap(sanitize_data($parameters));
-
-            if ($matched) {
-                self::$currentRoute = $route;
-
-                foreach (static::$defaultMiddlewares as $key => $middleware) {
-                    $middlewares = explode(':', $middleware);
-                    $middleware = array_shift($middlewares);
-                    $params = explode(',', $middlewares[0] ?? '');
-                    $middlewareInstance = new $middleware;
-        
-                    if (method_exists($middlewareInstance, 'handle') && $status = $middlewareInstance->handle($request, ...$params)) {
-                        if ($status)
-                            return true;
-                    }
-                }
-
-                foreach ($data['middlewares'] as $key => $middlewares) {
-                    $params = null;
-                    if (is_array($middlewares) && sizeof($middlewares) > 1) {
-                        $middleware = array_shift($middlewares);
-                        $params = explode(',', array_shift($middlewares));
-                        if (array_key_exists($middleware, static::$middlewareAliases)) {
-                            $middlewareInstance = new static::$middlewareAliases[$middleware];
-                        } else {
-                            $middlewareInstance = new $middleware;
-                        }
-
-                        if (method_exists($middlewareInstance, 'handle') && $status = $middlewareInstance->handle($request, ...$params)) {
-                            if ($status)
-                                return true;
-                        }
-                        continue;
-                    }
-                    $middlewares = Arr::wrap($middlewares)[0];
-                    $middlewareInstance = new $middlewares;
-                    if (method_exists($middlewareInstance, 'handle') && $status = $middlewareInstance->handle($request)) {
-                        if ($status)
-                            return true;
-                    }
-                }
-
-                $parameters = $request->route_params;
-
-                // foreach ($data['callback'] as $callback) {
                     $callback = $data['callback'];
-                    if (is_callable($callback)) {
-                        $resp = call_user_func_array($callback, array_merge([$request], is_array($parameters) ? array_values($parameters) : []));
-                    } elseif (is_array($callback) && count($callback) > 1) {
-                        [$controller, $method] = $callback;
-                        $controller = "\\" . $controller;
-                        $controllerInstance = new $controller;
-                        $resp = call_user_func_array([$controllerInstance, $method], array_merge([$request], is_array($parameters) ? array_values($parameters) : []));
-                    } elseif (is_string($callback)) {
-                        $resp = include_once __DIR__ . "/$callback";
-                    } else {
-                        throw new NotFoundHttpException('route not found');
-                    }
-                // }
-
-                if (is_string($resp)) {
-                    echo $resp;
-                    return true;
+                    return self::executeCallback($callback, $request, $parameters);
                 }
-                return $resp;
             }
-        }
 
-        if (isset(self::$routes['ANY']['/404'])) {
-            $callback = self::$routes['ANY']['/404']['callback'];
-            if (is_callable($callback)) {
-                $resp = call_user_func($callback, $request);
-            } elseif (is_array($callback) && count($callback) > 1) {
-                [$controller, $method] = $callback;
-                $controllerInstance = new $controller;
-                $resp = call_user_func([$controllerInstance, $method], $request);
-            } elseif (is_string($callback)) {
-                $resp = include_once __DIR__ . "/$callback";
-            } else {
-                throw new NotFoundHttpException('requested resource not found');
-            }
-        } else {
-            throw new NotFoundHttpException('requested resource not found');
-        }
-        if (is_string($resp)) {
-            echo $resp;
+            return self::handleNotFound($request);
+        };
+
+        // Run the pipeline
+        $response = (new Pipeline())
+            ->through($middlewares)
+            ->then($coreHandler)
+            ->run($request);
+
+        // Output the response
+        if ($response instanceof BaseResponse)
+            return $response->send();
+        elseif (is_string($response)) {
+            echo $response;
             return true;
-        }
-        return $resp;
+        } else
+            return $response;
     }
 
     public static function route($name, $parameters = [])
@@ -319,7 +202,7 @@ class Route
                     foreach ($parameters as $key => $value) {
                         $route = str_replace('$' . $key, $value, $route);
                     }
-                    return $route;
+                    return empty($route) ? '/' : $route;
                 }
             }
         }
@@ -383,7 +266,7 @@ class Route
         if (count(self::$lastGroupMiddleware)) {
             $previousMiddlewares = self::$middlewares;
             self::$middlewares = count(self::$lastGroupMiddleware) > 1 && is_string(self::$lastGroupMiddleware[0]) ?
-                [ ...self::$middlewares, self::$lastGroupMiddleware ] :
+                [...self::$middlewares, self::$lastGroupMiddleware] :
                 array_merge(self::$middlewares, self::$lastGroupMiddleware);
 
             self::$lastGroupMiddleware = [];
@@ -405,5 +288,77 @@ class Route
             self::$groupPrefix = $previousPrefix;
 
         return new static();
+    }
+
+    // Helper method to find middlewares for a specific route
+    protected static function findRouteMiddlewares($requestMethod, $requestUri)
+    {
+        foreach (self::$routes[$requestMethod] ?? [] as $route => $data) {
+            if (self::matchesRoute(null, $route, $requestUri)) {
+                return $data['middlewares'] ?? [];
+            }
+        }
+        return [];
+    }
+
+    // Helper method to check if a route matches the request URI
+    protected static function matchesRoute($request, $route, $requestUri, &$parameters = [])
+    {
+        $routeParts = explode('/', $route);
+        $requestUriParts = explode('/', $requestUri);
+
+        if (count($routeParts) !== count($requestUriParts)) {
+            if (!self::routeHasOptionalParts($routeParts)) {
+                return false;
+            }
+        }
+
+        $parameters = [];
+        for ($i = 0; $i < count($requestUriParts); $i++) {
+            if (preg_match("/^{([^}]+)\??}$/", $routeParts[$i], $matches)) {
+                $parameters[$matches[1]] = $requestUriParts[$i];
+            } elseif ($routeParts[$i] !== $requestUriParts[$i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Helper method to determine if a route contains optional parts
+    protected static function routeHasOptionalParts($routeParts)
+    {
+        foreach ($routeParts as $part) {
+            if (preg_match("/^{[^}]*\?}$/", $part)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Execute the callback for a matched route
+    protected static function executeCallback($callback, $request, $parameters)
+    {
+        if (is_callable($callback)) {
+            return call_user_func_array($callback, array_merge([$request], array_values($parameters)));
+        } elseif (is_array($callback) && count($callback) > 1) {
+            [$controller, $method] = $callback;
+            $controllerInstance = new $controller;
+            return call_user_func_array([$controllerInstance, $method], array_merge([$request], array_values($parameters)));
+        } elseif (is_string($callback)) {
+            return include_once __DIR__ . "/$callback";
+        } else {
+            throw new NotFoundHttpException('Route not found');
+        }
+    }
+
+    // Handle 404 Not Found
+    protected static function handleNotFound($request)
+    {
+        if (isset(self::$routes['ANY']['/404'])) {
+            $callback = self::$routes['ANY']['/404']['callback'];
+            return self::executeCallback($callback, $request, []);
+        }
+
+        throw new NotFoundHttpException('Requested resource not found');
     }
 }

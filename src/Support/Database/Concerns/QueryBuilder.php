@@ -4,10 +4,8 @@ namespace Eyika\Atom\Framework\Support\Database\Concerns;
 
 use Carbon\Carbon;
 use Exception;
-use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Str;
-use Eyika\Atom\Framework\Support\Database\DB;
 use Eyika\Atom\Framework\Support\Database\mysqly;
 use Eyika\Atom\Framework\Support\Database\PaginatedData;
 

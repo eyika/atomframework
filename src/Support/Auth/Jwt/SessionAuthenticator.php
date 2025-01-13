@@ -11,10 +11,10 @@ use Hybridauth\Hybridauth;
 
 final class JwtAuthenticator extends Authenticator
 {
+    protected static $type = 'session';
+
     private const HEADER_VALUE_PATTERN = "/Bearer\s+(.*)$/i";
 
-    protected static $type = 'jwt';
-    private static $encoder;
     private static $user;
 
     // variables used for jwt
@@ -22,12 +22,11 @@ final class JwtAuthenticator extends Authenticator
     private static $iss;
     private static $aud;
 
-    public function __construct(JwtEncoder $encoder, User $user)
+    public function __construct(User $user)
     {
         static::$key = env('JWT_KEY');
         static::$iss = env('JWT_ISS');
         static::$aud = env('JWT_AUD');
-        static::$encoder = $encoder;
         static::$user = $user;
     }
 
