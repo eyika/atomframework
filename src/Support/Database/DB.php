@@ -277,12 +277,20 @@ class DB
         throw new NotImplementedException('oops! this feature is yet to be implemented');
     }
 
-    public function update($values, $id)
+    public function update(array $values, int|null $id = null)
     {
         return static::_update($values, $id);
     }
 
-    public function delete($id)
+    public function increment(string $column, int $step = 1)
+    {
+        $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
+        $operators = static::$operators;
+
+        return mysqly::increment($column, $this->table, $query_arr, $operators, static::$or_ands, $step);
+    }
+
+    public function delete(int|null $id = null)
     {
         $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
 
@@ -433,11 +441,12 @@ class DB
      * @param bool $internal
      * @return self|bool|array
      */
-    private function _update(array $values, int $id, string|array $fields = '*')
+    private function _update(array $values, int|null $id = null, string|array $fields = '*')
     {   
         $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
 
-        $query_arr['id'] = $id;
+        if ($id)
+            $query_arr['id'] = $id;
 
         $count = mysqly::update($this->table, $query_arr, $values, static::$operators, static::$or_ands);
 

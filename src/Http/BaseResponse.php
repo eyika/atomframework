@@ -4,6 +4,7 @@ namespace Eyika\Atom\Framework\Http;
 
 use Cookie;
 use Exception;
+use Eyika\Atom\Framework\Support\Arrayable;
 use Eyika\Atom\Framework\Support\Facade\Request as FacadeRequest;
 use Eyika\Atom\Framework\Support\View\Blade;
 use Eyika\Atom\Framework\Support\View\Twig;
@@ -13,10 +14,14 @@ class BaseResponse
     public const STATUS_OK = 200;
     public const STATUS_NO_CONTENT = 204;
     public const STATUS_CREATED = 201;
-    public const NOT_MODIFIED = 304;
+    public const STATUS_MOVED_PERMANENTLY = 301;
+    public const STATUS_FOUND = 302;
+    public const STATUS_SEE_OTHER = 303;
+    public const STATUS_NOT_MODIFIED = 304;
     public const STATUS_BAD_REQUEST = 400;
-    public const STATUS_NOT_FOUND = 404;
     public const STATUS_UNAUTHORIZED = 401;
+    public const STATUS_FORBIDDEN = 403;
+    public const STATUS_NOT_FOUND = 404;
     public const STATUS_UNPROCESSABLE_ENTITY = 422;
     public const STATUS_INTERNAL_SERVER_ERROR = 500;
 
@@ -24,11 +29,15 @@ class BaseResponse
         self::STATUS_OK => 'ok',
         self::STATUS_NO_CONTENT => 'noContent',
         self::STATUS_CREATED => 'created',
-        self::NOT_MODIFIED => 'notModified',
+        self::STATUS_MOVED_PERMANENTLY => 'movedPermanently',
+        self::STATUS_FOUND => 'found',
+        self::STATUS_SEE_OTHER => 'seeOther',
+        self::STATUS_NOT_MODIFIED => 'notModified',
         self::STATUS_BAD_REQUEST => 'badRequest',
-        self::STATUS_NOT_FOUND => 'notFound',
         self::STATUS_UNAUTHORIZED => 'unauthorized',
-        self::STATUS_UNPROCESSABLE_ENTITY => 'unprocessable_entity',
+        self::STATUS_FORBIDDEN => 'forbidden',
+        self::STATUS_NOT_FOUND => 'notFound',
+        self::STATUS_UNPROCESSABLE_ENTITY => 'unprocessableEntity',
         self::STATUS_INTERNAL_SERVER_ERROR => 'serverError',
     ];
 
@@ -45,11 +54,12 @@ class BaseResponse
     protected static $file_path = '';
 
     protected static $viewFileName = '';
+    protected static Arrayable $cookies;
 
     // Method to set a cookie header
-    public static function setCookie(Cookie $cookie)
+    public static function setCookie($name, $value = '', $expiry = 0, $path = '/', $domain = '', $secure = false, $httpOnly = true)
     {
-        static::$headers[] = ['Set-Cookie' => [$cookie, 0]];
+        static::$cookies->set($name, new Cookie($name, $value, $expiry, $path, $domain, $secure, $httpOnly));
         return new static;
     }
 
@@ -65,16 +75,7 @@ class BaseResponse
 
     public static function cookies()
     {
-        $cookies = [];
-
-        foreach (static::$headers as $header) {
-            foreach ($header as $key => $value) {
-                if (str_contains($key, 'Set-Cookie')) {
-                    $cookies[] = [$key => $value];
-                }
-            }
-        }
-        return $cookies;
+        static::$cookies->all();
     }
 
     // Set a status code
@@ -92,17 +93,17 @@ class BaseResponse
     }
 
     // Add inputs to the response
-    public function withInputs()
+    public static function withInputs()
     {
         static::$inputs = FacadeRequest::input();
         return new static;
     }
 
     // Method to send the response headers and content
-    public function send()
+    public static function send()
     {
         http_response_code(self::$statusCode);
-        $this->sendHeaders();
+        static::sendHeaders();
 
         if (FacadeRequest::wantsJson() || FacadeRequest::isXmlHttpRequest()) {
             echo self::$body;
@@ -126,13 +127,15 @@ class BaseResponse
         return true;
     }
 
-    private function compileView()
+    private static function compileView()
     {
         try {
             $path = resource_path('views');
 
             if (config('view.use_advance_engine')) {
                 $view = new Blade($path);
+                static::$viewData['errors'] = array_key_exists('errors', static::$viewData) ? array_merge(static::$viewData['errors'], static::$errors) : static::$errors;
+
                 $content = $view->run(static::$viewFileName, static::$viewData);
             } else {
                 $content = Twig::make(static::$viewFileName.".blade.php", "$path/", static::$viewData, true);
@@ -149,8 +152,11 @@ class BaseResponse
         }
     }
 
-    protected function sendHeaders()
+    protected static function sendHeaders()
     {
+        self::$cookies->each(function (Cookie $cookie) {
+            header("{$cookie->getName()}: {$cookie->getValue()}");
+        });
         foreach (static::$headers as $header) {
             foreach ($header as $key => $value) {
                 $val = str_contains($key, 'Set-Cookie') ? (string) $value[0] : $value[0];

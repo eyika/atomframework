@@ -58,6 +58,11 @@ class JsonResponse extends BaseResponse
         return self::create(['message' => $message, 'errors' => $errors], self::STATUS_BAD_REQUEST);
     }
 
+    public static function forbidden(string $message = "", array $errors = []): self
+    {
+        return self::create(['message' => $message, 'errors' => $errors], self::STATUS_FORBIDDEN);
+    }
+
     public static function unauthorized(string $message = "Unauthorized"): self
     {
         return self::create(['message' => $message], self::STATUS_UNAUTHORIZED);

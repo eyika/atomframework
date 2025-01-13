@@ -46,7 +46,7 @@ class Response extends BaseResponse
         return new static;
     }
 
-    public static function redirect(string $to, int $code = 301, int|null $delay = null): self
+    public static function redirect(string $to, int $code = self::STATUS_FOUND, int|null $delay = null): self
     {
         if ((! self::$instantiated))
             (new static)->status($code);
@@ -60,7 +60,7 @@ class Response extends BaseResponse
         return self::setHeader('Location', $to, $code);
     }
 
-    public function back(int $code = 301, int|null $delay = null)
+    public static function back(int $code = self::STATUS_SEE_OTHER, int|null $delay = null)
     {
         if ((! self::$instantiated))
             (new static)->status($code);

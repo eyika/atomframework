@@ -3,7 +3,7 @@ class Cookie
 {
     protected $name;
     protected $value;
-    protected $expiry;
+    protected $maxAge;
     protected $path;
     protected $domain;
     protected $secure;
@@ -12,7 +12,7 @@ class Cookie
     public function __construct(
         $name, 
         $value = '', 
-        $expiry = 0, 
+        $maxAge = 0, 
         $path = '/', 
         $domain = '', 
         $secure = false, 
@@ -20,7 +20,7 @@ class Cookie
     ) {
         $this->name = $name;
         $this->value = $value;
-        $this->expiry = $expiry;
+        $this->maxAge = $maxAge;
         $this->path = $path;
         $this->domain = $domain;
         $this->secure = $secure;
@@ -35,6 +35,56 @@ class Cookie
         return $clone;
     }
 
+    /**
+     * Checks if there is a value.
+     *
+     * @return bool
+     */
+    public function hasValue()
+    {
+        return isset($this->value);
+    }
+
+    /**
+     * Returns the name.
+     *
+     * @return string
+     */
+    public function getName()
+    {
+        return $this->name;
+    }
+
+    /**
+     * Returns the max age.
+     *
+     * @return int|null
+     */
+    public function getMaxAge()
+    {
+        return $this->maxAge;
+    }
+
+    /**
+     * Checks if there is a max age.
+     *
+     * @return bool
+     */
+    public function hasMaxAge()
+    {
+        return isset($this->maxAge);
+    }
+
+    /**
+     * Returns the value.
+     *
+     * @return string|null
+     */
+    public function getValue()
+    {
+        return $this->value;
+    }
+
     // Convert the cookie object to a string suitable for `Set-Cookie` header
     public function __toString()
     {
@@ -42,7 +92,7 @@ class Cookie
             '%s=%s; Expires=%s; Path=%s; Domain=%s; %s%s',
             $this->name,
             urlencode($this->value),
-            gmdate('D, d-M-Y H:i:s T', $this->expiry),
+            gmdate('D, d-M-Y H:i:s T', $this->maxAge),
             $this->path,
             $this->domain ?: '',
             $this->secure ? 'Secure; ' : '',

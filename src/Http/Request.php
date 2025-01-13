@@ -2,6 +2,7 @@
 
 namespace Eyika\Atom\Framework\Http;
 
+use Cookie;
 use Eyika\Atom\Framework\Exceptions\BaseException;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Support\Arr;
@@ -21,7 +22,7 @@ class Request
     public array $route_params;
     protected $body;
     protected $attributes;
-    protected $cookies;
+    protected Arrayable $cookies;
     protected $files;
     protected $server;
     protected array $headers;
@@ -37,7 +38,12 @@ class Request
         $this->body = $_POST;
         $this->attributes = [];
         $this->route_params = [];
-        $this->cookies = $_COOKIE;
+        $this->cookies = new Arrayable();
+
+        foreach ($_COOKIE as $name => $value) {
+            // Create a new Cookie instance for each $_COOKIE element
+            $this->cookies->set($name, new Cookie($name, $value));
+        }
         $this->files = $_FILES;
         $this->server = $_SERVER;
         $this->headers = getallheaders();

@@ -36,6 +36,11 @@ Class Arrayable implements ArrayAccess
         return $this->data;
     }
 
+    public function all()
+    {
+        return $this->toArray();
+    }
+
     public function offsetExists(mixed $offset): bool
     {
         return false;
@@ -401,7 +406,7 @@ Class Arrayable implements ArrayAccess
      * @param  mixed  $value
      * @return self
      */
-    public function set(&$array, $key, $value)
+    public function set($key, $value)
     {
         Arr::set($this->data, $key, $value);
 
