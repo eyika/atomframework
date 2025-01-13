@@ -2,8 +2,10 @@
 
 namespace Eyika\Atom\Framework\Http\Middlewares;
 
+use Closure;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
+use Eyika\Atom\Framework\Http\Response;
 use Eyika\Atom\Framework\Support\Str;
 
 class ServePublicAssets implements MiddlewareInterface
@@ -12,7 +14,7 @@ class ServePublicAssets implements MiddlewareInterface
      * Handle an incoming request.
      *
      */
-    public function handle(Request $request): bool
+    public function handle(Request $request, Closure $next): Response|string
     {
         $server = strtolower($request->server('SERVER_SOFTWARE', ''));
     
@@ -34,18 +36,13 @@ class ServePublicAssets implements MiddlewareInterface
                     if (array_key_exists($ext, $customMappings)) {
                         $mime = $customMappings[$ext];
                     }
-                    header("Content-Type: $mime", true, 200);
-                    echo file_get_contents($path);
-                    return true;
+                    return Response::setHeader("Content-Type", $mime, 200)->body(file_get_contents($path));
                 }
 
-                header("Content-type: text/html", true, 404);
-                echo "File Not Found";
-
-                return true;
+                return Response::html("File Not Found", 404, );
             }
         }
 
-        return false;
+        return $next($request);
     }
 }

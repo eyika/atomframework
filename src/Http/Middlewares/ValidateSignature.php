@@ -2,10 +2,12 @@
 
 namespace Eyika\Atom\Framework\Http\Middlewares;
 
+use Closure;
 use Eyika\Atom\Framework\Exceptions\Http\AccessDeniedHttpException;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
+use Eyika\Atom\Framework\Http\Response;
 
 class ValidateSignature implements MiddlewareInterface
 {
@@ -14,9 +16,9 @@ class ValidateSignature implements MiddlewareInterface
      *
      * @throws AccessDeniedHttpException
      */
-    public function handle(Request $request): bool
+    public function handle(Request $request, Closure $next): Response|string
     {
         throw new NotImplementedException();
-        return false;
+        return $next($request);
     }
 }

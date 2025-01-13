@@ -518,5 +518,15 @@ Class Arrayable implements ArrayAccess
 
         return is_array($value) ? $value : [$value];
     }
+
+    /**
+     * cast the instance to an array
+     * 
+     * @return array
+     */
+    public function __toArray()
+    {
+        return $this->data;
+    }
 }
     

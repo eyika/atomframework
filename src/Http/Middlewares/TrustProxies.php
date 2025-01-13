@@ -2,8 +2,10 @@
 
 namespace Eyika\Atom\Framework\Http\Middlewares;
 
+use Closure;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
+use Eyika\Atom\Framework\Http\Response;
 
 class TrustProxies implements MiddlewareInterface
 {
@@ -35,7 +37,7 @@ class TrustProxies implements MiddlewareInterface
      *
      * @return mixed
      */
-    public function handle(Request $request): bool
+    public function handle(Request $request, Closure $next): Response|string
     {
         // Trust the proxies configured for this application
         $request->setTrustedProxies(
@@ -43,7 +45,7 @@ class TrustProxies implements MiddlewareInterface
             1
         );
 
-        return false;
+        return $next($request);
     }
 
     /**

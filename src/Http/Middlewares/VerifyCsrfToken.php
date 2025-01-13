@@ -2,9 +2,11 @@
 
 namespace Eyika\Atom\Framework\Http\Middlewares;
 
+use Closure;
 use Eyika\Atom\Framework\Exceptions\Http\AccessDeniedHttpException;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
+use Eyika\Atom\Framework\Http\Response;
 
 class VerifyCsrfToken implements MiddlewareInterface
 {
@@ -13,13 +15,13 @@ class VerifyCsrfToken implements MiddlewareInterface
      *
      * @throws AccessDeniedHttpException
      */
-    public function handle(Request $request): bool
+    public function handle(Request $request, Closure $next): Response|string
     {
         if ($this->shouldVerify($request)) {
             $this->verifyCsrfToken($request);
         }
 
-        return false;
+        return $next($request);
     }
 
     /**

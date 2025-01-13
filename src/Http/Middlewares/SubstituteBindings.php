@@ -2,9 +2,11 @@
 
 namespace Eyika\Atom\Framework\Http\Middlewares;
 
+use Closure;
 use Eyika\Atom\Framework\Exceptions\Db\ModelNotFoundException;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
 use Eyika\Atom\Framework\Http\Request;
+use Eyika\Atom\Framework\Http\Response;
 use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
 use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
@@ -17,13 +19,13 @@ class SubstituteBindings implements MiddlewareInterface
      *
      * @throws NotFoundHttpException
      */
-    public function handle(Request $request, ...$ignoreKeys): bool
+    public function handle(Request $request, Closure $next, ...$ignoreKeys): Response|string
     {
         // Get the route parameters from the request
         $routeParams = $request->route_params;
 
         if (empty($routeParams))
-            return false;
+            return $next($request);
 
         // Substitute bindings for each parameter
         foreach ($routeParams as $key => $value) {
@@ -46,7 +48,7 @@ class SubstituteBindings implements MiddlewareInterface
         }
         $request->route_params = $routeParams;
 
-        return false;
+        return $next($request);
     }
 
     /**

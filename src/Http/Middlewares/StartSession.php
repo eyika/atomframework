@@ -2,12 +2,13 @@
 
 namespace Eyika\Atom\Framework\Http\Middlewares;
 
+use Closure;
 use Exception;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
+use Eyika\Atom\Framework\Http\Response;
 use Eyika\Atom\Framework\Http\Session;
 use Eyika\Atom\Framework\Support\Facade\Facade;
-use Eyika\Atom\Framework\Support\Facade\Session as FacadeSession;
 
 class StartSession  implements MiddlewareInterface
 {
@@ -15,12 +16,12 @@ class StartSession  implements MiddlewareInterface
      * Handle an incoming request.
      *
      */
-    public function handle(Request $request): bool
+    public function handle(Request $request, Closure $next): Response|string
     {
         if (strtolower($_SERVER["REQUEST_METHOD"]) !== "options") {
             $this->startSession($request);
         }
-        return false;
+        return $next($request);
     }
 
     /**

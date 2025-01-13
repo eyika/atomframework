@@ -2,8 +2,10 @@
 
 namespace Eyika\Atom\Framework\Http\Middlewares;
 
+use Closure;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
+use Eyika\Atom\Framework\Http\Response;
 
 class ShareErrorsFromSession implements MiddlewareInterface
 {
@@ -11,14 +13,14 @@ class ShareErrorsFromSession implements MiddlewareInterface
      * Handle an incoming request.
      *
      */
-    public function handle(Request $request): bool
+    public function handle(Request $request, Closure $next): Response|string
     {
         // Share errors with the view
         if ($request->hasSession()) {
             $this->shareErrors($request);
         }
 
-        return false;
+        return $next($request);
     }
 
     /**

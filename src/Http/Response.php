@@ -9,12 +9,12 @@ class Response extends BaseResponse
 {
     public static function plain(string $message, int $statusCode = self::STATUS_OK): self
     {
-        if ((! self::$instantiated))
-            new static;
+        return static::_plain($message, $statusCode);
+    }
 
-        return static::status($statusCode)->body($message)
-            ->setHeader('Content-Type', 'text/plain; charset=utf-8')
-            ->status($statusCode);
+    public static function html(string $message, int $statusCode = self::STATUS_OK): self
+    {
+        return static::_plain($message, $statusCode, 'text/html');
     }
 
     public static function json(array|string $message, array|int $dataOrStatus = self::STATUS_OK, int|null $statusCode = null): self
@@ -112,5 +112,15 @@ class Response extends BaseResponse
     public static function setCsrf(): void
     {
         Csrf::setCsrf();
+    }
+
+    private static function _plain(string $message, int $statusCode = self::STATUS_OK, $mime = 'text/plain'): self
+    {
+        if ((! self::$instantiated))
+            new static;
+
+        return static::status($statusCode)->body($message)
+            ->setHeader('Content-Type', "$mime; charset=utf-8")
+            ->status($statusCode);
     }
 }
