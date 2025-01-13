@@ -75,7 +75,7 @@ class BaseResponse
 
     public static function cookies()
     {
-        static::$cookies->all();
+        return static::$cookies;
     }
 
     // Set a status code

@@ -156,6 +156,14 @@ class Request
         return $this->retrieveItem($this->files, $key);
     }
 
+    /**
+     * @return Arrayable<Cookie>
+     */
+    public function cookies(): Arrayable
+    {
+        return $this->cookies;
+    }
+
     public function cookie($key = null, $default = null)
     {
         if ($key == null)
