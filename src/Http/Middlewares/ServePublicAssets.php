@@ -36,10 +36,10 @@ class ServePublicAssets implements MiddlewareInterface
                     if (array_key_exists($ext, $customMappings)) {
                         $mime = $customMappings[$ext];
                     }
-                    return Response::setHeader("Content-Type", $mime, 200)->body(file_get_contents($path));
+                    return Response::setHeader("Content-Type", $mime, Response::STATUS_OK)->body(file_get_contents($path));
                 }
 
-                return Response::html("File Not Found", 404, );
+                return Response::html("File Not Found", Response::STATUS_NOT_FOUND);
             }
         }
 

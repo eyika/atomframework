@@ -166,7 +166,8 @@ class Route
         // Core handler for the pipeline
         $coreHandler = function ($request) use ($requestMethod, $requestUri) {
             foreach (self::$routes[$requestMethod] ?? [] as $route => $data) {
-                if (self::matchesRoute($request, $route, $requestUri, $parameters)) {
+                $parameters = [];
+                if (self::matchesRoute($route, $requestUri, $parameters)) {
                     $request->route_params = Arr::wrap(sanitize_data($parameters));
                     self::$currentRoute = $route;
 
@@ -294,7 +295,8 @@ class Route
     protected static function findRouteMiddlewares($requestMethod, $requestUri)
     {
         foreach (self::$routes[$requestMethod] ?? [] as $route => $data) {
-            if (self::matchesRoute(null, $route, $requestUri)) {
+            if (self::matchesRoute($route, $requestUri)) {
+                logger()->info('mathces route .......', $data['middlewares']);
                 return $data['middlewares'] ?? [];
             }
         }
@@ -302,7 +304,7 @@ class Route
     }
 
     // Helper method to check if a route matches the request URI
-    protected static function matchesRoute($request, $route, $requestUri, &$parameters = [])
+    protected static function matchesRoute($route, $requestUri, &$parameters = [])
     {
         $routeParts = explode('/', $route);
         $requestUriParts = explode('/', $requestUri);

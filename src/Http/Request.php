@@ -344,6 +344,11 @@ class Request
         return Validator::validate($this->input(), $params, $separator);
     }
 
+    public function validationErrors()
+    {
+        return Validator::$errors;
+    }
+
     protected function retrieveItem($source, $key = null, $default = null)
     {
         if ($key === null) {

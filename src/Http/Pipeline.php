@@ -54,7 +54,9 @@ class Pipeline
             $this->coreHandler
         );
 
-        return $pipeline($this->passable);
+        $resp = $pipeline($this->passable);
+
+        return $resp;
     }
 
     /**

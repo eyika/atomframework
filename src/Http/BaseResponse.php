@@ -23,6 +23,7 @@ class BaseResponse
     public const STATUS_NOT_FOUND = 404;
     public const STATUS_UNPROCESSABLE_ENTITY = 422;
     public const STATUS_INTERNAL_SERVER_ERROR = 500;
+    public const STATUS_SERVICE_NOT_AVAILABLE = 503;
 
     protected const METHOD_TO_FUNC = [
         self::STATUS_OK => 'ok',
@@ -50,10 +51,16 @@ class BaseResponse
     protected static $instantiated = false;
     protected static $isFileResponse = false;
     protected static $isRedirect = false;
+    protected static $shouldCompileView = false;
     protected static $file_path = '';
 
     protected static $viewFileName = '';
     protected static Arrayable $cookies;
+
+    public function __construct()
+    {
+        static::$cookies = new Arrayable();
+    }
 
     // Method to set a cookie header
     public static function setCookie($name, $value = '', $expiry = 0, $path = '/', $domain = '', $secure = false, $httpOnly = true)
@@ -120,7 +127,9 @@ class BaseResponse
             return true;
         }
 
-        self::compileView();
+        if (static::$shouldCompileView) {
+            self::compileView();
+        }
 
         echo self::$body;
         return true;

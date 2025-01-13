@@ -40,6 +40,7 @@ class Response extends BaseResponse
         if ((! self::$instantiated))
             new static;
 
+        static::$shouldCompileView = true;
         static::$viewFileName = $file_name;
         static::$viewData = $data;
 
@@ -118,6 +119,8 @@ class Response extends BaseResponse
     {
         if ((! self::$instantiated))
             new static;
+
+        static::$shouldCompileView = false;
 
         return static::status($statusCode)->body($message)
             ->setHeader('Content-Type', "$mime; charset=utf-8")
