@@ -38,8 +38,13 @@ class Blade extends BladeOne
         return Csrf::setCsrf();
     }
 
-    public function debugbar(): JavascriptRenderer
+    public function debugbarHead(): string
     {
-        return debugbar();
+        return debugbar()->renderHead();
+    }
+
+    public function debugbarBody(): string
+    {
+        return debugbar()->render();
     }
 }
