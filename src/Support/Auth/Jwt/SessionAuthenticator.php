@@ -2,7 +2,6 @@
 
 namespace Eyika\Atom\Framework\Support\Auth\Jwt;
 
-use App\Models\Role;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Support\Auth\Authenticator;
 use Eyika\Atom\Framework\Support\Auth\User;

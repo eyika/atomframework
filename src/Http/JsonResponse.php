@@ -2,8 +2,6 @@
 
 namespace Eyika\Atom\Framework\Http;
 
-use Exception;
-
 class JsonResponse extends BaseResponse
 {
     public static function create(mixed $data = null, int $statusCode = 200): self

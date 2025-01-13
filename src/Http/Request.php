@@ -2,7 +2,6 @@
 
 namespace Eyika\Atom\Framework\Http;
 
-use Cookie;
 use Eyika\Atom\Framework\Exceptions\BaseException;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Support\Arr;

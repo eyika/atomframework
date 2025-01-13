@@ -2,7 +2,6 @@
 
 namespace Eyika\Atom\Framework\Http;
 
-use Cookie;
 use Exception;
 use Eyika\Atom\Framework\Support\Arrayable;
 use Eyika\Atom\Framework\Support\Facade\Request as FacadeRequest;

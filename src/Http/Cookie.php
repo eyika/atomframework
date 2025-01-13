@@ -1,4 +1,7 @@
 <?php
+
+namespace Eyika\Atom\Framework\Http;
+
 class Cookie
 {
     /**
