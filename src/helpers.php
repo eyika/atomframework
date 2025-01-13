@@ -1,5 +1,7 @@
 <?php
 
+use DebugBar\JavascriptRenderer;
+use DebugBar\StandardDebugBar;
 use Eyika\Atom\Framework\Http\Csrf;
 use Eyika\Atom\Framework\Http\Response;
 use Eyika\Atom\Framework\Http\Route;
@@ -502,5 +504,17 @@ if (!function_exists('auth_user')) {
     function auth_user ()
     {
         return Auth::user();
+    }
+}
+
+if (!function_exists('debugbar')) {
+    /**
+     * set the csrf token to the view response
+     * 
+     * @return JavascriptRenderer
+     */
+    function debugbar ()
+    {
+        return (new StandardDebugBar())->getJavascriptRenderer();
     }
 }

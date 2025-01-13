@@ -224,6 +224,11 @@ class Request
         return strtolower($this->server('HTTP_X_REQUESTED_WITH', '')) === 'xmlhttprequest';
     }
 
+    function isHtml()
+    {
+        return !$this->wantsJson() && !$this->isXmlHttpRequest();
+    }
+
     public function pathInfo()
     {
         return $this->server('REQUEST_URI', '');

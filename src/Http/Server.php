@@ -41,6 +41,7 @@ class Server
     {
         try {
             $request = new Request();
+            static::registerWhoops($request);
             static::$app->instance('request', $request);
             if (preg_match('/^.*$/i', $request->requestUri())) {
                 //register controllers
@@ -65,6 +66,15 @@ class Server
             $handler = static::$app->make(ExceptionHandler::class);
 
             return $handler->render($request, $e);
+        }
+    }
+
+    private static function registerWhoops(Request $request)
+    {
+        if (!$request->isHtml() && config('app.debug', true)) {
+            $whoops = new \Whoops\Run;
+            $whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler);
+            $whoops->register();
         }
     }
 

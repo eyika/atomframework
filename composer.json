@@ -27,7 +27,9 @@
         "ramsey/uuid": "^4.7",
         "mailgun/mailgun-php": "^4.3",
         "aws/aws-sdk-php": "^3.323",
-        "wildbit/postmark-php": "^6.0"
+        "wildbit/postmark-php": "^6.0",
+        "maximebf/debugbar": "^1.23",
+        "filp/whoops": "^2.16"
     },
     "license": "MIT",
     "autoload": {

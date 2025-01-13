@@ -296,7 +296,6 @@ class Route
     {
         foreach (self::$routes[$requestMethod] ?? [] as $route => $data) {
             if (self::matchesRoute($route, $requestUri)) {
-                logger()->info('mathces route .......', $data['middlewares']);
                 return $data['middlewares'] ?? [];
             }
         }
