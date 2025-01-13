@@ -4,9 +4,9 @@ namespace Eyika\Atom\Framework\Http\Middlewares;
 
 use Closure;
 use Exception;
+use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
-use Eyika\Atom\Framework\Http\Response;
 use Eyika\Atom\Framework\Http\Session;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 
@@ -16,7 +16,7 @@ class StartSession  implements MiddlewareInterface
      * Handle an incoming request.
      *
      */
-    public function handle(Request $request, Closure $next): Response|string
+    public function handle(Request $request, Closure $next): BaseResponse
     {
         if (strtolower($_SERVER["REQUEST_METHOD"]) !== "options") {
             $this->startSession($request);
