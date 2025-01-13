@@ -9,28 +9,28 @@ class DB
 {
     public static bool $transaction_mode;
 
-    protected $bind_or_filter;
-    protected array|string $or_ands;
-    protected array|string $operators;
-    protected $order;
+    protected static $bind_or_filter;
+    protected static array|string $or_ands;
+    protected static  array|string $operators;
+    protected static $order;
 
     private static $instantiated = false;
 
-    protected $recordsPerPage;
-    protected $table;
+    protected static $recordsPerPage;
+    protected static $table;
 
     public function __construct()
     {
         static::$transaction_mode = false;
-        $this->or_ands = 'AND';
-        $this->operators = '=';
-        $this->instantiated = true;
+        static::$or_ands = 'AND';
+        static::$operators = '=';
+        static::$instantiated = true;
     }
 
     public static function table(string $table)
     {
         $o = (new static());
-        $o->table = $table;
+        $o::$table = $table;
 
         return $o;
     }
@@ -64,10 +64,10 @@ class DB
 
     protected function resetInstance()
     {
-        $this->bind_or_filter = null;
-        $this->or_ands = '';
-        $this->operators = '=';
-        $this->order = '';
+        static::$bind_or_filter = null;
+        static::$or_ands = '';
+        static::$operators = '=';
+        static::$order = '';
         self::$transaction_mode = false;
     }
 
@@ -84,13 +84,13 @@ class DB
 
     public function create(array $values, array|string $select = '*')
     {
-        if (!$id = mysqly::insert($this->table, $values)) {
+        if (!$id = mysqly::insert(static::$table, $values)) {
             return false;
         }
         
         $fields = $select;
 
-        if (!$model = mysqly::fetch($this->table, ['id' => $id], $fields)) {
+        if (!$model = mysqly::fetch(static::$table, ['id' => $id], $fields)) {
             return true;
         };
 
@@ -122,7 +122,7 @@ class DB
         if ($id && $id > 0)
             $query_arr['id'] = $id;
 
-        if (!$model = mysqly::fetch($this->table, $query_arr, $fields, static::$operators, static::$or_ands)) {
+        if (!$model = mysqly::fetch(static::$table, $query_arr, $fields, static::$operators, static::$or_ands)) {
             static::resetInstance();
             return false;
         }
@@ -155,7 +155,7 @@ class DB
     
         $fields = $select;
 
-        if (!$model = mysqly::fetch($this->table, $query_arr, $fields, static::$operators, static::$or_ands)) {
+        if (!$model = mysqly::fetch(static::$table, $query_arr, $fields, static::$operators, static::$or_ands)) {
             static::resetInstance();
             return false;
         }
@@ -176,7 +176,7 @@ class DB
             is_string(static::$or_ands) ? static::$or_ands = [$or_and] : array_push(static::$or_ands, $or_and);
         }
         
-        if (!$fields = mysqly::fetch($this->table, $query_arr, $select)) {
+        if (!$fields = mysqly::fetch(static::$table, $query_arr, $select)) {
             return false;
         }
         return $fields;
@@ -191,7 +191,7 @@ class DB
         if (static::$order !== "")
             $query_arr['order_by'] = static::$order;
 
-        if (!$fields = mysqly::fetch($this->table, $query_arr, $select, static::$operators, static::$or_ands)) {
+        if (!$fields = mysqly::fetch(static::$table, $query_arr, $select, static::$operators, static::$or_ands)) {
             static::resetInstance();
             return false;
         }
@@ -207,14 +207,14 @@ class DB
 
     public function get($select = '*')
     {
-        return static::all($this->table, $select);
+        return static::all(static::$table, $select);
     }
 
     public function paginate($currentPage = null, $recordsPerPage = null)
     {
         $currentPage = $currentPage ?? 1;
         $recordsPerPage = $recordsPerPage ?? static::$recordsPerPage;
-        $totalRecords = static::count($this->table, 'id');
+        $totalRecords = static::count(static::$table, 'id');
         // Calculate total pages
         $totalPages = ceil($totalRecords / $recordsPerPage);
         // Calculate the offset
@@ -223,7 +223,7 @@ class DB
         static::limit($recordsPerPage);
         static::$offset($offset);
 
-        $data = static::all($this->table);
+        $data = static::all(static::$table);
 
         if (!$data) {
             return false;
@@ -238,7 +238,7 @@ class DB
 
     public function count($column = "*")
     {
-        return static::_count($this->table, $column);
+        return static::_count(static::$table, $column);
     }
 
     public function _count($column = "*", $reset_instance = true)
@@ -251,7 +251,7 @@ class DB
         //     $i++;
         // }
 
-        if (!$count = mysqly::count($this->table, $query_arr, static::$operators, static::$or_ands)) {
+        if (!$count = mysqly::count(static::$table, $query_arr, static::$operators, static::$or_ands)) {
             if ($reset_instance)
                 static::resetInstance();
             return false;
@@ -287,7 +287,7 @@ class DB
         $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
         $operators = static::$operators;
 
-        return mysqly::increment($column, $this->table, $query_arr, $operators, static::$or_ands, $step);
+        return mysqly::increment($column, static::$table, $query_arr, $operators, static::$or_ands, $step);
     }
 
     public function delete(int|null $id = null)
@@ -297,7 +297,7 @@ class DB
         if ($id !== 0 && count($query_arr) < 1)
             $query_arr['id'] = $id;
 
-        $val = mysqly::remove($this->table, $query_arr, static::$operators, static::$or_ands);
+        $val = mysqly::remove(static::$table, $query_arr, static::$operators, static::$or_ands);
         static::resetInstance();
         return $val;
     }
@@ -370,12 +370,12 @@ class DB
 
     public function whereNull($column)
     {
-        return $this->_where($column, ' IS NULL');
+        return static::_where($column, ' IS NULL');
     }
 
     public function whereNotNull($column)
     {
-        return $this->_where($column, 'NOT NULL');
+        return static::_where($column, 'NOT NULL');
     }
 
     public function orWhere($column, $operatorOrValue = null, $value = null)
@@ -425,12 +425,12 @@ class DB
 
     public function orWhereNull($column)
     {
-        return $this->_where($column, ' IS NULL', boolean: 'OR');
+        return static::_where($column, ' IS NULL', boolean: 'OR');
     }
 
     public function orWhereNotNull($column)
     {
-        return $this->_where($column, 'NOT NULL', boolean: 'OR');
+        return static::_where($column, 'NOT NULL', boolean: 'OR');
     }
 
     /**
@@ -448,9 +448,9 @@ class DB
         if ($id)
             $query_arr['id'] = $id;
 
-        $count = mysqly::update($this->table, $query_arr, $values, static::$operators, static::$or_ands);
+        $count = mysqly::update(static::$table, $query_arr, $values, static::$operators, static::$or_ands);
 
-        if (!$model = mysqly::fetch($this->table, $query_arr, $fields, static::$operators, static::$or_ands)) {
+        if (!$model = mysqly::fetch(static::$table, $query_arr, $fields, static::$operators, static::$or_ands)) {
             static::resetInstance();
             return false;
         }
@@ -462,7 +462,7 @@ class DB
 
     private function _where(string $column, string|null $operatorOrValue = null, $value = null, $boolean = "AND")
     {
-        $bind_or_filter = $this->bind_or_filter;
+        $bind_or_filter = static::$bind_or_filter;
         if ($bind_or_filter != null) {
             foreach ($bind_or_filter as $key => $_value) {
                 if (($key == 'LIMIT' || $key == 'OFFSET') && gettype($_value) == 'integer') {
@@ -471,24 +471,24 @@ class DB
             }
         }
         if (is_null($value) && !is_null($operatorOrValue) && str_contains($operatorOrValue, ' NULL')) {// only column and value was given but value is like `IS NULL` or `NOT NULL`
-            is_string($this->operators) ? $this->operators = [$operatorOrValue] : array_push($this->operators, $operatorOrValue);
+            is_string(static::$operators) ? static::$operators = [$operatorOrValue] : array_push(static::$operators, $operatorOrValue);
         }
         else if (is_null($value) && !is_null($operatorOrValue) && !str_contains($operatorOrValue, ' NULL')) {// only column and value was given
-            is_string($this->operators) ? $this->operators = ['='] : array_push($this->operators, '=');
+            is_string(static::$operators) ? static::$operators = ['='] : array_push(static::$operators, '=');
             $value = $operatorOrValue;
         } else {
-            is_string($this->operators) ? $this->operators = [$operatorOrValue] : array_push($this->operators, $operatorOrValue);
+            is_string(static::$operators) ? static::$operators = [$operatorOrValue] : array_push(static::$operators, $operatorOrValue);
         }
 
-        is_string($this->or_ands) ? $this->or_ands = [$boolean] : array_push($this->or_ands, $boolean);
-        is_null($this->bind_or_filter) ? $this->bind_or_filter = array($column => $value) : $this->bind_or_filter[$column] = $value;
+        is_string(static::$or_ands) ? static::$or_ands = [$boolean] : array_push(static::$or_ands, $boolean);
+        is_null(static::$bind_or_filter) ? static::$bind_or_filter = array($column => $value) : static::$bind_or_filter[$column] = $value;
 
         return $this;
     }
 
     public function distinct($column)
     {
-        is_string($this->operators) ? $this->operators = ["DISTINCT `$column`"] : array_push($this->operators, "DISTINCT `$column`");
+        is_string(static::$operators) ? static::$operators = ["DISTINCT `$column`"] : array_push(static::$operators, "DISTINCT `$column`");
 
         return $this;
     }

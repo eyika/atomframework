@@ -8,9 +8,11 @@ use Eyika\Atom\Framework\Exceptions\Http\NotFoundHttpException;
 use Eyika\Atom\Framework\Exceptions\Http\UnauthorizedHttpException;
 use Eyika\Atom\Framework\Exceptions\ValidationException;
 use Eyika\Atom\Framework\Foundation\Contracts\ExceptionHandler as ContractExceptionHandler;
+use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\JsonResponse;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Http\Response;
+use Throwable;
 
 class ExceptionHandler implements ContractExceptionHandler
 {
@@ -41,11 +43,11 @@ class ExceptionHandler implements ContractExceptionHandler
      * Render an exception into an HTTP response.
      *
      * @param  Request  $request
-     * @return bool
+     * @return BaseResponse
      *
      * @throws \Exception
      */
-    public function render($request, \Throwable $exception): bool
+    public function render(Request $request, \Throwable $exception): BaseResponse
     {
         if ($request->wantsJson()) {
             $code = $exception->getCode();
@@ -125,9 +127,8 @@ class ExceptionHandler implements ContractExceptionHandler
                 $message = $exception->errors()[0];
                 $code = JsonResponse::STATUS_UNPROCESSABLE_ENTITY;
 
-                if (! $request->expectsJson() and ! $request->isXmlHttpRequest()) {
-                    return false;
-                    // return Response::redirectBack()::back()->withInput()->withErrors($message);
+                if ($request->isHtml()) {
+                    return Response::back()->withInputs()->withErrors($message);
                 }
             }
 
@@ -137,7 +138,25 @@ class ExceptionHandler implements ContractExceptionHandler
                     'message' => $message,
                 ], $code);
             }
-            return true; //TODO: redirect to error page
+            return $this->renderErrorPage($request, $exception);
+        }
+    }
+
+    protected function renderErrorPage(Request $request, Throwable $exception): BaseResponse
+    {
+        if (config('app.debug', true)) {
+            $whoops = new \Whoops\Run;
+            $whoops->allowQuit(false);
+            $whoops->writeToOutput(false);
+            $whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler);
+
+            return response()->html($whoops->handleException($exception));
+        }
+        
+        $serverErrorPage = config('view.server_error.path', '');
+
+        if (!empty($serverErrorPage)) {
+            return response()->view($serverErrorPage)->withErrors(['message' => $exception->getMessage()]);
         }
     }
 

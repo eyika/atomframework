@@ -101,7 +101,7 @@ final class Auth
         session_destroy();
     }
 
-    public static function guard(string $name = null)
+    public static function guard(string|null $name = null)
     {
 
         return new static;

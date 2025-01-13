@@ -5,11 +5,10 @@ namespace Eyika\Atom\Framework\Http\Middlewares;
 use Closure;
 use Exception;
 use Eyika\Atom\Framework\Exceptions\Http\UnauthorizedHttpException;
+use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Support\Database\DB;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
-use Eyika\Atom\Framework\Http\JsonResponse;
-use Eyika\Atom\Framework\Http\Response;
 use Eyika\Atom\Framework\Support\Auth\Auth;
 use Eyika\Atom\Framework\Support\Facade\Session as FacadeSession;
 
@@ -20,11 +19,11 @@ class AuthenticateSession implements MiddlewareInterface
      *
      * @throws UnauthorizedHttpException
      */
-    public function handle(Request $request, Closure $next, ...$guards): Response|string
+    public function handle(Request $request, Closure $next, ...$guards): BaseResponse
     {
         // Check if the user is authenticated
         if (!$this->isAuthenticated($request)) {
-            throw new UnauthorizedHttpException('Session: User is not authenticated.', JsonResponse::STATUS_UNAUTHORIZED);
+            throw new UnauthorizedHttpException('Session: User is not authenticated.', BaseResponse::STATUS_UNAUTHORIZED);
         }
 
         // Regenerate session ID if necessary

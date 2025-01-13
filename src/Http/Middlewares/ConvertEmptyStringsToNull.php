@@ -3,9 +3,9 @@
 namespace Eyika\Atom\Framework\Http\Middlewares;
 
 use Closure;
+use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
-use Eyika\Atom\Framework\Http\Response;
 
 class ConvertEmptyStringsToNull implements MiddlewareInterface
 {
@@ -13,7 +13,7 @@ class ConvertEmptyStringsToNull implements MiddlewareInterface
      * Handle an incoming request.
      *
      */
-    public function handle(Request $request, Closure $next): Response|string
+    public function handle(Request $request, Closure $next): BaseResponse
     {
         $this->clean($request);
 
