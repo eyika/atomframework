@@ -1,6 +1,7 @@
 <?php
 namespace Eyika\Atom\Framework\Support\View;
 
+use DebugBar\JavascriptRenderer;
 use eftec\bladeone\BladeOne;
 use eftec\bladeone\BladeOneCache;
 use eftec\bladeone\BladeOneCacheRedis;
@@ -32,8 +33,13 @@ class Blade extends BladeOne
         parent::__construct($templatePath, $compiledPath, $mode);
     }
 
-    public function compileCsrf_Token()
+    public function compileCsrf_Token(): string
     {
         return Csrf::setCsrf();
+    }
+
+    public function debugbar(): JavascriptRenderer
+    {
+        return debugbar();
     }
 }
