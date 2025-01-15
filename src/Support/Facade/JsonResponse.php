@@ -2,18 +2,19 @@
 
 namespace Eyika\Atom\Framework\Support\Facade;
 
-use Eyika\Atom\Framework\Http\Response as HttpResponse;
+use Eyika\Atom\Framework\Http\JsonResponse as HttpJsonResponse;
 
 /**
- * @method static HttpResponse ok($data = [])
- * @method static HttpResponse noContent()
- * @method static HttpResponse created(string $message = '', $data = [])
- * @method static HttpResponse notFound(string $message, array|null $data = null)
- * @method static HttpResponse unprocessableEntity(string $message = "unprocessable request", string|array $errors = "")
- * @method static HttpResponse serverError(string $message="")
- * @method static HttpResponse badRequest(string $message = "", array $errors = [])
- * @method static HttpResponse forbidden(string $message = "", array $errors = [])
- * @method static HttpResponse unauthorized(string $message = "Unauthorized")
+ * @method static HttpJsonResponse getInstance()
+ * @method static HttpJsonResponse ok($data = [])
+ * @method static HttpJsonResponse noContent()
+ * @method static HttpJsonResponse created(string $message = '', $data = [])
+ * @method static HttpJsonResponse notFound(string $message, array|null $data = null)
+ * @method static HttpJsonResponse unprocessableEntity(string $message = "unprocessable request", string|array $errors = "")
+ * @method static HttpJsonResponse serverError(string $message="")
+ * @method static HttpJsonResponse badRequest(string $message = "", array $errors = [])
+ * @method static HttpJsonResponse forbidden(string $message = "", array $errors = [])
+ * @method static HttpJsonResponse unauthorized(string $message = "Unauthorized")
  */
 class JsonResponse extends Facade
 {

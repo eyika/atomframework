@@ -2,8 +2,8 @@
 
 use DebugBar\JavascriptRenderer;
 use DebugBar\StandardDebugBar;
+use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\Csrf;
-use Eyika\Atom\Framework\Http\Response;
 use Eyika\Atom\Framework\Http\Route;
 use Eyika\Atom\Framework\Support\Auth\Auth;
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
@@ -13,7 +13,11 @@ use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
 use Eyika\Atom\Framework\Support\Database\DB;
 use Eyika\Atom\Framework\Support\Database\PaginatedData;
 use Eyika\Atom\Framework\Support\Encrypter;
+use Eyika\Atom\Framework\Support\Facade\App;
+use Eyika\Atom\Framework\Support\Facade\Facade;
+use Eyika\Atom\Framework\Support\Facade\JsonResponse;
 use Eyika\Atom\Framework\Support\Facade\Request;
+use Eyika\Atom\Framework\Support\Facade\Response;
 use Eyika\Atom\Framework\Support\Facade\Storage;
 use Eyika\Atom\Framework\Support\Str;
 use Eyika\Atom\Framework\Support\Stringable;
@@ -144,30 +148,36 @@ if (!function_exists('str')) {
 }
 
 if (!function_exists('response')) {
+    /**
+     * Returns a http response
+     * 
+     * @return \Eyika\Atom\Framework\Http\Response
+     */
     function response() {
-        return new Response();
+        return Response::getInstance();
     }
 }
 
 if (!function_exists('redirect')) {
-    function redirect(string $to, int $code = 301, int|null $delay = null) {
-        return (new Response())->redirect($to, $code, $delay);
+    /**
+     * Returns a redirect http response
+     * 
+     * @return \Eyika\Atom\Framework\Http\Response
+     */
+    function redirect(string $to, int $code = BaseResponse::STATUS_FOUND, int|null $delay = null) {
+        return Response::redirect($to, $code, $delay);
     }
 }
 
 if (! function_exists('json_response')) {
     /**
-     * Returns a json response for PHP http request
+     * Returns a json response object
      * 
-     * @param int $status_code
-     * @param array $data
+     * @return \Eyika\Atom\Framework\Http\JsonResponse
      */
-    function json_response(int $status_code, array $data)
+    function json_response()
     {
-        http_response_code($status_code);
-        header("Content-type: application/json");
-        echo json_encode($data);
-        return true;
+        return JsonResponse::getInstance();
     }
 }
 
@@ -497,7 +507,7 @@ if (!function_exists('route')) {
 
 if (!function_exists('auth_user')) {
     /**
-     * set the csrf token to the view response
+     * get the current authenticated user
      * 
      * @return AuthenticatableInterface
      */
@@ -509,7 +519,7 @@ if (!function_exists('auth_user')) {
 
 if (!function_exists('debugbar')) {
     /**
-     * set the csrf token to the view response
+     * compile the debugbar assets
      * 
      * @return JavascriptRenderer
      */

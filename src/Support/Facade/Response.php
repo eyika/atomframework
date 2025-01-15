@@ -5,6 +5,7 @@ namespace Eyika\Atom\Framework\Support\Facade;
 use Eyika\Atom\Framework\Http\Response as HttpResponse;
 
 /**
+ * @method static HttpResponse getInstance()
  * @method static HttpResponse plain(string $message, int $statusCode = self::STATUS_OK)
  * @method static HttpResponse html(string $message, int $statusCode = self::STATUS_OK)
  * @method static HttpResponse json(array|string $message, array|int $dataOrStatus = self::STATUS_OK, int|null $statusCode = null)

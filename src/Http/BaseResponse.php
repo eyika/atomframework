@@ -143,6 +143,11 @@ class BaseResponse
         return true;
     }
 
+    public function getInstance()
+    {
+        return $this;
+    }
+
     private function compileView()
     {
         try {
