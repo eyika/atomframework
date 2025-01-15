@@ -41,7 +41,7 @@ class Server
     public static function handle(): bool
     {
         try {
-            ErrorHandler::register();
+            // ErrorHandler::register();
             $request = new Request();
             static::$app->instance('request', $request);
             if (preg_match('/^.*$/i', $request->requestUri())) {

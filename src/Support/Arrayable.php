@@ -281,6 +281,16 @@ Class Arrayable implements ArrayAccess
     }
 
     /**
+     * Determine if the object elements storage is empty
+     *
+     * @return bool
+     */
+    public function any()
+    {
+        return !empty($this->data);
+    }
+
+    /**
      * Determines if the array is associative.
      *
      * An array is "associative" if it doesn't have sequential numerical keys beginning with zero.

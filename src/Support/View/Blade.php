@@ -35,7 +35,7 @@ class Blade extends BladeOne
         }
         parent::__construct($templatePath, $compiledPath, $mode);
 
-        $this->setBaseUrl(config('app.APP_URL'));
+        $this->setBaseUrl(config('app.url'));
         $this->oldInputs = $oldInputs;
     }
 
@@ -64,8 +64,9 @@ class Blade extends BladeOne
         return debugbar()->render();
     }
 
-    public function compileOld(string $name): string
+    public function runtimeOld(array $names): string
     {
+        $name = $names[0] ?? '';
         return array_key_exists($name, $this->oldInputs) ? (string)$this->oldInputs[$name] : '';
     }
 }
