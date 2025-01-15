@@ -5,8 +5,9 @@ namespace Eyika\Atom\Framework\Http\Middlewares;
 use Closure;
 use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\Request;
-use Eyika\Atom\Framework\Http\Response;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
+use Eyika\Atom\Framework\Http\Response;
+use Eyika\Atom\Framework\Support\Facade\Response as FacadeResponse;
 
 class ValidatePostSize implements MiddlewareInterface
 {
@@ -46,7 +47,7 @@ class ValidatePostSize implements MiddlewareInterface
      */
     protected function handleRequestTooLarge(Request $request)
     {
-        return Response::plain('Payload Too Large', 413);
+        return FacadeResponse::plain('Payload Too Large', 413);
     }
 
     /**

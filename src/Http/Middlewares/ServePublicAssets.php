@@ -6,7 +6,7 @@ use Closure;
 use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
-use Eyika\Atom\Framework\Http\Response;
+use Eyika\Atom\Framework\Support\Facade\Response;
 
 class ServePublicAssets implements MiddlewareInterface
 {
@@ -37,10 +37,10 @@ class ServePublicAssets implements MiddlewareInterface
                     if (array_key_exists($ext, $customMappings)) {
                         $mime = $customMappings[$ext];
                     }
-                    return Response::setHeader("Content-Type", $mime, Response::STATUS_OK)->body(file_get_contents($path));
+                    return Response::setHeader("Content-Type", $mime, BaseResponse::STATUS_OK)->body(file_get_contents($path));
                 }
 
-                return Response::html("File Not Found", Response::STATUS_NOT_FOUND);
+                return Response::html("File Not Found", BaseResponse::STATUS_NOT_FOUND);
             }
         }
 
