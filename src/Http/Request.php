@@ -28,6 +28,7 @@ class Request
     protected $proxyheader;
     protected $trustedProxies = [];
     protected Session $session;
+    protected bool $isAssetRequest;
 
     public UserModelInterface $auth_user;
 
@@ -38,6 +39,7 @@ class Request
         $this->attributes = [];
         $this->route_params = [];
         $this->cookies = new Arrayable();
+        $this->isAssetRequest = false;
 
         foreach ($_COOKIE as $name => $value) {
             // Create a new Cookie instance for each $_COOKIE element
@@ -67,6 +69,14 @@ class Request
 
     public function __set($name, $value) {
         $this->attributes[$name] = $value;
+    }
+
+    public function isAssetRequest(bool|null $value = null)
+    {
+        if ($value === null) {
+            return $this->isAssetRequest;
+        }
+        $this->isAssetRequest = $value;
     }
 
     public static function capture()
@@ -229,6 +239,11 @@ class Request
         return !$this->wantsJson() && !$this->isXmlHttpRequest();
     }
 
+    function isNotHtml()
+    {
+        return $this->wantsJson() || $this->isXmlHttpRequest();
+    }
+
     public function pathInfo()
     {
         return $this->server('REQUEST_URI', '');
@@ -301,6 +316,17 @@ class Request
     public function address()
     {
         return $this->server('REMOTE_ADDR', '');
+    }
+
+    public static function clientIp()
+    {
+        if (
+            isset($_SERVER['HTTP_X_FORWARDED_FOR'])
+            && \preg_match('/^(d{1,3}).(d{1,3}).(d{1,3}).(d{1,3})$/', $_SERVER['HTTP_X_FORWARDED_FOR'])
+        ) {
+            return $_SERVER['HTTP_X_FORWARDED_FOR'];
+        }
+        return $_SERVER['REMOTE_ADDR'] ?? '';
     }
 
     public function schemeAndHttpHost()

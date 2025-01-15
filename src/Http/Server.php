@@ -2,8 +2,8 @@
 
 namespace Eyika\Atom\Framework\Http;
 
-use Dotenv\Dotenv;
 use Exception;
+use Eyika\Atom\Framework\Exceptions\ErrorHandler;
 use Eyika\Atom\Framework\Foundation\Application;
 use Eyika\Atom\Framework\Foundation\Console\Scheduler;
 use Eyika\Atom\Framework\Foundation\Contracts\ExceptionHandler;
@@ -40,6 +40,7 @@ class Server
     public static function handle(): bool
     {
         try {
+            ErrorHandler::register();
             $request = new Request();
             static::$app->instance('request', $request);
             if (preg_match('/^.*$/i', $request->requestUri())) {
@@ -55,7 +56,9 @@ class Server
                     require_once base_path().'/routes/api.php';
                 }
                 $status = Route::dispatch($request);
-                Route::storeCurrent();
+                if (!$request->isAssetRequest())
+                    Route::storeCurrent();
+
                 return $status;
             } else {
                 return false; // Let php bultin server serve

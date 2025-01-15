@@ -2,6 +2,7 @@
 
 namespace Eyika\Atom\Framework\Support\Facade;
 
+use Eyika\Atom\Framework\Support\Storage\Contracts\CustomStorageAdapterCallback;
 use Eyika\Atom\Framework\Support\Storage\File;
 use Eyika\Atom\Framework\Support\Storage\Storage as StorageStorage;
 
@@ -9,7 +10,7 @@ use Eyika\Atom\Framework\Support\Storage\Storage as StorageStorage;
  * @method static StorageStorage drive(string $driver)
  * @method static StorageStorage disk(string $disk)
  * @method static StorageStorage cache(CacheInterface $cache)
- * @method static StorageStorage extend(string $driverName, callable $callback)
+ * @method static StorageStorage extend(string $driverName, CustomStorageAdapterCallback $callback)
  * @method static string get(string $path)
  * @method static int put(string $path, string $contents, $options = [])
  * @method static int putFile(string $path, File $file, $options = [])

@@ -1,6 +1,6 @@
 <?php
 
-namespace eftec;
+namespace Eyika\Atom\Framework\Support\View\BladeHelpers;
 
 use Eyika\Atom\Framework\Support\View\Blade;
 
@@ -9,10 +9,10 @@ use Eyika\Atom\Framework\Support\View\Blade;
 if (!defined('PHPUNIT_COMPOSER_INSTALL') && !defined('__PHPUNIT_PHAR__')
     && isset($_SERVER['PHP_SELF']) &&
     !http_response_code() &&
-    (basename($_SERVER['PHP_SELF']) === 'bladeonecli.php' || basename($_SERVER['PHP_SELF']) === 'bladeonecli')
+    (basename($_SERVER['PHP_SELF']) === 'bladecli.php' || basename($_SERVER['PHP_SELF']) === 'bladecli')
 ) {
     // we also excluded it if it is called by phpunit.
-    include_once __DIR__ . '/BladeOne.php';
+    include_once __DIR__ . '/../Blade.php';
 
     $compilepath = Blade::getParameterCli('compilepath', null);
     $templatepath = Blade::getParameterCli('templatepath', null);

@@ -470,15 +470,15 @@ if (!function_exists('view')) {
     }
 }
 
-if (!function_exists('csrf_token')) {
-    /**
-     * set the csrf token to the view response
-     */
-    function csrf_token ()
-    {
-        Csrf::setCsrf();
-    }
-}
+// if (!function_exists('csrf_token')) {
+//     /**
+//      * set the csrf token to the view response
+//      */
+//     function csrf_token ()
+//     {
+//         Csrf::setCsrfToken();
+//     }
+// }
 
 if (!function_exists('route')) {
     /**

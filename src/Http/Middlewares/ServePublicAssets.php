@@ -29,6 +29,7 @@ class ServePublicAssets implements MiddlewareInterface
 
             $uri = explode('?', $_SERVER["REQUEST_URI"])[0];
             if (preg_match('/\.(?:js|css|svg|ico|woff|woff2|ttf|webp|pdf|png|jpg|json|jpeg|gif|md)$/', $uri)) {
+                $request->isAssetRequest(true);
                 $path = public_path().$uri;
                 if (file_exists($path)) {
                     $mime = mime_content_type($path);

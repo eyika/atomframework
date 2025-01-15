@@ -111,7 +111,7 @@ class BaseResponse
         http_response_code(self::$statusCode);
         static::sendHeaders();
 
-        if (FacadeRequest::wantsJson() || FacadeRequest::isXmlHttpRequest()) {
+        if (FacadeRequest::isNotHtml()) {
             echo self::$body;
             return true;
         }
@@ -143,6 +143,7 @@ class BaseResponse
             if (config('view.use_advance_engine')) {
                 $view = new Blade($path);
                 static::$viewData['errors'] = array_key_exists('errors', static::$viewData) ? array_merge(static::$viewData['errors'], static::$errors) : static::$errors;
+                static::$viewData['inputs'] = static::$inputs;
 
                 $content = $view->run(static::$viewFileName, static::$viewData);
             } else {

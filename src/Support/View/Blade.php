@@ -1,10 +1,8 @@
 <?php
 namespace Eyika\Atom\Framework\Support\View;
 
-use DebugBar\JavascriptRenderer;
 use eftec\bladeone\BladeOne;
 use eftec\bladeone\BladeOneCache;
-use eftec\bladeone\BladeOneCacheRedis;
 use eftec\bladeonehtml\BladeOneHtml;
 use Eyika\Atom\Framework\Http\Csrf;
 
@@ -31,19 +29,21 @@ class Blade extends BladeOne
             mkdir($compiledPath, 0744, true);
         }
         parent::__construct($templatePath, $compiledPath, $mode);
+
+        $this->setBaseUrl(config('app.APP_URL'));
     }
 
     public function compileCsrf_Token(): string
     {
-        return Csrf::setCsrf();
+        return Csrf::setCsrfToken();
     }
 
-    public function debugbarHead(): string
+    public function compileDebugbarHead(): string
     {
         return debugbar()->renderHead();
     }
 
-    public function debugbarBody(): string
+    public function compileDebugbarBody(): string
     {
         return debugbar()->render();
     }

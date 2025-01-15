@@ -7,6 +7,8 @@ use Eyika\Atom\Framework\Exceptions\Http\AccessDeniedHttpException;
 use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
+use Eyika\Atom\Framework\Http\Csrf;
+use Eyika\Atom\Framework\Support\Facade\Request as FacadeRequest;
 
 class VerifyCsrfToken implements MiddlewareInterface
 {
@@ -55,25 +57,13 @@ class VerifyCsrfToken implements MiddlewareInterface
      */
     protected function verifyCsrfToken(Request $request): void
     {
-        $token = $request->headers('X-CSRF-TOKEN') ?? $request->query('csrf_token');
+        if (!FacadeRequest::isMethod('POST')) {
+            return;
+        }
 
-        if (!$this->isValidCsrfToken($token)) {
+        if (!Csrf::csrfIsValid()) {
             throw new AccessDeniedHttpException('Invalid CSRF token.');
         }
-    }
-
-    /**
-     * Check if the CSRF token is valid.
-     *
-     * @param string|null $token
-     * @return bool
-     */
-    protected function isValidCsrfToken(?string $token): bool
-    {
-        // Retrieve the session token (this is just a placeholder; implement your own token retrieval)
-        $sessionToken = $_SESSION['csrf_token'] ?? null;
-
-        return hash_equals($sessionToken, $token);
     }
 
     /**

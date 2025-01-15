@@ -2,13 +2,13 @@
 
 namespace Eyika\Atom\Framework\Support\Facade;
 
-use Eyika\Atom\Framework\Support\Cache\Cache as CacheCache;
+use Eyika\Atom\Framework\Support\Cache\CacheItem;
 
 /**
- * @method static Eyika\Atom\Framework\Support\Cache\CacheItem function getItem(string $key)
- * @method static iterable function getItems(array $keys = [])
- * @method static bool function hasItem(string $key)
- * @method static bool function clear()
+ * @method static CacheItem getItem(string $key)
+ * @method static iterable getItems(array $keys = [])
+ * @method static bool hasItem(string $key)
+ * @method static bool clear()
  * @method static bool deleteItem(string $key)
  * @method static bool deleteItems(array $keys)
  * @method static save($item)
