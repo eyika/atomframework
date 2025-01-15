@@ -13,6 +13,7 @@ use Eyika\Atom\Framework\Support\Encrypter;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\Storage\File;
 use Eyika\Atom\Framework\Support\Storage\Storage;
+use Throwable;
 
 class Server
 {
@@ -63,7 +64,7 @@ class Server
             } else {
                 return false; // Let php bultin server serve
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             /** @var ExceptionHandler $handler */
             $handler = static::$app->make(ExceptionHandler::class);
 

@@ -360,6 +360,19 @@ Class Arrayable implements ArrayAccess
         return $this;
     }
 
+    /**
+     * Push multiple items onto the end of an array.
+     *
+     * @param  array  $items
+     * @return self
+     */
+    public function push($items)
+    {
+        $this->data = array_merge($this->data, $items);
+
+        return $this;
+    }
+
     public function merge(array ...$values)
     {
         $this->data = Arr::merge($this->data, $values);

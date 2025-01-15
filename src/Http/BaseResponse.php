@@ -45,6 +45,7 @@ class BaseResponse
     protected static $statusCode = 200;
     protected static $body = '';
     protected static $errors = [];
+    protected static $validationErrors = [];
     protected static $inputs = [];
     protected static $viewData = [];
 
@@ -98,6 +99,13 @@ class BaseResponse
         return new static;
     }
 
+    // Add input validation errors to the response
+    public static function withValidationErrors(array $validationErrors)
+    {
+        static::$validationErrors = $validationErrors;
+        return new static;
+    }
+
     // Add inputs to the response
     public static function withInputs()
     {
@@ -142,8 +150,9 @@ class BaseResponse
 
             if (config('view.use_advance_engine')) {
                 $view = new Blade($path);
-                static::$viewData['errors'] = array_key_exists('errors', static::$viewData) ? array_merge(static::$viewData['errors'], static::$errors) : static::$errors;
+                static::$viewData['errors'] = new Arrayable(array_key_exists('errors', static::$viewData) ? array_merge(static::$viewData['errors'], static::$errors) : static::$errors);
                 static::$viewData['inputs'] = static::$inputs;
+                $view->atomSetValidationErrors(static::$validationErrors);
 
                 $content = $view->run(static::$viewFileName, static::$viewData);
             } else {

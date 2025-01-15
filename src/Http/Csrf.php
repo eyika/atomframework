@@ -55,7 +55,7 @@ class Csrf
     {
         $tag = static::$phpTag;
         $csrf_token = static::getCsrfToken();
-        return "<input type='hidden' name='$tag echo $expression; ?>' value='{$tag}echo $csrf_token; " . "?>'/>";
+        return "<input type='hidden' name='{$tag} echo '$expression'; ?>' value='{$tag}echo '$csrf_token'; " . "?>'/>";
     }
 
     /**

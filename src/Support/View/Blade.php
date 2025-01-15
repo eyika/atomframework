@@ -5,10 +5,15 @@ use eftec\bladeone\BladeOne;
 use eftec\bladeone\BladeOneCache;
 use eftec\bladeonehtml\BladeOneHtml;
 use Eyika\Atom\Framework\Http\Csrf;
+use Eyika\Atom\Framework\Support\View\BladeHelpers\Contracts\AuthorizationLogic;
+use Eyika\Atom\Framework\Support\View\BladeHelpers\ErrorCompiler;
+use Eyika\Atom\Framework\Support\View\BladeHelpers\ValidatePermissions;
 
 class Blade extends BladeOne
 {
     use BladeOneCache, BladeOneHtml;
+
+    protected array $oldInputs;
     /**
      * Bob the constructor.
      * The folder at $compiledPath is created in case it doesn't exist.
@@ -17,7 +22,7 @@ class Blade extends BladeOne
      * @param string       $compiledPath If null then it uses (caller_folder)/compiles
      * @param int          $mode         =[BladeOne::MODE_AUTO,BladeOne::MODE_DEBUG,BladeOne::MODE_FAST,BladeOne::MODE_SLOW][$i]
      */
-    public function __construct($templatePath = null, $compiledPath = null)
+    public function __construct($templatePath = null, $compiledPath = null, array $oldInputs = [])
     {
         if (!$mode = config('view.mode')) {
             $mode = env('APP_ENV') == 'local' ? BladeOne::MODE_DEBUG : BladeOne::MODE_FAST;
@@ -31,6 +36,17 @@ class Blade extends BladeOne
         parent::__construct($templatePath, $compiledPath, $mode);
 
         $this->setBaseUrl(config('app.APP_URL'));
+        $this->oldInputs = $oldInputs;
+    }
+
+    public function atomSetValidationErrors(array $errors)
+    {
+        $this->setErrorFunction((new ErrorCompiler($errors)));
+    }
+
+    public function atomSetPermissions(array $permissions, AuthorizationLogic|null $customAuthorizationLogic = null)
+    {
+        $this->setCanFunction((new ValidatePermissions($permissions, $customAuthorizationLogic)));
     }
 
     public function compileCsrf_Token(): string
@@ -46,5 +62,10 @@ class Blade extends BladeOne
     public function compileDebugbarBody(): string
     {
         return debugbar()->render();
+    }
+
+    public function compileOld(string $name): string
+    {
+        return array_key_exists($name, $this->oldInputs) ? (string)$this->oldInputs[$name] : '';
     }
 }

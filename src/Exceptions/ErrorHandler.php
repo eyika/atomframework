@@ -32,12 +32,22 @@ class ErrorHandler
      */
     public static function handleError(int $severity, string $message, string $file, int $line): void
     {
+        logger()->info('got here now ... 1');
+        // Check if the error is reportable
         if (!(error_reporting() & $severity)) {
-            // Error is suppressed with @ operator
-            return;
+            logger()->info('got here now ... 1x');
+            return; // Suppressed with @ or not included in error_reporting()
         }
 
-        throw new ErrorException($message, 0, $severity, $file, $line);
+        // Convert deprecation warnings to exceptions explicitly
+        if (in_array($severity, [E_DEPRECATED, E_USER_DEPRECATED], true)) {
+            logger()->info('got here now ... 1xx');
+            throw new \ErrorException($message, 0, $severity, $file, $line);
+        }
+        logger()->info('got here now ... 1xxx');
+
+        // Handle other errors
+        throw new \ErrorException($message, 0, $severity, $file, $line);
     }
 
     /**
@@ -45,6 +55,7 @@ class ErrorHandler
      */
     public static function handleShutdown(): void
     {
+        logger()->info('got here now ... 2');
         $error = error_get_last();
 
         if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
@@ -62,12 +73,11 @@ class ErrorHandler
      */
     public static function handleException(\Throwable $exception): void
     {
-        http_response_code(500); // Set appropriate HTTP status code
+        logger()->info('got here now ... 3');
+        http_response_code(500);
 
-        // Log the exception (you can replace this with your logger)
         error_log($exception);
 
-        // Display a generic error message (customize as needed)
         echo 'An unexpected error occurred. Please try again later.';
 
         // Optionally rethrow or terminate
