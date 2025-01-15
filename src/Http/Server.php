@@ -26,7 +26,9 @@ class Server
         'request' => Request::class,
         'scheduler' => Scheduler::class,
         'session' => Session::class,
-        'storage' => Storage::class
+        'storage' => Storage::class,
+        'response' => Response::class,
+        'json_response' => JsonResponse::class
     ];
 
     public function __construct(Application $app)

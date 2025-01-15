@@ -7,21 +7,18 @@ use Eyika\Atom\Framework\Support\Facade\Request as FacadeRequest;
 
 class Response extends BaseResponse
 {
-    public static function plain(string $message, int $statusCode = self::STATUS_OK): self
+    public function plain(string $message, int $statusCode = self::STATUS_OK): self
     {
-        return static::_plain($message, $statusCode);
+        return $this->_plain($message, $statusCode);
     }
 
-    public static function html(string $message, int $statusCode = self::STATUS_OK): self
+    public function html(string $message, int $statusCode = self::STATUS_OK): self
     {
-        return static::_plain($message, $statusCode, 'text/html');
+        return $this->_plain($message, $statusCode, 'text/html');
     }
 
-    public static function json(array|string $message, array|int $dataOrStatus = self::STATUS_OK, int|null $statusCode = null): self
+    public function json(array|string $message, array|int $dataOrStatus = self::STATUS_OK, int|null $statusCode = null): self
     {
-        if ((! self::$instantiated))
-            new static;
-
         $data = is_array($dataOrStatus) ? $dataOrStatus : null;
         $statusCode = $statusCode ?? (is_int($dataOrStatus) ? $dataOrStatus : self::STATUS_OK);
 
@@ -31,28 +28,22 @@ class Response extends BaseResponse
 
         $responseBody = $data ? ['message' => $message, 'data' => $data] : ['message' => $message];
 
-        return static::status($statusCode)->body(json_encode($responseBody))
+        return $this->status($statusCode)->body(json_encode($responseBody))
             ->setHeader('Content-Type', 'application/json; charset=utf-8');
     }
 
-    public static function view(string $file_name, array $data = []): self
+    public function view(string $file_name, array $data = []): self
     {
-        if ((! self::$instantiated))
-            new static;
-
-        static::$shouldCompileView = true;
-        static::$viewFileName = $file_name;
-        static::$viewData = $data;
+        $this->shouldCompileView = true;
+        $this->viewFileName = $file_name;
+        $this->viewData = $data;
 
         return new static;
     }
 
-    public static function redirect(string $to, int $code = self::STATUS_FOUND, int|null $delay = null): self
+    public function redirect(string $to, int $code = self::STATUS_FOUND, int|null $delay = null): self
     {
-        if ((! self::$instantiated))
-            (new static)->status($code);
-
-        self::$isRedirect = true;
+        $this->isRedirect = true;
 
         if ($delay) {
             return self::status($code)->setHeader('Refresh', "$delay; URL={$to}", $code);
@@ -61,45 +52,39 @@ class Response extends BaseResponse
         return self::setHeader('Location', $to, $code);
     }
 
-    public static function back(int $code = self::STATUS_SEE_OTHER, int|null $delay = null)
+    public function back(int $code = self::STATUS_SEE_OTHER, int|null $delay = null)
     {
-        if ((! self::$instantiated))
-            (new static)->status($code);
-
         $to = null;
 
         // Redirect to the previous page
-        if (!empty(FacadeRequest::header('HTTP_REFERER'))) {
-            $to = filter_var(FacadeRequest::header('HTTP_REFERER'), FILTER_VALIDATE_URL);
+        if (!empty(FacadeRequest::headers('HTTP_REFERER'))) {
+            $to = filter_var(FacadeRequest::headers('HTTP_REFERER'), FILTER_VALIDATE_URL);
         }
         // Fallback if the referrer is not valid
         if (!$to) {
             $to = Route::previous();
         }
-        self::$isRedirect = true;
+        $this->isRedirect = true;
 
         if ($delay) {
-            return self::setHeader('Refresh', "$delay; URL={$to}", $code);
+            return $this->setHeader('Refresh', "$delay; URL={$to}", $code);
         }
 
-        return self::setHeader('Location', $to, $code);
+        return $this->setHeader('Location', $to, $code);
     }
 
-    public static function download(string $file_path, string|null $file_name = null): self
+    public function download(string $file_path, string|null $file_name = null): self
     {
         $status = self::STATUS_OK;
 
         if (!file_exists($file_path)) {
             $status = self::STATUS_NOT_FOUND;
-            return self::body('File not found.')->setHeader('Content-Type', 'text/plan', $status);
+            return $this->body('File not found.')->setHeader('Content-Type', 'text/plan', $status);
         }
-
-        if ((! self::$instantiated))
-            (new static)->status($status);
 
         $file_name = $file_name ?? basename($file_path);
 
-        return self::setIsFileResponse($file_path)
+        return $this->status($status)->setIsFileResponse($file_path)
             ->setHeader('Content-Description', 'File Transfer')
             ->setHeader('Content-Type', 'application/octet-stream', $status)
             ->setHeader('Content-Disposition', 'attachment; filename=' . $file_name)
@@ -110,19 +95,16 @@ class Response extends BaseResponse
             ->setHeader('Content-Length', filesize($file_path));
     }
 
-    public static function setCsrf(): void
+    public function setCsrf(): void
     {
-        Csrf::setCsrf();
+        Csrf::setCsrfToken();
     }
 
-    private static function _plain(string $message, int $statusCode = self::STATUS_OK, $mime = 'text/plain'): self
+    private function _plain(string $message, int $statusCode = self::STATUS_OK, $mime = 'text/plain'): self
     {
-        if ((! self::$instantiated))
-            new static;
+        $this->shouldCompileView = false;
 
-        static::$shouldCompileView = false;
-
-        return static::status($statusCode)->body($message)
+        return $this->status($statusCode)->body($message)
             ->setHeader('Content-Type', "$mime; charset=utf-8")
             ->status($statusCode);
     }

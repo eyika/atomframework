@@ -41,122 +41,121 @@ class BaseResponse
         self::STATUS_INTERNAL_SERVER_ERROR => 'serverError',
     ];
 
-    protected static $headers = [];
-    protected static $statusCode = 200;
-    protected static $body = '';
-    protected static $errors = [];
-    protected static $validationErrors = [];
-    protected static $inputs = [];
-    protected static $viewData = [];
+    protected $headers = [];
+    protected $statusCode = 200;
+    protected $body = '';
+    protected $errors = [];
+    protected $validationErrors = [];
+    protected $inputs = [];
+    protected $viewData = [];
 
-    protected static $instantiated = false;
-    protected static $isFileResponse = false;
-    protected static $isRedirect = false;
-    protected static $shouldCompileView = false;
-    protected static $file_path = '';
+    protected $isFileResponse = false;
+    protected $isRedirect = false;
+    protected $shouldCompileView = false;
+    protected $file_path = '';
 
-    protected static $viewFileName = '';
-    protected static Arrayable $cookies;
+    protected $viewFileName = '';
+    protected Arrayable $cookies;
 
     public function __construct()
     {
-        static::$cookies = new Arrayable();
+        $this->cookies = new Arrayable();
     }
 
     // Method to set a cookie header
-    public static function setCookie($name, $value = '', $expiry = 0, $path = '/', $domain = '', $secure = false, $httpOnly = true)
+    public function setCookie($name, $value = '', $expiry = 0, $path = '/', $domain = '', $secure = false, $httpOnly = true)
     {
-        static::$cookies->set($name, new Cookie($name, $value, $expiry, $path, $domain, $secure, $httpOnly));
-        return new static;
+        $this->cookies->set($name, new Cookie($name, $value, $expiry, $path, $domain, $secure, $httpOnly));
+        return $this;
     }
 
     // Method to set a header
-    public static function setHeader(string $key, string $content, int|null $code = null, bool $replace = true)
+    public function setHeader(string $key, string $content, int|null $code = null, bool $replace = true)
     {
         if ($code)
-            static::$headers[] = [$key => [$content, $replace, $code]];
-        else static::$headers[] = [$key => [$content, $replace]];
+            $this->headers[] = [$key => [$content, $replace, $code]];
+        else $this->headers[] = [$key => [$content, $replace]];
 
-        return new static;
+        return $this;
     }
 
-    public static function cookies()
+    public function cookies()
     {
-        return static::$cookies;
+        return $this->cookies;
     }
 
     // Set a status code
-    public static function status(int $code)
+    public function status(int $code)
     {
-        static::$statusCode = $code;
-        return new static;
+        $this->statusCode = $code;
+        return $this;
     }
 
     // Add errors to the response
-    public static function withErrors(array $errors)
+    public function withErrors(array $errors)
     {
-        static::$errors = $errors;
-        return new static;
+        $this->errors = $errors;
+        return $this;
     }
 
     // Add input validation errors to the response
-    public static function withValidationErrors(array $validationErrors)
+    public function withValidationErrors(array $validationErrors)
     {
-        static::$validationErrors = $validationErrors;
-        return new static;
+        $this->validationErrors = $validationErrors;
+        return $this;
     }
 
     // Add inputs to the response
-    public static function withInputs()
+    public function withInputs()
     {
-        static::$inputs = FacadeRequest::input();
-        return new static;
+        $this->inputs = FacadeRequest::input();
+        logger()->info("facadeRequest inputs are: ", $this->inputs);
+        return $this;
     }
 
     // Method to send the response headers and content
-    public static function send()
+    public function send()
     {
-        http_response_code(self::$statusCode);
-        static::sendHeaders();
+        http_response_code($this->statusCode);
+        $this->sendHeaders();
 
         if (FacadeRequest::isNotHtml()) {
-            echo self::$body;
+            echo $this->body;
             return true;
         }
 
-        if (self::$isFileResponse) {
+        if ($this->isFileResponse) {
             ob_clean();
             flush();
-            readfile(self::$file_path);
+            readfile($this->file_path);
             return true;
         }
 
-        if (self::$isRedirect) {
+        if ($this->isRedirect) {
             return true;
         }
 
-        if (static::$shouldCompileView) {
-            self::compileView();
+        if ($this->shouldCompileView) {
+            $this->compileView();
         }
 
-        echo self::$body;
+        echo $this->body;
         return true;
     }
 
-    private static function compileView()
+    private function compileView()
     {
         try {
             $path = resource_path('views');
 
             if (config('view.use_advance_engine')) {
-                $view = new Blade($path);
-                static::$viewData['errors'] = new Arrayable(array_key_exists('errors', static::$viewData) ? array_merge(static::$viewData['errors'], static::$errors) : static::$errors);
-                static::$viewData['inputs'] = static::$inputs;
-                $view->atomSetValidationErrors(static::$validationErrors);
+                $view = new Blade($path, oldInputs: $this->inputs);
+                $this->viewData['errors'] = new Arrayable(array_key_exists('errors', $this->viewData) ? array_merge($this->viewData['errors'], $this->errors) : $this->errors);
+                $view->atomSetValidationErrors($this->validationErrors);
 
-                $content = $view->run(static::$viewFileName, static::$viewData);
+                $content = $view->run($this->viewFileName, $this->viewData);
             } else {
-                $content = Twig::make(static::$viewFileName.".blade.php", "$path/", static::$viewData, true);
+                $content = Twig::make($this->viewFileName.".blade.php", "$path/", $this->viewData, true);
             }
 
             self::body($content)
@@ -170,12 +169,12 @@ class BaseResponse
         }
     }
 
-    protected static function sendHeaders()
+    protected function sendHeaders()
     {
-        self::$cookies->each(function (Cookie $cookie) {
+        $this->cookies->each(function (Cookie $cookie) {
             header("{$cookie->getName()}: {$cookie->getValue()}");
         });
-        foreach (static::$headers as $header) {
+        foreach ($this->headers as $header) {
             foreach ($header as $key => $value) {
                 $val = str_contains($key, 'Set-Cookie') ? (string) $value[0] : $value[0];
                 isset($value[2]) ? header("{$key}: {$val}", $value[1], $value[2]) : header("{$key}: {$val}", $value[1]);
@@ -183,16 +182,16 @@ class BaseResponse
         }
     }
 
-    public static function body(string $content)
+    public function body(string $content)
     {
-        static::$body = $content;
-        return new static;
+        $this->body = $content;
+        return $this;
     }
 
     public function setIsFileResponse(string $file_path, bool $value = true)
     {
-        self::$isFileResponse = $value;
-        self::$file_path = $file_path;
-        return new static;
+        $this->isFileResponse = $value;
+        $this->file_path = $file_path;
+        return $this;
     }
 }

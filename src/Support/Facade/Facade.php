@@ -146,10 +146,11 @@ class Facade
 
     public static function __callStatic($method, $arguments)
     {
-        $instance = static::$app->make(static::getFacadeAccessor());
+        $accessor = static::getFacadeAccessor();
+        $instance = static::$app->make($accessor);
 
         if (!method_exists($instance, $method)) {
-            throw new BaseException("Method {$method} does not exist on the underlying service.");
+            throw new BaseException("Method $method does not exist on the underlying service $accessor.");
         }
 
         return $instance->$method(...$arguments);

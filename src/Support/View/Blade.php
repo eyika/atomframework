@@ -13,7 +13,7 @@ class Blade extends BladeOne
 {
     use BladeOneCache, BladeOneHtml;
 
-    protected array $oldInputs;
+    public array $oldInputs;
     /**
      * Bob the constructor.
      * The folder at $compiledPath is created in case it doesn't exist.
@@ -33,10 +33,12 @@ class Blade extends BladeOne
         if (!file_exists($compiledPath)) {
             mkdir($compiledPath, 0744, true);
         }
-        parent::__construct($templatePath, $compiledPath, $mode);
 
         $this->setBaseUrl(config('app.url'));
         $this->oldInputs = $oldInputs;
+        logger()->info("constructor inputs are: ", $this->oldInputs);
+
+        parent::__construct($templatePath, $compiledPath, $mode);
     }
 
     public function atomSetValidationErrors(array $errors)
@@ -67,6 +69,8 @@ class Blade extends BladeOne
     public function runtimeOld(array $names): string
     {
         $name = $names[0] ?? '';
+        logger()->info("name is $name and old inputs are: ", $this->oldInputs);
+
         return array_key_exists($name, $this->oldInputs) ? (string)$this->oldInputs[$name] : '';
     }
 }
