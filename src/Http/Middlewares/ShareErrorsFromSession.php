@@ -36,18 +36,21 @@ class ShareErrorsFromSession implements MiddlewareInterface
 
         if ($session->has(BaseResponse::REQUEST_ERRORS_KEY)) {
             $errors = $session->get(BaseResponse::REQUEST_ERRORS_KEY);
+            logger()->info('session errors are: ', $errors);
             $this->shareWithViews($errors);
             $session->unset(BaseResponse::REQUEST_ERRORS_KEY);
         }
         if ($session->has(BaseResponse::REQUEST_VALIDATION_ERRORS_KEY)) {
             $errors = $session->get(BaseResponse::REQUEST_VALIDATION_ERRORS_KEY);
+            logger()->info('session validation errors are: ', $errors);
             $this->shareValidationWithViews($errors);
             $session->unset(BaseResponse::REQUEST_VALIDATION_ERRORS_KEY);
         }
-        if ($session->has(BaseResponse::REQUEST_VALIDATION_ERRORS_KEY)) {
-            $errors = $session->get(BaseResponse::REQUEST_VALIDATION_ERRORS_KEY);
-            $this->shareValidationWithViews($errors);
-            $session->unset(BaseResponse::REQUEST_VALIDATION_ERRORS_KEY);
+        if ($session->has(BaseResponse::REQUEST_OLD_INPUTS_KEY)) {
+            $errors = $session->get(BaseResponse::REQUEST_OLD_INPUTS_KEY);
+            logger()->info('session inputs are: ', $errors);
+            $this->shareInputWithViews($errors);
+            $session->unset(BaseResponse::REQUEST_OLD_INPUTS_KEY);
         }
     }
 

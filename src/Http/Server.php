@@ -13,6 +13,7 @@ use Eyika\Atom\Framework\Support\Encrypter;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\Storage\File;
 use Eyika\Atom\Framework\Support\Storage\Storage;
+use Eyika\Atom\Framework\Support\View\Blade;
 use Throwable;
 
 class Server
@@ -28,7 +29,8 @@ class Server
         'session' => Session::class,
         'storage' => Storage::class,
         'response' => Response::class,
-        'json_response' => JsonResponse::class
+        'json_response' => JsonResponse::class,
+        'blade' => Blade::class
     ];
 
     public function __construct(Application $app)
