@@ -36,19 +36,16 @@ class ShareErrorsFromSession implements MiddlewareInterface
 
         if ($session->has(BaseResponse::REQUEST_ERRORS_KEY)) {
             $errors = $session->get(BaseResponse::REQUEST_ERRORS_KEY);
-            logger()->info('session errors are: ', $errors);
             $this->shareWithViews($errors);
             $session->unset(BaseResponse::REQUEST_ERRORS_KEY);
         }
         if ($session->has(BaseResponse::REQUEST_VALIDATION_ERRORS_KEY)) {
             $errors = $session->get(BaseResponse::REQUEST_VALIDATION_ERRORS_KEY);
-            logger()->info('session validation errors are: ', $errors);
             $this->shareValidationWithViews($errors);
             $session->unset(BaseResponse::REQUEST_VALIDATION_ERRORS_KEY);
         }
         if ($session->has(BaseResponse::REQUEST_OLD_INPUTS_KEY)) {
             $errors = $session->get(BaseResponse::REQUEST_OLD_INPUTS_KEY);
-            logger()->info('session inputs are: ', $errors);
             $this->shareInputWithViews($errors);
             $session->unset(BaseResponse::REQUEST_OLD_INPUTS_KEY);
         }
@@ -87,14 +84,3 @@ class ShareErrorsFromSession implements MiddlewareInterface
         Blade::atomSetOldInputs($inputs);
     }
 }
-
-// Example usage
-// $request = Request::createFromGlobals();
-// $middleware = new ShareErrorsFromSession();
-
-// $response = $middleware->handle($request, function ($req) {
-//     // Simulating a response where errors might be shared
-//     return new Response('Errors shared from session', 200);
-// });
-
-// $response->send();

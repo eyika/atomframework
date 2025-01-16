@@ -12,10 +12,15 @@ class ErrorCompiler
         $this->errors = $errors;
     }
 
-    public function __invoke($key = null)
+    public function __invoke($key = null, $errorValueType = '_string')
     {
         if (Arr::keyExists($this->errors, $key)) {
-            return $this->errors[$key];
+            $this->errors[$key][] = $this->errors[$key][0];
+            if ($errorValueType == '_string') {
+                return is_array($this->errors[$key]) ? implode(', ', $this->errors[$key]) : $this->errors[$key];
+            }
+
+            return Arr::wrap($this->errors[$key]);
         }
     
         return false;

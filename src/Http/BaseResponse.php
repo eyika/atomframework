@@ -115,6 +115,12 @@ class BaseResponse
         }
 
         if ($this->isRedirect) {
+            if (!empty($this->errors))
+                Session::set(self::REQUEST_ERRORS_KEY, $this->errors);
+            if (!empty($this->validationErrors))
+                Session::set(self::REQUEST_VALIDATION_ERRORS_KEY, $this->validationErrors);
+            if (!empty($this->inputs))
+                Session::set(self::REQUEST_OLD_INPUTS_KEY, $this->inputs);
             return true;
         }
 
@@ -138,13 +144,6 @@ class BaseResponse
                 $view = Blade::instance();
                 if (!empty($view->atomErrors()))
                     $this->viewData['errors'] = new Arrayable($view->atomErrors());
-
-                if (!empty($this->errors))
-                    Session::set(self::REQUEST_ERRORS_KEY, $this->errors);
-                if (!empty($this->validationErrors))
-                    Session::set(self::REQUEST_VALIDATION_ERRORS_KEY, $this->validationErrors);
-                if (!empty($this->inputs))
-                    Session::set(self::REQUEST_OLD_INPUTS_KEY, $this->inputs);
 
                 $content = $view->run($this->viewFileName, $this->viewData);
             } else {

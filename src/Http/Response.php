@@ -118,7 +118,6 @@ class Response extends BaseResponse
     public function withInputs()
     {
         $this->inputs = FacadeRequest::input();
-        logger()->info("facadeRequest inputs are: ", $this->inputs);
         return $this;
     }
 

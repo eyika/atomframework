@@ -83,26 +83,49 @@ class Blade extends BladeOne
         return $this;
     }
 
-    public function compileCsrf_Token(): string
+    protected function compileCsrf_Token(): string
     {
         return Csrf::setCsrfToken();
     }
 
-    public function compileDebugbarHead(): string
+    protected function compileDebugbarHead(): string
     {
         return debugbar()->renderHead();
     }
 
-    public function compileDebugbarBody(): string
+    protected function compileDebugbarBody(): string
     {
         return debugbar()->render();
     }
 
-    public function runtimeOld(array $names): string
+    protected function runtimeOld(array $names): string
     {
         $name = $names[0] ?? '';
-        logger()->info("name is $name and old inputs are: ", $this->oldInputs);
 
         return array_key_exists($name, $this->oldInputs) ? (string)$this->oldInputs[$name] : '';
+    }
+    //</editor-fold>
+    //<editor-fold desc="Array Functions">
+    /**
+     * @error('key')
+     *
+     * @param $expression
+     * @return string
+     */
+    protected function compileErrors($expression): string
+    {
+        $key = $this->stripParentheses($expression);
+        $errorType = $this->stripParentheses("'_array'");
+        return $this->phpTag . '$messages = call_user_func($this->errorCallBack,' . $key . ', ' . $errorType . '); if ($messages): ?>';
+    }
+
+    /**
+     * Compile the end-error statements into valid PHP.
+     *
+     * @return string
+     */
+    protected function compileEndErrors(): string
+    {
+        return $this->phpTag . 'endif; ?>';
     }
 }
