@@ -1,6 +1,6 @@
 <?php
 
-namespace Eyika\Atom\Framework\Support\Auth\Jwt;
+namespace Eyika\Atom\Framework\Support\Auth\Guards\JwtGuards;
 
 use Exception;
 use Firebase\JWT\JWT;

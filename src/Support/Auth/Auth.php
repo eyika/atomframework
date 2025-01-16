@@ -3,75 +3,88 @@
 namespace Eyika\Atom\Framework\Support\Auth;
 
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
-use Eyika\Atom\Framework\Support\Database\DB;
-use App\Models\User;
-use Eyika\Atom\Framework\Support\Facade\Request as RequestFacade;
+use Eyika\Atom\Framework\Support\Auth\Guards\Authenticator;
 
 final class Auth
 {
     protected static $user;
-    protected static $guard;
-    protected static Authenticator $authenticator;
+    protected static $guardName;
+    protected static array $guards = [];
 
-        /**
-     * Try to validate a user
-     * 
-     * @return bool|User
+    /**
+     * Initialize the Auth class with available guards.
      */
-    public static function tryToAuthenticate()
+    public static function init(array $config): void
     {
-        return static::$authenticator->validate();
+        static::$guards = $config['guards'] ?? [];
+        static::$guardName = $config['defaults']['guard'] ?? 'web';
     }
 
     /**
-     * Verify a user's role using a(n) string/array of roles
-     * 
-     * @param Authenticatable|User $user
-     * @param array|string $role
-     * 
-     * @return bool
+     * Get the current guard instance or a specific guard.
      */
-    public static function roleIs($user, $role)
+    public static function guard(string $name = null): Authenticator
     {
-        return static::$authenticator->verifyRole($user, $role);
+        $name = $name ?? static::$guardName;
+
+        if (!isset(static::$guards[$name])) {
+            throw new \InvalidArgumentException("Guard [$name] is not defined.");
+        }
+
+        $guardConfig = static::$guards[$name];
+        $driverClass = static::resolveDriverClass($guardConfig['driver'], $guardConfig['driver_classes']);
+
+        return new $driverClass($guardConfig);
     }
 
     /**
-     * Verify a user's role is not equal to a role using a(n) string/array of roles
-     * 
-     * @param Authenticatable|User $user
-     * @param array|string $role
-     * 
-     * @return bool
+     * Resolve the driver class based on the driver name.
      */
-    public static function roleIsNot($user, $role)
+    protected static function resolveDriverClass(string $driver, array $drivers): string
     {
-        return !static::$authenticator->verifyRole($user, $role);
+        if (!isset($drivers[$driver])) {
+            throw new \InvalidArgumentException("Driver [$driver] is not supported.");
+        }
+
+        return $drivers[$driver];
     }
 
-    public static function setUser($user): void
+    /**
+     * Set the authenticated user.
+     */
+    public static function setUser(AuthenticatableInterface $user): void
     {
         static::$user = $user;
     }
 
-    public static function user(): AuthenticatableInterface
+    /**
+     * Get the authenticated user.
+     */
+    public static function user(): ?AuthenticatableInterface
     {
-        return isset(static::$user) ? static::$user : static::$user;
+        return static::$user;
     }
 
+    /**
+     * Check if the user is authenticated.
+     */
     public static function check(): bool
     {
         return static::$user !== null;
     }
 
-    public static function attempt(array $credentials, bool $remember = true): bool
+    /**
+     * Attempt to authenticate a user using the current guard.
+     */
+    public static function attempt(array $credentials, bool $remember = false): bool
     {
-        $user = static::validateCredentials($credentials);
+        $guard = static::guard();
+        $user = $guard->attempt($credentials);
 
-        if ($user && RequestFacade::wantsJson()) {
+        if ($user) {
             static::setUser($user);
-            if ($remember) {
-                setcookie('auth_remember', json_encode($credentials), time() + (86400 * 30), "/");
+            if ($remember && method_exists($guard, 'remember')) {
+                $guard->remember($user);
             }
             return true;
         }
@@ -79,31 +92,13 @@ final class Auth
         return false;
     }
 
-    protected static function validateCredentials(array $credentials)
-    {
-        $user = DB::table('users')->where('email', $credentials['email'])->first();
-
-        if ($user && password_verify($credentials['password'], $user->password)) {
-            return $user;
-        }
-
-        return null;
-    }
-
+    /**
+     * Log out the user using the current guard.
+     */
     public static function logout(): void
     {
+        $guard = static::guard();
+        $guard->logout();
         static::$user = null;
-
-        if (isset($_COOKIE['auth_remember'])) {
-            setcookie('auth_remember', '', time() - 3600, "/");
-        }
-
-        session_destroy();
-    }
-
-    public static function guard(string|null $name = null)
-    {
-
-        return new static;
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace Eyika\Atom\Framework\Support\Auth\Jwt;
+namespace Eyika\Atom\Framework\Support\Auth\Exceptions;
 
 use Exception;
 use RuntimeException;

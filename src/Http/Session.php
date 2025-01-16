@@ -77,19 +77,31 @@ class Session
         }
     
         return $default;
-    }    
+    }
 
     public function unset(string $key)
     {
         if ($this->has($key)) {
             unset($_SESSION[$key]);
         }
+    }   
+
+    public function forget(string $key)
+    {
+        $this->unset($key);
     }
 
     public function start()
     {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
+        }
+    }
+
+    public function destroy()
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_destroy();
         }
     }
 

@@ -15,7 +15,6 @@ class ErrorCompiler
     public function __invoke($key = null, $errorValueType = '_string')
     {
         if (Arr::keyExists($this->errors, $key)) {
-            $this->errors[$key][] = $this->errors[$key][0];
             if ($errorValueType == '_string') {
                 return is_array($this->errors[$key]) ? implode(', ', $this->errors[$key]) : $this->errors[$key];
             }

@@ -1,6 +1,6 @@
 <?php
 
-namespace Eyika\Atom\Framework\Support\Auth;
+namespace Eyika\Atom\Framework\Support\Auth\Concerns;
 
 use Eyika\Atom\Framework\Support\Arr;
 use App\Models\Role;
@@ -8,7 +8,7 @@ use Eyika\Atom\Framework\Support\Auth\Jwt\JwtEncoder;
 
 use function PHPSTORM_META\type;
 
-abstract class Authenticator
+trait ManageRoles
 {
     private static $user;
     protected static $type = 'jwt';
@@ -44,39 +44,28 @@ abstract class Authenticator
     }
 
     /**
-     * validate function
-     *
-     * @return bool|User
+     * Verify a user's role using a(n) string/array of roles
+     * 
+     * @param Authenticatable|User $user
+     * @param array|string $role
+     * 
+     * @return bool
      */
-    public static function validate()
+    public static function roleIs($user, $role)
     {
-        return self::$user;
+        return static::verifyRole($user, $role);
     }
 
     /**
-     * validate function for firebase
-     *
-     * @return bool|User
+     * Verify a user's role is not equal to a role using a(n) string/array of roles
+     * 
+     * @param Authenticatable|User $user
+     * @param array|string $role
+     * 
+     * @return bool
      */
-    public static function validateSocial()
+    public static function roleIsNot($user, $role)
     {
-        return self::$user;
-    }
-
-    protected static function extractToken(): ?string
-    {
-        return null;
-    }
-
-    /**
-     * uses firebase token to authenticate and generate a user's token
-     *
-     * @param User $user
-     * @param string $password_or_token
-     * @return string|bool
-     */
-    public static function authenticate(User $user, string $password_or_token = "")
-    {
-        return false;
+        return !static::verifyRole($user, $role);
     }
 }
