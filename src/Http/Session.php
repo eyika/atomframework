@@ -71,4 +71,9 @@ class Session
     {
         session_regenerate_id(true);
     }
+
+    public function active()
+    {
+        return session_status() === PHP_SESSION_ACTIVE;
+    }
 }

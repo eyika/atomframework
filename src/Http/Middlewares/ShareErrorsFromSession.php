@@ -6,7 +6,7 @@ use Closure;
 use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
-use Eyika\Atom\Framework\Http\Response;
+use Eyika\Atom\Framework\Support\Facade\Blade;
 
 class ShareErrorsFromSession implements MiddlewareInterface
 {
@@ -34,9 +34,20 @@ class ShareErrorsFromSession implements MiddlewareInterface
     {
         $session = $request->getSession();
 
-        if ($session->has('errors')) {
-            $errors = $session->get('errors');
+        if ($session->has(BaseResponse::REQUEST_ERRORS_KEY)) {
+            $errors = $session->get(BaseResponse::REQUEST_ERRORS_KEY);
             $this->shareWithViews($errors);
+            $session->unset(BaseResponse::REQUEST_ERRORS_KEY);
+        }
+        if ($session->has(BaseResponse::REQUEST_VALIDATION_ERRORS_KEY)) {
+            $errors = $session->get(BaseResponse::REQUEST_VALIDATION_ERRORS_KEY);
+            $this->shareValidationWithViews($errors);
+            $session->unset(BaseResponse::REQUEST_VALIDATION_ERRORS_KEY);
+        }
+        if ($session->has(BaseResponse::REQUEST_VALIDATION_ERRORS_KEY)) {
+            $errors = $session->get(BaseResponse::REQUEST_VALIDATION_ERRORS_KEY);
+            $this->shareValidationWithViews($errors);
+            $session->unset(BaseResponse::REQUEST_VALIDATION_ERRORS_KEY);
         }
     }
 
@@ -48,10 +59,29 @@ class ShareErrorsFromSession implements MiddlewareInterface
      */
     protected function shareWithViews($errors): void
     {
-        // In Laravel, errors are typically shared with views via a view composer
-        // Here, we'll simply output them for demonstration purposes
-        echo "<pre>Error Details:</pre>";
-        print_r($errors);
+        Blade::atomSetErrors($errors);
+    }
+
+    /**
+     * Share validation errors with all views.
+     *
+     * @param $errors
+     * @return void
+     */
+    protected function shareValidationWithViews($errors): void
+    {
+        Blade::atomSetValidationErrors($errors);
+    }
+
+    /**
+     * Share old inputs with all views.
+     *
+     * @param $iputs
+     * @return void
+     */
+    protected function shareInputWithViews($inputs): void
+    {
+        Blade::atomSetOldInputs($inputs);
     }
 }
 

@@ -13,7 +13,10 @@ class Blade extends BladeOne
 {
     use BladeOneCache, BladeOneHtml;
 
-    public array $oldInputs;
+    protected array $oldInputs;
+
+    protected array $errors;
+
     /**
      * Bob the constructor.
      * The folder at $compiledPath is created in case it doesn't exist.
@@ -22,7 +25,7 @@ class Blade extends BladeOne
      * @param string       $compiledPath If null then it uses (caller_folder)/compiles
      * @param int          $mode         =[BladeOne::MODE_AUTO,BladeOne::MODE_DEBUG,BladeOne::MODE_FAST,BladeOne::MODE_SLOW][$i]
      */
-    public function __construct($templatePath = null, $compiledPath = null, array $oldInputs = [])
+    public function __construct($templatePath = null, $compiledPath = null)
     {
         if (!$mode = config('view.mode')) {
             $mode = env('APP_ENV') == 'local' ? BladeOne::MODE_DEBUG : BladeOne::MODE_FAST;
@@ -35,20 +38,47 @@ class Blade extends BladeOne
         }
 
         $this->setBaseUrl(config('app.url'));
-        $this->oldInputs = $oldInputs;
-        logger()->info("constructor inputs are: ", $this->oldInputs);
 
         parent::__construct($templatePath, $compiledPath, $mode);
+    }
+
+    public function instance()
+    {
+        return $this;
+    }
+
+    public function atomErrors()
+    {
+        return $this->errors;
+    }
+
+    public function atomOldInputs()
+    {
+        return $this->oldInputs;
+    }
+
+    public function atomSetErrors(array $errors)
+    {
+        $this->errors = $errors;
+        return $this;
+    }
+
+    public function atomSetOldInputs(array $oldInputs)
+    {
+        $this->oldInputs = $oldInputs;
+        return $this;
     }
 
     public function atomSetValidationErrors(array $errors)
     {
         $this->setErrorFunction((new ErrorCompiler($errors)));
+        return $this;
     }
 
     public function atomSetPermissions(array $permissions, AuthorizationLogic|null $customAuthorizationLogic = null)
     {
         $this->setCanFunction((new ValidatePermissions($permissions, $customAuthorizationLogic)));
+        return $this;
     }
 
     public function compileCsrf_Token(): string

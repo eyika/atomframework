@@ -22,6 +22,6 @@ class ValidatePermissions
         }
 
         // Default validation logic: check if the action exists in permissions
-        return Arr::exists($action, $this->permissions, true);
+        return Arr::exists($this->permissions, $action);
     }
 }

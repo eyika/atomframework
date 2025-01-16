@@ -4,12 +4,17 @@ namespace Eyika\Atom\Framework\Http;
 
 use Exception;
 use Eyika\Atom\Framework\Support\Arrayable;
+use Eyika\Atom\Framework\Support\Facade\Blade;
 use Eyika\Atom\Framework\Support\Facade\Request as FacadeRequest;
-use Eyika\Atom\Framework\Support\View\Blade;
+use Eyika\Atom\Framework\Support\Facade\Session;
 use Eyika\Atom\Framework\Support\View\Twig;
 
 class BaseResponse
 {
+    public const REQUEST_VALIDATION_ERRORS_KEY = 'validation_errors';
+    public const REQUEST_ERRORS_KEY = 'errors';
+    public const REQUEST_OLD_INPUTS_KEY = 'old_inputs';
+
     public const STATUS_OK = 200;
     public const STATUS_NO_CONTENT = 204;
     public const STATUS_CREATED = 201;
@@ -91,28 +96,6 @@ class BaseResponse
         return $this;
     }
 
-    // Add errors to the response
-    public function withErrors(array $errors)
-    {
-        $this->errors = $errors;
-        return $this;
-    }
-
-    // Add input validation errors to the response
-    public function withValidationErrors(array $validationErrors)
-    {
-        $this->validationErrors = $validationErrors;
-        return $this;
-    }
-
-    // Add inputs to the response
-    public function withInputs()
-    {
-        $this->inputs = FacadeRequest::input();
-        logger()->info("facadeRequest inputs are: ", $this->inputs);
-        return $this;
-    }
-
     // Method to send the response headers and content
     public function send()
     {
@@ -151,15 +134,21 @@ class BaseResponse
     private function compileView()
     {
         try {
-            $path = resource_path('views');
-
             if (config('view.use_advance_engine')) {
-                $view = new Blade($path, oldInputs: $this->inputs);
-                $this->viewData['errors'] = new Arrayable(array_key_exists('errors', $this->viewData) ? array_merge($this->viewData['errors'], $this->errors) : $this->errors);
-                $view->atomSetValidationErrors($this->validationErrors);
+                $view = Blade::instance();
+                if (!empty($view->atomErrors()))
+                    $this->viewData['errors'] = new Arrayable($view->atomErrors());
+
+                if (!empty($this->errors))
+                    Session::set(self::REQUEST_ERRORS_KEY, $this->errors);
+                if (!empty($this->validationErrors))
+                    Session::set(self::REQUEST_VALIDATION_ERRORS_KEY, $this->validationErrors);
+                if (!empty($this->inputs))
+                    Session::set(self::REQUEST_OLD_INPUTS_KEY, $this->inputs);
 
                 $content = $view->run($this->viewFileName, $this->viewData);
             } else {
+                $path = resource_path('views');
                 $content = Twig::make($this->viewFileName.".blade.php", "$path/", $this->viewData, true);
             }
 

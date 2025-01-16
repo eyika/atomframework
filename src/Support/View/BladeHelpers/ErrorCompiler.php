@@ -14,7 +14,7 @@ class ErrorCompiler
 
     public function __invoke($key = null)
     {
-        if (Arr::keyExists($key, $this->errors)) {
+        if (Arr::keyExists($this->errors, $key)) {
             return $this->errors[$key];
         }
     

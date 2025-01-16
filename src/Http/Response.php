@@ -38,7 +38,7 @@ class Response extends BaseResponse
         $this->viewFileName = $file_name;
         $this->viewData = $data;
 
-        return new static;
+        return $this;
     }
 
     public function redirect(string $to, int $code = self::STATUS_FOUND, int|null $delay = null): self
@@ -98,6 +98,28 @@ class Response extends BaseResponse
     public function setCsrf(): void
     {
         Csrf::setCsrfToken();
+    }
+
+    // Add errors to the response
+    public function withErrors(array $errors)
+    {
+        $this->errors = $errors;
+        return $this;
+    }
+
+    // Add input validation errors to the response
+    public function withValidationErrors(array $validationErrors)
+    {
+        $this->validationErrors = $validationErrors;
+        return $this;
+    }
+
+    // Add inputs to the response
+    public function withInputs()
+    {
+        $this->inputs = FacadeRequest::input();
+        logger()->info("facadeRequest inputs are: ", $this->inputs);
+        return $this;
     }
 
     private function _plain(string $message, int $statusCode = self::STATUS_OK, $mime = 'text/plain'): self

@@ -261,7 +261,7 @@ class Request
 
     public function hasSession()
     {
-        return isset($this->session);
+        return isset($this->session) && $this->session->active();
     }
 
     public function setSession(Session $session)
