@@ -4,27 +4,19 @@ namespace Eyika\Atom\Framework\Support\Auth\Concerns;
 
 use Eyika\Atom\Framework\Support\Arr;
 use App\Models\Role;
-
-use function PHPSTORM_META\type;
+use Eyika\Atom\Framework\Support\Auth\User;
 
 trait ManageRoles
 {
-    private static $user;
-    protected static $type = 'jwt';
-
-    const JWT = 'jwt';
-    const SESSION = 'session';
-
     /**
      * Verify the user role against an (array|string) of role(s)
      * 
      * @param User $user
      * @param array|string $_role
-     * @param bool $return_bool
      * 
      * @return bool
      */
-    public static function verifyRole($user, $_role, $return_bool = true)
+    public static function verifyRole($user, $_role)
     {
         $_role = Arr::wrap($_role);
 
@@ -40,7 +32,7 @@ trait ManageRoles
     /**
      * Verify a user's role using a(n) string/array of roles
      * 
-     * @param Authenticatable|User $user
+     * @param User $user
      * @param array|string $role
      * 
      * @return bool
@@ -53,7 +45,7 @@ trait ManageRoles
     /**
      * Verify a user's role is not equal to a role using a(n) string/array of roles
      * 
-     * @param Authenticatable|User $user
+     * @param User $user
      * @param array|string $role
      * 
      * @return bool
