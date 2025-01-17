@@ -6,7 +6,7 @@ use Eyika\Atom\Framework\Exceptions\BaseException;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Arrayable;
-use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
+use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
 use Eyika\Atom\Framework\Support\Facade\Session as FacadeSession;
 use Eyika\Atom\Framework\Support\Validator;
 
@@ -30,7 +30,7 @@ class Request
     protected Session $session;
     protected bool $isAssetRequest;
 
-    public UserModelInterface $auth_user;
+    public AuthenticatableInterface $auth_user;
 
     public function __construct()
     {

@@ -1,6 +1,8 @@
 <?php
 namespace Eyika\Atom\Framework\Support\Auth\Drivers;
 
+use Eyika\Atom\Framework\Support\Auth\Contracts\DriverInterface;
+
 class DriverFactory
 {
     protected static array $handlers = [];
@@ -25,7 +27,7 @@ class DriverFactory
      *
      * @throws \InvalidArgumentException
      */
-    public static function getHandler(string $driver): DriverInterface
+    public static function getHandler(string $driver, string $provider): DriverInterface
     {
         if (empty(self::$handlers)) {
             self::registerHandlers();
@@ -36,7 +38,7 @@ class DriverFactory
 
         $handlerClass = self::$handlers[$driver];
 
-        return new $handlerClass();
+        return new $handlerClass($provider);
     }
 
     protected static function registerHandlers()

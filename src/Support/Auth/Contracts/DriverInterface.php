@@ -1,5 +1,5 @@
 <?php
-namespace Eyika\Atom\Framework\Support\Auth\Drivers;
+namespace Eyika\Atom\Framework\Support\Auth\Contracts;
 
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
 

@@ -13,6 +13,13 @@ abstract class Authenticator
      */
     protected $user;
 
+    protected $config;
+
+    public function __construct(array $config)
+    {
+        $this->config = $config;
+    }
+
     /**
      * Get the currently authenticated user.
      *
@@ -59,7 +66,7 @@ abstract class Authenticator
      */
     protected function validateCredentials(array $credentials): ?AuthenticatableInterface
     {
-        $driver = config('auth.providers.users.driver');
+        $driver = $this->config['driver'];
         $handler = DriverFactory::getHandler($driver);
 
         return $handler->validateCredentials($credentials);
@@ -67,7 +74,7 @@ abstract class Authenticator
 
     protected function getUserById($id): ?AuthenticatableInterface
     {
-        $driver = config('auth.providers.users.driver');
+        $driver = $this->config['driver'];
         $handler = DriverFactory::getHandler($driver);
 
         return $handler->getUserById($id);
@@ -75,7 +82,7 @@ abstract class Authenticator
 
     protected function getUserByColumn(string $columnName, $value): ?AuthenticatableInterface
     {
-        $driver = config('auth.providers.users.driver');
+        $driver = $this->config['driver'];
         $handler = DriverFactory::getHandler($driver);
 
         return $handler->getUserByColumn($columnName, $value);

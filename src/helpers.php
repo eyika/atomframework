@@ -3,7 +3,6 @@
 use DebugBar\JavascriptRenderer;
 use DebugBar\StandardDebugBar;
 use Eyika\Atom\Framework\Http\BaseResponse;
-use Eyika\Atom\Framework\Http\Csrf;
 use Eyika\Atom\Framework\Http\Route;
 use Eyika\Atom\Framework\Support\Auth\Auth;
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
@@ -13,8 +12,6 @@ use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
 use Eyika\Atom\Framework\Support\Database\DB;
 use Eyika\Atom\Framework\Support\Database\PaginatedData;
 use Eyika\Atom\Framework\Support\Encrypter;
-use Eyika\Atom\Framework\Support\Facade\App;
-use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\Facade\JsonResponse;
 use Eyika\Atom\Framework\Support\Facade\Request;
 use Eyika\Atom\Framework\Support\Facade\Response;
@@ -192,7 +189,7 @@ if (! function_exists('config')) {
         $config = [];
     
         // Load the config file
-        $file_path = base_path() . "/config/{$file}.php";
+        $file_path = config_path("{$file}.php");
         
         if (file_exists($file_path)) {
             $config = require $file_path;  // or require_once
@@ -372,6 +369,48 @@ if (! function_exists('logger')) {
         $streamHandler = new StreamHandler($path, $level, $bubble, $filePermission, $useLocking);
         $streamHandler->setFormatter($formatter);
         return $log->pushHandler($streamHandler);
+    }
+}
+
+if (!function_exists('info')) {
+    function info(string $message, array $context = []) {
+        logger()->info($message, $context);
+    }
+}
+
+if (!function_exists('notice')) {
+    function notice(string $message, array $context = []) {
+        logger()->notice($message, $context);
+    }
+}
+
+if (!function_exists('warning')) {
+    function warning(string $message, array $context = []) {
+        logger()->warning($message, $context);
+    }
+}
+
+if (!function_exists('error')) {
+    function error(string $message, array $context = []) {
+        logger()->error($message, $context);
+    }
+}
+
+if (!function_exists('critical')) {
+    function critical(string $message, array $context = []) {
+        logger()->critical($message, $context);
+    }
+}
+
+if (!function_exists('alert')) {
+    function alert(string $message, array $context = []) {
+        logger()->alert($message, $context);
+    }
+}
+
+if (!function_exists('emergency')) {
+    function emergency(string $message, array $context = []) {
+        logger()->emergency($message, $context);
     }
 }
 

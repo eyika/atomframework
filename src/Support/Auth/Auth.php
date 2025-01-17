@@ -9,20 +9,17 @@ final class Auth
 {
     protected static $user;
     protected static $guardName;
-    protected static array $guards = [];
+    protected static array $config;
 
     /**
      * Initialize the Auth class with available guards.
      */
-    public static function init(array $config = null): void
+    public static function init(array|null $config = null): void
     {
         if (isset(static::$guardName) && isset(static::$guards)) {
             return;
         }
-        if ($config)
-            $config = config('auth');
-
-        static::$guards = $config['guards'] ?? [];
+        static::$config = $config ?? config('auth', []);
         static::$guardName = $config['defaults']['guard'] ?? 'web';
     }
 
@@ -35,17 +32,17 @@ final class Auth
     /**
      * Get the current guard instance or a specific guard.
      */
-    public static function guard(string $name = null): Authenticator
+    public static function guard(string|null $name = null): Authenticator
     {
         static::init();
         $name = $name ?? static::$guardName;
 
-        if (!isset(static::$guards[$name])) {
+        if (!isset(static::$config['guards'][$name])) {
             throw new \InvalidArgumentException("Guard [$name] is not defined.");
         }
 
-        $guardConfig = static::$guards[$name];
-        $driverClass = static::resolveDriverClass($guardConfig['driver'], $guardConfig['driver_classes']);
+        $guardConfig = static::$config['guards'][$name];
+        $driverClass = static::resolveDriverClass($guardConfig['driver'], static::$config['driver_classes']);
 
         return new $driverClass($guardConfig);
     }

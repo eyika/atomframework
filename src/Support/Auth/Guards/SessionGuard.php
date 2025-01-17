@@ -9,8 +9,6 @@ use Eyika\Atom\Framework\Support\Facade\Session;
 
 class SessionGuard extends Authenticator
 {
-    protected $config;
-
     public function __construct(array $config)
     {
         $this->config = $config;
