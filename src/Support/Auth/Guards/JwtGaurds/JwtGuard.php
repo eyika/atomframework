@@ -3,6 +3,7 @@
 namespace Eyika\Atom\Framework\Support\Auth\Guards\JwtGuards;
 
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
+use Eyika\Atom\Framework\Support\Auth\Auth;
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
 use Eyika\Atom\Framework\Support\Auth\Guards\Authenticator;
 use Eyika\Atom\Framework\Support\Auth\User;
@@ -19,27 +20,23 @@ final class JwtGuard extends Authenticator
     private $iss;
     private $aud;
 
-    public function __construct(JwtEncoder $encoder, AuthenticatableInterface $user)
+    public function __construct(array $config, string $guard)
     {
         $this->key = env('JWT_KEY');
         $this->iss = env('JWT_ISS');
         $this->aud = env('JWT_AUD');
-        $this->encoder = $encoder ?? new JwtEncoder(config('app.key'));
-        $this->user = $user;
+        $this->encoder = new JwtEncoder(config('app.key'));
+        $this->config = $config;
+        $this->guard = $guard;
     }
 
     public function attempt(array $credentials): ?AuthenticatableInterface
     {
-        $user = DB::table('users')->where('email', $credentials['email'])->first();
-
-        if ($user && password_verify($credentials['password'], $user['password'])) {
-            $user = $this->toAuthenticatable($user);
-            $user->{config('auth.token_name')} = $this->generateJwt($user);
-
-            return $user;
+        if (!$user = $this->validateCredentials($credentials)) {
+            return null;
         }
-
-        return null;
+        Auth::setJwt($this->generateJwt($user));
+        return $user;
     }
 
     public function check(): bool
@@ -47,14 +44,25 @@ final class JwtGuard extends Authenticator
         return $this->validate();
     }
 
+    public function user(?string $token = null): ?AuthenticatableInterface
+    {
+        if (!$this->user) {
+            return $this->user;
+        }
+        if (!$user = $this->validate()) {
+            return null;
+        }
+
+        return $user;
+    }
+
     /**
      * validate function
      *
      * @return bool|User
      */
-    private function validate()
+    protected function validate()
     {
-        new static(new JwtEncoder(env('APP_KEY')), new User);
         $jwt = $this->extractToken();
         if (empty($jwt)) {
             return false;
@@ -64,11 +72,11 @@ final class JwtGuard extends Authenticator
             return false;
         }
         
-        if (!self::$user->find($payload->data->id, false)) {
+        if (!$user = $this->getUserById($payload->data->id)) {
             return false;
         }
 
-        return self::$user;
+        return $user;
     }
 
     protected static function extractToken(): ?string

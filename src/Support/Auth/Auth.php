@@ -13,6 +13,7 @@ final class Auth
     protected static $user;
     protected static $guardName;
     protected static array $config;
+    protected static string $jwt;
 
     /**
      * Initialize the Auth class with available guards.
@@ -24,6 +25,7 @@ final class Auth
         }
         static::$config = $config ?? config('auth', []);
         static::$guardName = $config['defaults']['guard'] ?? 'web';
+        static::$jwt = '';
     }
 
     public static function getDefaultGuard()
@@ -119,5 +121,22 @@ final class Auth
         $guard = static::guard();
         $guard->logout();
         static::$user = null;
+    }
+
+    /**
+     * Set the logged in user's jwt token for later retrieval
+     * Usually this will be called internally by the JwtGuard
+     */
+    public static function setJwt(string $jwt)
+    {
+        static::$jwt = $jwt;
+    }
+
+    /**
+     * Get the logged in user's jwt token
+     */
+    public static function getJwt()
+    {
+        return static::$jwt;
     }
 }
