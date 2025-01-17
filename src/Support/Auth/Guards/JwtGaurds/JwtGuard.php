@@ -49,19 +49,32 @@ final class JwtGuard extends Authenticator
         if (!$this->user) {
             return $this->user;
         }
-        if (!$user = $this->validate()) {
+        if (!$user_id = $this->validate()) {
             return null;
+        }
+        
+        if (!$user = $this->getUserById($user_id)) {
+            return false;
         }
 
         return $user;
     }
 
+    public function refreshJwt(): ?AuthenticatableInterface
+    {
+        if (!$user = $this->user()) {
+            return null;
+        }
+        $jwt = $this->generateJwt($user);
+        return $jwt;
+    }
+
     /**
      * validate function
      *
-     * @return bool|User
+     * @return null|int
      */
-    protected function validate()
+    protected function validate(): ?int
     {
         $jwt = $this->extractToken();
         if (empty($jwt)) {
@@ -71,12 +84,8 @@ final class JwtGuard extends Authenticator
         if (is_null($payload = self::$encoder->decode($jwt))) {
             return false;
         }
-        
-        if (!$user = $this->getUserById($payload->data->id)) {
-            return false;
-        }
 
-        return $user;
+        return $payload->data->id;
     }
 
     protected static function extractToken(): ?string

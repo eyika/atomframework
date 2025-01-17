@@ -62,6 +62,11 @@ abstract class Authenticator
     abstract public function attempt(array $credentials): ?AuthenticatableInterface;
 
     /**
+     * Attempt to refresh the user's jwt token, should only be implemented by JwtBased Guards
+     */
+    abstract public function refreshJwt(): ?AuthenticatableInterface;
+
+    /**
      * Resolve the appropriate driver and validate credentials.
      *
      * @param array $credentials

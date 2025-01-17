@@ -139,4 +139,16 @@ final class Auth
     {
         return static::$jwt;
     }
+
+    /**
+     * Attempt to refresh the current jwt_token
+     * This method only applies to jwt related guards hence only requests that has such guard can use this method
+     */
+    public static function refreshJwt(): ?string
+    {
+        $guard = static::guard();
+        static::$jwt = $guard->refreshJwt();
+
+        return static::$jwt;
+    }
 }

@@ -1,6 +1,7 @@
 <?php
 namespace Eyika\Atom\Framework\Support\Auth\Guards;
 
+use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
 use Eyika\Atom\Framework\Support\Database\DB;
 use Eyika\Atom\Framework\Support\Facade\Request;
@@ -56,5 +57,10 @@ class SessionGuard extends Authenticator
     public function remember(AuthenticatableInterface $user): void
     {
         Response::setCookie('auth_remember', json_encode(['id' => $user->id]), time() + (86400 * 30), "/");
+    }
+
+    public function refreshJwt(): ?AuthenticatableInterface
+    {
+        throw new NotImplementedException('Session guard does not implement the refresh token method');
     }
 }
