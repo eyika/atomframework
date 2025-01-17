@@ -9,9 +9,8 @@ use Eyika\Atom\Framework\Exceptions\Http\UnauthorizedHttpException;
 use Eyika\Atom\Framework\Exceptions\ValidationException;
 use Eyika\Atom\Framework\Foundation\Contracts\ExceptionHandler as ContractExceptionHandler;
 use Eyika\Atom\Framework\Http\BaseResponse;
-use Eyika\Atom\Framework\Http\JsonResponse;
 use Eyika\Atom\Framework\Http\Request;
-use Eyika\Atom\Framework\Http\Response;
+use Eyika\Atom\Framework\Support\Facade\Response;
 use Throwable;
 
 class ExceptionHandler implements ContractExceptionHandler
@@ -53,12 +52,12 @@ class ExceptionHandler implements ContractExceptionHandler
             $code = $exception->getCode();
             $message = $exception->getMessage();
             if ($code < 100 || $code >= 600) {
-                $code = JsonResponse::STATUS_INTERNAL_SERVER_ERROR;
+                $code = BaseResponse::STATUS_INTERNAL_SERVER_ERROR;
             }
 
             if ($exception instanceof ModelNotFoundException) {
                 $message = $exception->getMessage();
-                $code = JsonResponse::STATUS_NOT_FOUND;
+                $code = BaseResponse::STATUS_NOT_FOUND;
 
                 if (preg_match('@\\\\(\w+)\]@', $message, $matches)) {
                     $model = $matches[1];
@@ -73,7 +72,7 @@ class ExceptionHandler implements ContractExceptionHandler
                 return response()->json('Not Found', [
                     'success' => false,
                     'message' => $message,
-                ], JsonResponse::STATUS_NOT_FOUND);
+                ], BaseResponse::STATUS_NOT_FOUND);
             }
 
             if ($exception instanceof ValidationException) {
@@ -82,14 +81,14 @@ class ExceptionHandler implements ContractExceptionHandler
                 return response()->json('Validation Error', [
                     'success' => false,
                     'message' => $firstError[0],
-                ], JsonResponse::STATUS_UNPROCESSABLE_ENTITY);
+                ], BaseResponse::STATUS_UNPROCESSABLE_ENTITY);
             }
 
             if ($exception instanceof AccessDeniedHttpException) {
                 return response()->json('Access Denied', [
                     'success' => false,
                     'message' => 'Unauthenticated.',
-                ], JsonResponse::STATUS_UNAUTHORIZED);
+                ], BaseResponse::STATUS_UNAUTHORIZED);
             }
 
             if ($exception instanceof UnauthorizedHttpException) {
@@ -105,16 +104,23 @@ class ExceptionHandler implements ContractExceptionHandler
                     'message' => str_contains($message, 'SQLSTATE') || str_contains($message, 'Illuminate') ? 'something happened try again' : $message,
                 ], $code);
             }
+
+            if ($request->expectsJson() or $request->isXmlHttpRequest()) {
+                return Response::json('Error Occured', [
+                    'success' => false,
+                    'message' => $message,
+                ], $code);
+            }
         } else {
             $code = $exception->getCode();
             $message = $exception->getMessage();
             if ($code < 100 || $code >= 600) {
-                $code = JsonResponse::STATUS_INTERNAL_SERVER_ERROR;
+                $code = BaseResponse::STATUS_INTERNAL_SERVER_ERROR;
             }
 
             if ($exception instanceof ModelNotFoundException) {
                 $message = $exception->getMessage();
-                $code = JsonResponse::STATUS_NOT_FOUND;
+                $code = BaseResponse::STATUS_NOT_FOUND;
 
                 if (preg_match('@\\\\(\w+)\]@', $message, $matches)) {
                     $model = $matches[1];
@@ -124,20 +130,17 @@ class ExceptionHandler implements ContractExceptionHandler
             }
 
             if ($exception instanceof ValidationException) {
-                $message = $exception->errors()[0];
-                $code = JsonResponse::STATUS_UNPROCESSABLE_ENTITY;
+                $code = BaseResponse::STATUS_UNPROCESSABLE_ENTITY;
 
-                if ($request->isHtml()) {
-                    return Response::back()->withInputs()->withErrors($message);
-                }
+                return Response::back()->withInputs()->withErrors($exception->errors());
             }
 
-            if ($request->expectsJson() or $request->isXmlHttpRequest()) {
-                return Response::json('Error Occured', [
-                    'success' => false,
-                    'message' => $message,
-                ], $code);
+            if ($exception instanceof UnauthorizedHttpException || $exception instanceof AccessDeniedHttpException) {
+                $code = BaseResponse::STATUS_UNPROCESSABLE_ENTITY;
+
+                return Response::redirect(config('auth.login_page', '/auth/login'));
             }
+
             return $this->renderErrorPage($request, $exception);
         }
     }

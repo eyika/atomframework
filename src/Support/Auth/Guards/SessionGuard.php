@@ -43,7 +43,7 @@ class SessionGuard extends Authenticator
 
     public function logout(): void
     {
-        static::$user = null;
+        $this->user = null;
 
         if (Request::cookie('auth_remember')) {
             Response::setCookie('auth_remember', '', time() - 3600, "/");
