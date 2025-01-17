@@ -2,11 +2,14 @@
 
 namespace Eyika\Atom\Framework\Support\Auth;
 
+use Eyika\Atom\Framework\Support\Auth\Concerns\ManageRoles;
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
 use Eyika\Atom\Framework\Support\Auth\Guards\Authenticator;
 
 final class Auth
 {
+    use ManageRoles;
+
     protected static $user;
     protected static $guardName;
     protected static array $config;

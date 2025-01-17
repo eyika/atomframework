@@ -4,7 +4,6 @@ namespace Eyika\Atom\Framework\Support\Auth\Concerns;
 
 use Eyika\Atom\Framework\Support\Arr;
 use App\Models\Role;
-use Eyika\Atom\Framework\Support\Auth\Jwt\JwtEncoder;
 
 use function PHPSTORM_META\type;
 
@@ -27,11 +26,6 @@ trait ManageRoles
      */
     public static function verifyRole($user, $_role, $return_bool = true)
     {
-        if (static::$type == static::JWT)
-            new static(new JwtEncoder(env('APP_KEY')), $user);
-        else
-            new static($user);
-
         $_role = Arr::wrap($_role);
 
         if (!$role = Role::getBuilder()->orderBy()->findBy('id', $user->role_id)) {
