@@ -35,7 +35,6 @@ class DriverFactory
         if (!isset(self::$handlers[$driver])) {
             throw new \InvalidArgumentException("Driver [{$driver}] is not supported.");
         }
-
         $handlerClass = self::$handlers[$driver];
 
         return new $handlerClass($provider);

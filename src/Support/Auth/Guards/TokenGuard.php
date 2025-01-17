@@ -9,9 +9,10 @@ class TokenGuard extends Authenticator
 {
     protected $tokenName;
 
-    public function __construct(array $config)
+    public function __construct(array $config, string $guard)
     {
         $this->config = $config;
+        $this->guard = $guard;
         $this->tokenName = config('auth.token_name');
     }
 

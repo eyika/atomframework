@@ -15,9 +15,12 @@ abstract class Authenticator
 
     protected $config;
 
-    public function __construct(array $config)
+    protected $guard;
+
+    public function __construct(array $config, string $guard)
     {
         $this->config = $config;
+        $this->guard = $guard;
     }
 
     /**
@@ -66,8 +69,8 @@ abstract class Authenticator
      */
     protected function validateCredentials(array $credentials): ?AuthenticatableInterface
     {
-        $driver = $this->config['driver'];
-        $provider = $this->config['provider'];
+        $provider = $this->config['guards'][$this->guard]['provider'];
+        $driver = $this->config['providers'][$provider]['driver'];
         $handler = DriverFactory::getHandler($driver, $provider);
 
         return $handler->validateCredentials($credentials);
@@ -75,8 +78,8 @@ abstract class Authenticator
 
     protected function getUserById($id): ?AuthenticatableInterface
     {
-        $driver = $this->config['driver'];
-        $provider = $this->config['provider'];
+        $provider = $this->config['guards'][$this->guard]['provider'];
+        $driver = $this->config['providers'][$provider]['driver'];
         $handler = DriverFactory::getHandler($driver, $provider);
 
         return $handler->getUserById($id);
@@ -84,8 +87,8 @@ abstract class Authenticator
 
     protected function getUserByColumn(string $columnName, $value): ?AuthenticatableInterface
     {
-        $driver = $this->config['driver'];
-        $provider = $this->config['provider'];
+        $provider = $this->config['guards'][$this->guard]['provider'];
+        $driver = $this->config['providers'][$provider]['driver'];
         $handler = DriverFactory::getHandler($driver, $provider);
 
         return $handler->getUserByColumn($columnName, $value);

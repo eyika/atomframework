@@ -44,7 +44,7 @@ final class Auth
         $guardConfig = static::$config['guards'][$name];
         $driverClass = static::resolveDriverClass($guardConfig['driver'], static::$config['driver_classes']);
 
-        return new $driverClass($guardConfig);
+        return new $driverClass(static::$config, $name);
     }
 
     /**

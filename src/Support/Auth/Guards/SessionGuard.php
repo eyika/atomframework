@@ -9,9 +9,10 @@ use Eyika\Atom\Framework\Support\Facade\Session;
 
 class SessionGuard extends Authenticator
 {
-    public function __construct(array $config)
+    public function __construct(array $config, string $guard)
     {
         $this->config = $config;
+        $this->guard = $guard;
     }
 
     public function attempt(array $credentials): ?AuthenticatableInterface
