@@ -14,10 +14,22 @@ final class Auth
     /**
      * Initialize the Auth class with available guards.
      */
-    public static function init(array $config): void
+    public static function init(array $config = null): void
     {
+        if (isset(static::$guardName) && isset(static::$guards)) {
+            return;
+        }
+        if ($config)
+            $config = config('auth');
+
         static::$guards = $config['guards'] ?? [];
         static::$guardName = $config['defaults']['guard'] ?? 'web';
+    }
+
+    public static function getDefaultGuard()
+    {
+        static::init();
+        return static::$guardName;
     }
 
     /**
@@ -25,6 +37,7 @@ final class Auth
      */
     public static function guard(string $name = null): Authenticator
     {
+        static::init();
         $name = $name ?? static::$guardName;
 
         if (!isset(static::$guards[$name])) {
@@ -62,6 +75,11 @@ final class Auth
      */
     public static function user(): ?AuthenticatableInterface
     {
+        if (!isset(static::$user)) {
+            $guard = static::guard();
+            static::$user = $guard->user();
+        }
+
         return static::$user;
     }
 
@@ -70,7 +88,8 @@ final class Auth
      */
     public static function check(): bool
     {
-        return static::$user !== null;
+        $guard = static::guard();
+        return $guard->check();
     }
 
     /**

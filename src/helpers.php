@@ -528,3 +528,31 @@ if (!function_exists('debugbar')) {
         return (new StandardDebugBar())->getJavascriptRenderer();
     }
 }
+
+if (!function_exists('getCallableName')) {
+    function getCallableName(callable $callable): string
+    {
+        if (is_string($callable)) {
+            // Function name
+            return $callable;
+        }
+    
+        if (is_array($callable)) {
+            // Static method or object method
+            $class = is_object($callable[0]) ? get_class($callable[0]) : $callable[0];
+            return $class . '::' . $callable[1];
+        }
+    
+        if ($callable instanceof Closure) {
+            // Anonymous function
+            return 'Closure';
+        }
+    
+        if (is_object($callable) && method_exists($callable, '__invoke')) {
+            // Invokable class
+            return get_class($callable) . '::__invoke';
+        }
+    
+        throw new InvalidArgumentException('Unsupported callable type.');
+    }
+}

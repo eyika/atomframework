@@ -3,6 +3,7 @@
 namespace Eyika\Atom\Framework\Http;
 
 use Closure;
+use Eyika\Atom\Framework\Exceptions\BaseException;
 
 class Pipeline
 {
@@ -67,8 +68,8 @@ class Pipeline
      */
     protected function carry(): callable
     {
-        return function ($next, $pipe): callable {
-            return function ($passable) use ($next, $pipe) {
+        return function (Closure $next, string|callable $pipe): callable {
+            return function (Request $passable) use ($next, $pipe) {
                 if (is_string($pipe)) {
                     // Resolve middleware class and parameters
                     [$pipeClass, $parameters] = $this->resolveMiddleware($pipe);
@@ -78,9 +79,15 @@ class Pipeline
                 }
 
                 // Call the middleware's handle method or invoke it
-                return method_exists($pipe, 'handle')
+                $resp = method_exists($pipe, 'handle')
                     ? $pipe->handle($passable, $next, ...$parameters)
                     : $pipe($passable, $next);
+
+                if (!$resp instanceof BaseResponse && !is_string($resp)) {
+                    $pipename = getCallableName($pipe);
+                    throw new BaseException("$pipename must return a BaseResponse object or string");
+                }
+                return $resp;
             };
         };
     }
