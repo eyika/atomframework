@@ -18,14 +18,11 @@ class SessionGuard extends Authenticator
 
     public function attempt(array $credentials): ?AuthenticatableInterface
     {
-        $user = DB::table('users')->where('email', $credentials['email'])->first();
-
-        if ($user && password_verify($credentials['password'], $user['password'])) {
-            Session::set('user_id', $user->id);
-            return $this->toAuthenticatable($user);
+        if (!$user = $this->validateCredentials($credentials)) {
+            return null;
         }
-
-        return null;
+        Session::set('user_id', $user->id);
+        return $user;
     }
 
     public function check(): bool
@@ -37,7 +34,10 @@ class SessionGuard extends Authenticator
     {
         if ($this->check()) {
             $userId = Session::get('user_id');
-            return DB::table('users')->where('id', $userId)->first();
+            if (!$user = $this->getUserById($userId)) {
+                return null;
+            }
+            return $user;
         }
         return null;
     }

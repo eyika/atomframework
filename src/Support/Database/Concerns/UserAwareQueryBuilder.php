@@ -2,15 +2,10 @@
 
 namespace Eyika\Atom\Framework\Support\Database\Concerns;
 
-use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
-use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
 use Eyika\Atom\Framework\Support\Database\mysqly;
 
 trait UserAwareQueryBuilder
 {
-    public static function boot(ModelInterface | UserModelInterface | null $user)
-    {
-    }
     public function findByUsername($name, $is_protected = true)
     {
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;

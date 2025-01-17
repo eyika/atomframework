@@ -20,11 +20,10 @@ class TokenGuard extends Authenticator
 
     public function attempt(array $credentials): ?AuthenticatableInterface
     {
-        $user = DB::table('users')
-            ->where($this->tokenName, $credentials['token'])
-            ->first();
-
-        return $user ? $this->toAuthenticatable($user) : null;
+        if (!$user = $this->getUserByColumn($this->tokenName, $credentials['token'])) {
+            return null;
+        }
+        return $user;
     }
 
     public function check(): bool
@@ -38,7 +37,10 @@ class TokenGuard extends Authenticator
         if (!$token) {
             $token = RequestFacade::header('Authorization');
         }
-        return DB::table('users')->where($this->tokenName, $token)->first();
+        if (!$user = $this->getUserByColumn($this->tokenName, $token)) {
+            return null;
+        }
+        return $user;
     }
 
     public function logout(): void

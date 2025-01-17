@@ -1,18 +1,11 @@
 <?php
-
 namespace Eyika\Atom\Framework\Support\Auth\Guards;
 
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
-use Eyika\Atom\Framework\Support\Database\DB;
+use Eyika\Atom\Framework\Support\Auth\Drivers\DriverFactory;
 
 abstract class Authenticator
 {
-    /**
-     * The data source for filling up the user object could be model, table
-     * or any other defined and implemented by you
-     */
-    protected const MODEL_SOURCE = 'auth.providers.users.model';
-
     /**
      * The currently authenticated user.
      *
@@ -54,36 +47,37 @@ abstract class Authenticator
      * Attempt to authenticate a user using the given credentials.
      *
      * @param array $credentials
-     * @return AuthenticatableInterface
+     * @return AuthenticatableInterface|null
      */
     abstract public function attempt(array $credentials): ?AuthenticatableInterface;
 
     /**
-     * Validate the provided credentials against the database.
+     * Resolve the appropriate driver and validate credentials.
      *
      * @param array $credentials
      * @return AuthenticatableInterface|null
      */
     protected function validateCredentials(array $credentials): ?AuthenticatableInterface
     {
-        $user = DB::table('users')->where('email', $credentials['email'])->first();
+        $driver = config('auth.providers.users.driver');
+        $handler = DriverFactory::getHandler($driver);
 
-        if ($user && password_verify($credentials['password'], $user['password'])) {
-            return $this->toAuthenticatable($user);
-        }
-
-        return null;
+        return $handler->validateCredentials($credentials);
     }
 
-    /**
-     * Transform the raw user data into an AuthenticatableInterface instance.
-     *
-     * @param array $user
-     * @return AuthenticatableInterface
-     */
-    protected function toAuthenticatable(array $user): AuthenticatableInterface
+    protected function getUserById($id): ?AuthenticatableInterface
     {
-        $class = config(self::MODEL_SOURCE);
-        return new $class($user);
+        $driver = config('auth.providers.users.driver');
+        $handler = DriverFactory::getHandler($driver);
+
+        return $handler->getUserById($id);
+    }
+
+    protected function getUserByColumn(string $columnName, $value): ?AuthenticatableInterface
+    {
+        $driver = config('auth.providers.users.driver');
+        $handler = DriverFactory::getHandler($driver);
+
+        return $handler->getUserByColumn($columnName, $value);
     }
 }
