@@ -6,7 +6,7 @@ use Eyika\Atom\Framework\Http\JsonResponse as HttpJsonResponse;
 
 /**
  * @method static HttpJsonResponse getInstance()
- * @method static HttpJsonResponse ok($data = [])
+ * @method static HttpJsonResponse ok(string $message, $data = [])
  * @method static HttpJsonResponse noContent()
  * @method static HttpJsonResponse created(string $message = '', $data = [])
  * @method static HttpJsonResponse notFound(string $message, array|null $data = null)

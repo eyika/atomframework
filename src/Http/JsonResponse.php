@@ -4,9 +4,9 @@ namespace Eyika\Atom\Framework\Http;
 
 class JsonResponse extends BaseResponse
 {
-    public function ok($data = []): self
+    public function ok(string $message, $data = []): self
     {
-        return $this->create($data, self::STATUS_OK);
+        return $this->create(['message' => $message, 'data' => $data], self::STATUS_OK);
     }
 
     public function noContent(): self
