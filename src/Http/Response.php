@@ -17,19 +17,13 @@ class Response extends BaseResponse
         return $this->_plain($message, $statusCode, 'text/html');
     }
 
-    public function json(array|string $message, array|int $dataOrStatus = self::STATUS_OK, int|null $statusCode = null): self
+    public function json(array $data, int $statusCode = self::STATUS_OK): self
     {
-        $data = is_array($dataOrStatus) ? $dataOrStatus : null;
-        $statusCode = $statusCode ?? (is_int($dataOrStatus) ? $dataOrStatus : self::STATUS_OK);
-
         if (!isset(self::METHOD_TO_FUNC[$statusCode])) {
             throw new Exception("Invalid HTTP status code: $statusCode");
         }
 
-        $responseBody = $data ? ['message' => $message, 'data' => $data] : ['message' => $message];
-
-        return $this->status($statusCode)->body(json_encode($responseBody))
-            ->setHeader('Content-Type', 'application/json; charset=utf-8');
+        return $this->create($data, $statusCode);
     }
 
     public function view(string $file_name, array $data = []): self

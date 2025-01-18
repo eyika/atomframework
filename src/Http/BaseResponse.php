@@ -8,6 +8,7 @@ use Eyika\Atom\Framework\Support\Facade\Blade;
 use Eyika\Atom\Framework\Support\Facade\Request as FacadeRequest;
 use Eyika\Atom\Framework\Support\Facade\Session;
 use Eyika\Atom\Framework\Support\View\Twig;
+use JsonSerializable;
 
 class BaseResponse
 {
@@ -34,9 +35,6 @@ class BaseResponse
         self::STATUS_OK => 'ok',
         self::STATUS_NO_CONTENT => 'noContent',
         self::STATUS_CREATED => 'created',
-        self::STATUS_MOVED_PERMANENTLY => 'movedPermanently',
-        self::STATUS_FOUND => 'found',
-        self::STATUS_SEE_OTHER => 'seeOther',
         self::STATUS_NOT_MODIFIED => 'notModified',
         self::STATUS_BAD_REQUEST => 'badRequest',
         self::STATUS_UNAUTHORIZED => 'unauthorized',
@@ -137,6 +135,43 @@ class BaseResponse
         return $this;
     }
 
+    public function body(string $content)
+    {
+        $this->body = $content;
+        return $this;
+    }
+
+    public function setIsFileResponse(string $file_path, bool $value = true)
+    {
+        $this->isFileResponse = $value;
+        $this->file_path = $file_path;
+        return $this;
+    }
+
+    protected function sendHeaders()
+    {
+        $this->cookies->each(function (Cookie $cookie) {
+            header("{$cookie->getName()}: {$cookie->getValue()}");
+        });
+        foreach ($this->headers as $header) {
+            foreach ($header as $key => $value) {
+                $val = str_contains($key, 'Set-Cookie') ? (string) $value[0] : $value[0];
+                isset($value[2]) ? header("{$key}: {$val}", $value[1], $value[2]) : header("{$key}: {$val}", $value[1]);
+            }
+        }
+    }
+
+    protected function create(mixed $data = null, int $statusCode = 200): self
+    {
+        $data = $this->convertObjectsToArray($data);
+
+        $jsonData = json_encode($data);
+        $this->body($jsonData)->status($statusCode)
+                        ->setHeader('Content-Type', 'application/json; charset=utf-8');
+        
+        return $this;
+    }
+
     private function compileView()
     {
         try {
@@ -162,29 +197,35 @@ class BaseResponse
         }
     }
 
-    protected function sendHeaders()
+    private function convertObjectsToArray(array $data, array &$seen = [], ?callable $customHandler = null): array
     {
-        $this->cookies->each(function (Cookie $cookie) {
-            header("{$cookie->getName()}: {$cookie->getValue()}");
-        });
-        foreach ($this->headers as $header) {
-            foreach ($header as $key => $value) {
-                $val = str_contains($key, 'Set-Cookie') ? (string) $value[0] : $value[0];
-                isset($value[2]) ? header("{$key}: {$val}", $value[1], $value[2]) : header("{$key}: {$val}", $value[1]);
+        foreach ($data as $key => $value) {
+            if (is_object($value)) {
+                $objectId = spl_object_hash($value);
+    
+                if (isset($seen[$objectId])) {
+                    $data[$key] = 'Circular Reference Detected';
+                    continue;
+                }
+    
+                $seen[$objectId] = true;
+    
+                if ($customHandler) {
+                    $data[$key] = $customHandler($value);
+                } elseif (method_exists($value, 'toArray')) {
+                    $data[$key] = $value->toArray(includeDynamicProperties: true);
+                } elseif (method_exists($value, '__toArray')) {
+                    $data[$key] = $value->__toArray();
+                } elseif ($value instanceof JsonSerializable) {
+                    $data[$key] = $value->jsonSerialize();
+                } else {
+                    $data[$key] = (array) $value; // Fallback to casting
+                }
+            } elseif (is_array($value)) {
+                $data[$key] = $this->convertObjectsToArray($value, $seen, $customHandler);
             }
         }
-    }
-
-    public function body(string $content)
-    {
-        $this->body = $content;
-        return $this;
-    }
-
-    public function setIsFileResponse(string $file_path, bool $value = true)
-    {
-        $this->isFileResponse = $value;
-        $this->file_path = $file_path;
-        return $this;
-    }
+    
+        return $data;
+    }    
 }

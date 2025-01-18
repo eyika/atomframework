@@ -4,24 +4,9 @@ namespace Eyika\Atom\Framework\Http;
 
 class JsonResponse extends BaseResponse
 {
-    public function create(mixed $data = null, int $statusCode = 200): self
+    public function ok(string $message, $data = []): self
     {
-        if (is_array($data) && isset($data['data']) && is_object($data['data']) && method_exists($data['data'], 'toArray')) {
-            $data['data'] = $data['data']->toArray(includeDynamicProperties: true);
-        } else if (is_array($data) && isset($data['data']) && is_object($data['data']) && method_exists($data['data'], '__toArray')) {
-            $data['data'] = $data['data']->__toArray();
-        }
-
-        $jsonData = json_encode($data);
-        $this->body($jsonData)->status($statusCode)
-                        ->setHeader('Content-Type', 'application/json; charset=utf-8');
-        
-        return $this;
-    }
-
-    public function ok($data = []): self
-    {
-        return $this->create($data, self::STATUS_OK);
+        return $this->create(['message' => $message, 'data' => $data], self::STATUS_OK);
     }
 
     public function noContent(): self
@@ -31,7 +16,7 @@ class JsonResponse extends BaseResponse
 
     public function created(string $message = '', $data = []): self
     {
-        return $this->create($data, self::STATUS_CREATED);
+        return $this->create(['message' => $message, 'data' => $data], self::STATUS_CREATED);
     }
 
     public function notFound(string $message, array|null $data = null): self
