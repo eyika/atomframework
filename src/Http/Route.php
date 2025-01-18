@@ -152,39 +152,47 @@ class Route
         if (!self::$instantiated) {
             new static;
         }
-
+    
         $requestMethod = $request->method();
         $requestUri = rtrim(filter_var($request->requestUri(), FILTER_SANITIZE_URL), '/');
         $requestUri = strtok($requestUri, '?');
-
+    
+        // Find matching route and set route parameters
+        $parameters = [];
+        $routeMatched = false;
+    
+        foreach (self::$routes[$requestMethod] ?? [] as $route => $data) {
+            if (self::matchesRoute($route, $requestUri, $parameters)) {
+                $request->route_params = Arr::wrap(sanitize_data($parameters));
+                self::$currentRoute = $route;
+                $routeMatched = true;
+                break;
+            }
+        }
+    
+        // If no route matches, set up a 404 handler
+        if (!$routeMatched) {
+            return self::handleNotFound($request)->send();
+        }
+    
         // Set up the middleware pipeline
         $middlewares = array_merge(
             static::$defaultMiddlewares,
             static::findRouteMiddlewares($requestMethod, $requestUri)
         );
-
+    
         // Core handler for the pipeline
         $coreHandler = function ($request) use ($requestMethod, $requestUri) {
-            foreach (self::$routes[$requestMethod] ?? [] as $route => $data) {
-                $parameters = [];
-                if (self::matchesRoute($route, $requestUri, $parameters)) {
-                    $request->route_params = Arr::wrap(sanitize_data($parameters));
-                    self::$currentRoute = $route;
-
-                    $callback = $data['callback'];
-                    return self::executeCallback($callback, $request, $parameters);
-                }
-            }
-
-            return self::handleNotFound($request);
+            $callback = self::$routes[$requestMethod][self::$currentRoute]['callback'];
+            return self::executeCallback($callback, $request, $request->route_params ?? []);
         };
-
+    
         // Run the pipeline
         $response = (new Pipeline())
             ->through($middlewares)
             ->then($coreHandler)
             ->run($request);
-
+    
         // Output the response
         if ($response instanceof BaseResponse)
             return $response->send();

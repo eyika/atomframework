@@ -7,9 +7,8 @@ use Eyika\Atom\Framework\Support\Auth\Auth;
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
 use Eyika\Atom\Framework\Support\Auth\Guards\Authenticator;
 use Eyika\Atom\Framework\Support\Auth\User;
-use Eyika\Atom\Framework\Support\Database\DB;
 
-final class JwtGuard extends Authenticator
+class JwtGuard extends Authenticator
 {
     private const HEADER_VALUE_PATTERN = "/Bearer\s+(.*)$/i";
 
@@ -41,20 +40,20 @@ final class JwtGuard extends Authenticator
 
     public function check(): bool
     {
-        return $this->validate();
+        return (bool)$this->validate();
     }
 
     public function user(?string $token = null): ?AuthenticatableInterface
     {
-        if (!$this->user) {
-            return $this->user;
-        }
+        // if ($this->user) {
+        //     return $this->user;
+        // }
         if (!$user_id = $this->validate()) {
             return null;
         }
         
         if (!$user = $this->getUserById($user_id)) {
-            return false;
+            return null;
         }
 
         return $user;
@@ -78,11 +77,11 @@ final class JwtGuard extends Authenticator
     {
         $jwt = $this->extractToken();
         if (empty($jwt)) {
-            return false;
+            return null;
         }
 
-        if (is_null($payload = self::$encoder->decode($jwt))) {
-            return false;
+        if (is_null($payload = $this->encoder->decode($jwt))) {
+            return null;
         }
 
         return $payload->data->id;
@@ -115,15 +114,15 @@ final class JwtGuard extends Authenticator
      * @param User $user
      * @return string|bool
      */
-    public static function generateJwt(User $user)
+    public function generateJwt(User $user)
     {
         $issued_at = time();
         $expiration_time = $issued_at + (60 * 60);      //valid for one hour
         $not_before = $issued_at - 5;
 
-        $token = self::$encoder->encode([
-            "iss" => self::$iss,
-            "aud" => self::$aud,
+        $token = $this->encoder->encode([
+            "iss" => $this->iss,
+            "aud" => $this->aud,
             "iat" => $issued_at,
             "nbf" => $not_before,
             "exp" => $expiration_time,
@@ -131,7 +130,7 @@ final class JwtGuard extends Authenticator
                 "id" => $user->id,
                 "email" => $user->email,
             ]
-        ], self::$key);
+        ], $this->key);
         return $token;
     }
 

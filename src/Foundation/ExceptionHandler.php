@@ -69,47 +69,48 @@ class ExceptionHandler implements ContractExceptionHandler
             if ($exception instanceof NotFoundHttpException) {
                 $message = $exception->getMessage();
 
-                return response()->json('Not Found', [
+                return response()->json(['message' => 'Not Found', [
                     'success' => false,
                     'message' => $message,
-                ], BaseResponse::STATUS_NOT_FOUND);
+                ]], BaseResponse::STATUS_NOT_FOUND);
             }
 
             if ($exception instanceof ValidationException) {
                 $firstError = $exception->errors();
 
-                return response()->json('Validation Error', [
+                return response()->json(['message' => 'Validation Error', [
                     'success' => false,
                     'message' => $firstError[0],
-                ], BaseResponse::STATUS_UNPROCESSABLE_ENTITY);
+                ]], BaseResponse::STATUS_UNPROCESSABLE_ENTITY);
             }
 
             if ($exception instanceof AccessDeniedHttpException) {
-                return response()->json('Access Denied', [
+                return response()->json(['message' => 'Access Denied', [
                     'success' => false,
                     'message' => 'Unauthenticated.',
-                ], BaseResponse::STATUS_UNAUTHORIZED);
+                ]], BaseResponse::STATUS_UNAUTHORIZED);
             }
 
             if ($exception instanceof UnauthorizedHttpException) {
-                return response()->json('Unauthorized Request', [
+                return response()->json(['message' => 'Unauthorized Request', [
                     'success' => false,
                     'message' => $exception->getMessage(),
-                ], $exception->getStatusCode());
+                ]], $exception->getStatusCode());
             }
 
             if ($request->wantsJson() or $request->isXmlHttpRequest()) {
-                return Response::json('An error occured', [
+                return Response::json(['message' => 'An error occured', [
                     'success' => false,
                     'message' => str_contains($message, 'SQLSTATE') || str_contains($message, 'Illuminate') ? 'something happened try again' : $message,
-                ], $code);
+                    'data' => config('app.debug', false) ? $exception->getTrace() : null,
+                ]], is_numeric($code) ? intval($code) : 500);
             }
 
             if ($request->expectsJson() or $request->isXmlHttpRequest()) {
                 return Response::json('Error Occured', [
                     'success' => false,
                     'message' => $message,
-                ], $code);
+                ], is_numeric($code) ? intval($code) : 500);
             }
         } else {
             $code = $exception->getCode();

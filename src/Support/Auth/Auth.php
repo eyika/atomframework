@@ -5,6 +5,7 @@ namespace Eyika\Atom\Framework\Support\Auth;
 use Eyika\Atom\Framework\Support\Auth\Concerns\ManageRoles;
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
 use Eyika\Atom\Framework\Support\Auth\Guards\Authenticator;
+use Eyika\Atom\Framework\Support\Facade\Request;
 
 final class Auth
 {
@@ -15,6 +16,9 @@ final class Auth
     protected static array $config;
     protected static string $jwt;
 
+    /** @property Authenticator[] */
+    protected static $guards = [];
+
     /**
      * Initialize the Auth class with available guards.
      */
@@ -24,7 +28,7 @@ final class Auth
             return;
         }
         static::$config = $config ?? config('auth', []);
-        static::$guardName = $config['defaults']['guard'] ?? 'web';
+        static::$guardName = Request::wantsJson() ? 'api' : ($config['defaults']['guard'] ?? 'web');
         static::$jwt = '';
     }
 
@@ -39,6 +43,9 @@ final class Auth
      */
     public static function guard(string|null $name = null): Authenticator
     {
+        if ($name && isset(static::$guards[$name])) {
+            return static::$guards[$name];
+        }
         static::init();
         $name = $name ?? static::$guardName;
 
