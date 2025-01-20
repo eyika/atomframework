@@ -170,11 +170,6 @@ class Route
             }
         }
     
-        // If no route matches, set up a 404 handler
-        if (!$routeMatched) {
-            return self::handleNotFound($request)->send();
-        }
-    
         // Set up the middleware pipeline
         $middlewares = array_merge(
             static::$defaultMiddlewares,
@@ -182,7 +177,11 @@ class Route
         );
     
         // Core handler for the pipeline
-        $coreHandler = function ($request) use ($requestMethod, $requestUri) {
+        $coreHandler = function ($request) use ($routeMatched, $requestMethod, $requestUri) {
+            // If no route matches, set up a 404 handler
+            if (!$routeMatched) {
+                return self::handleNotFound($request)->send();
+            }
             $callback = self::$routes[$requestMethod][self::$currentRoute]['callback'];
             return self::executeCallback($callback, $request, $request->route_params ?? []);
         };
