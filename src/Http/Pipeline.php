@@ -68,12 +68,12 @@ class Pipeline
      */
     protected function carry(): callable
     {
-        return function (Closure $next, string|callable $pipe): callable {
+        return function (Closure $next, string|array|callable $pipe): callable {
             return function (Request $passable) use ($next, $pipe) {
-                if (is_string($pipe)) {
+                if (is_string($pipe) || is_array($pipe)) {
                     // Resolve middleware class and parameters
                     [$pipeClass, $parameters] = $this->resolveMiddleware($pipe);
-                    $pipe = new $pipeClass;
+                    $pipe = is_callable($pipeClass) ? $pipeClass : new $pipeClass;
                 } else {
                     $parameters = [];
                 }
@@ -95,10 +95,10 @@ class Pipeline
     /**
      * Resolve middleware from a string definition.
      */
-    protected function resolveMiddleware(string $pipe)
+    protected function resolveMiddleware(string|array $pipe)
     {
         // Split the pipe string to extract class and parameters
-        $parts = explode(':', $pipe, 2);
+        $parts = is_array($pipe) ? $pipe : explode(':', $pipe, 2);
         $pipeClass = $parts[0];
         $parameters = isset($parts[1]) ? explode(',', $parts[1]) : [];
         return [$pipeClass, $parameters];

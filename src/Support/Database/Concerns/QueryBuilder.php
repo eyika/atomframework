@@ -517,6 +517,11 @@ trait QueryBuilder
         return $this->_update($values, $id, is_protected: $is_protected);
     }
 
+    public function updateOrCreate($values, $id=0, $is_protected = true)
+    {
+        return $this->_update($values, $id, is_protected: $is_protected, create_if_not_exist: true);
+    }
+
     public function delete($id = 0)
     {
         $id = $id > 0 ? $id : $this->child->{$this->child->primaryKey};
@@ -720,9 +725,13 @@ trait QueryBuilder
      * @param array $values
      * @param int $id
      * @param bool $internal
+     * @param bool $is_protected
+     * @param bool $should_fill
+     * @param bool $create_if_not_exist
+     * 
      * @return self|bool|array
      */
-    private function _update(array $values, int $id=0, $internal = false, $is_protected = true, $should_fill = true)
+    private function _update(array $values, int $id=0, $internal = false, $is_protected = true, $should_fill = true, $create_if_not_exist = false)
     {
         $id = $id > 0 ? $id : $this->child->{$this->child->primaryKey};
         
@@ -734,10 +743,14 @@ trait QueryBuilder
             $query_arr['deleted_at'] = "IS NULL";
             is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
         }
-
-        $count = mysqly::update($this->table, $query_arr, $values, $this->operators, $this->or_ands);
-
         $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
+
+        if ($create_if_not_exist && !mysqly::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
+            mysqly::insert($this->table, $values);
+        } else {
+            $count = mysqly::update($this->table, $query_arr, $values, $this->operators, $this->or_ands);
+        }
+
         if (!$model = mysqly::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
             $this->resetInstance();
             return false;

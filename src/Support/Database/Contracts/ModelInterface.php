@@ -374,6 +374,17 @@ interface ModelInterface extends ModelEventsInterface
 
     /**
      * update a model
+     * 
+     * @param array $values
+     * @param int $id
+     * @param bool $is_protected
+     * 
+     * @return self|bool
+     */
+    public function updateOrCreate($values, $id=0, $is_protected = true);
+
+    /**
+     * update a model
      * @param int $id
      * 
      * @return bool
