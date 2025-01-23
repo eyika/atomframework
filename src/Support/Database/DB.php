@@ -84,7 +84,7 @@ class DB
 
     public function create(array $values, array|string $select = '*')
     {
-        if (!$id = mysqly::insert(static::$table, $values)) {
+        if (!$id = $this->insert($values)) {
             return false;
         }
         
@@ -95,6 +95,14 @@ class DB
         };
 
         return $model;
+    }
+
+    public function insert(array $values)
+    {
+        if (!$id = mysqly::insert(static::$table, $values)) {
+            return false;
+        }
+        return $id;
     }
 
     public function find(int $id, array|string $fields = '*')
