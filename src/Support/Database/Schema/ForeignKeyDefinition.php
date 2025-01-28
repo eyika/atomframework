@@ -39,14 +39,19 @@ class ForeignKeyDefinition
         return $this;
     }
 
-    public function __toString(): string
+    public function toSql(): string
     {
-        $sql = "FOREIGN KEY (`{$this->column}`) REFERENCES `{$this->on}`(`{$this->references}`)";
-        if ($this->onDelete) {
-            $sql .= " ON DELETE {$this->onDelete}";
-        }
+        $sql = sprintf(
+            'FOREIGN KEY (`%s`) REFERENCES `%s` (`%s`)',
+            $this->column,
+            $this->on,
+            $this->references
+        );
         if ($this->onUpdate) {
             $sql .= " ON UPDATE {$this->onUpdate}";
+        }
+        if ($this->onDelete) {
+            $sql .= " ON DELETE {$this->onDelete}";
         }
         return $sql;
     }

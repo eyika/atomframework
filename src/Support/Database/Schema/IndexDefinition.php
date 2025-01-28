@@ -45,16 +45,18 @@ class IndexDefinition
     {
         $concurrentlyPart = $this->concurrently ? ' CONCURRENTLY' : '';
         $methodPart = $this->method ? " USING {$this->method}" : '';
+        $storagePart = $this->storageType ? " {$this->storageType}" : '';
         $invisiblePart = $this->invisible ? ' INVISIBLE' : '';
         $columns = implode(',', $this->columns);
 
         return sprintf(
-            '%s%s INDEX `%s` (%s)%s%s',
+            '%s%s INDEX `%s` (%s)%s%s%s',
             strtoupper($this->type),
             $concurrentlyPart,
             $this->name,
             $columns,
             $methodPart,
+            $storagePart,
             $invisiblePart
         );
     }

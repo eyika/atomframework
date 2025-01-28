@@ -8,8 +8,11 @@ use InvalidArgumentException;
 class Blueprint
 {
     protected string $table;
+    /** @property ColumnDefinition[] */
     protected array $columns = [];
+    /** @property IndexDefinition[] */
     public array $indexes = [];
+    /** @property ForeignKeyDefinition[] */
     public array $foreignKeys = [];
 
     protected array $plugins = [];
@@ -170,19 +173,11 @@ class Blueprint
         return strtolower(sprintf('%s_%s_%s', $type, implode('_', $columns), uniqid()));
     }
 
-    // public function toSql(): string
-    // {
-    //     $columns = implode(",\n  ", array_map(fn($col) => $col->getDefinition(), $this->columns));
-    //     $indexes = implode(",\n  ", array_map(fn($idx) => (string) $idx, $this->indexes));
-
-    //     return "CREATE TABLE `$this->table` (\n  $columns" . ($indexes ? ",\n  $indexes" : "") . "\n);";
-    // }
-
     public function toSql(): string
     {
-        $columnsSql = array_map(fn($column) => $column->toSql(), $this->columns);
-        $foreignKeysSql = array_map(fn($foreign) => $foreign->toSql(), $this->foreignKeys);
-        $indexesSql = array_map(fn($index) => $index->toSql(), $this->indexes);
+        $columnsSql = array_map(fn(ColumnDefinition $column) => $column->toSql(), $this->columns);
+        $foreignKeysSql = array_map(fn(IndexDefinition $foreign) => $foreign->toSql(), $this->foreignKeys);
+        $indexesSql = array_map(fn(ForeignKeyDefinition $index) => $index->toSql(), $this->indexes);
 
         $allDefinitions = array_merge($columnsSql, $foreignKeysSql, $indexesSql);
         $definitions = implode(",\n    ", $allDefinitions);

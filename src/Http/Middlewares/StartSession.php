@@ -18,7 +18,7 @@ class StartSession  implements MiddlewareInterface
      */
     public function handle(Request $request, Closure $next): BaseResponse
     {
-        if (strtolower($_SERVER["REQUEST_METHOD"]) !== "options") {
+        if (strtolower($request->method()) !== "options") {
             $this->startSession($request);
         }
         return $next($request);

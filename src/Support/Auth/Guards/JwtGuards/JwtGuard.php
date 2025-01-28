@@ -117,7 +117,7 @@ class JwtGuard extends Authenticator
     public function generateJwt(User $user)
     {
         $issued_at = time();
-        $expiration_time = $issued_at + (60 * 60);      //valid for one hour
+        $expiration_time = $issued_at + config('auth.jwt_timeout', 60 * 60);      //valid for one hour by default
         $not_before = $issued_at - 5;
 
         $token = $this->encoder->encode([

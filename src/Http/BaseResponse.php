@@ -213,7 +213,7 @@ class BaseResponse
                 if ($customHandler) {
                     $data[$key] = $customHandler($value);
                 } elseif (method_exists($value, 'toArray')) {
-                    $data[$key] = $value->toArray(includeDynamicProperties: true);
+                    $data[$key] = $value->toArray();
                 } elseif (method_exists($value, '__toArray')) {
                     $data[$key] = $value->__toArray();
                 } elseif ($value instanceof JsonSerializable) {

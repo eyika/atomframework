@@ -96,4 +96,9 @@ class ColumnDefinition
         $modifiers = implode(" ", $this->modifiers);
         return trim("$this->definition $modifiers");
     }
+
+    public function toSql(): string
+    {
+        return $this->getDefinition();
+    }
 }

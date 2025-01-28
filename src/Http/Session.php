@@ -29,7 +29,6 @@ class Session
                     session_set_save_handler(new MysqlSessionHandler, true);
                     break;
             }
-            $this->start();
         }
     }
 
