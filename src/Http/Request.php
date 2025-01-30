@@ -297,11 +297,23 @@ class Request
 
     public function scheme()
     {
-        if ($this->isFromTrustedProxy() && $this->headers('X-Forwarded-Proto')) {
-            return $this->headers['X-Forwarded-Proto'];
+        info('https is '. $this->server('HTTPS'));
+        info('port is '. $this->server('PORT'));
+        info('schem is '. $this->server('REQUEST_SCHEME'));
+    
+        if ($this->isFromTrustedProxy() && $this->headers('HTTP_X_FORWARDED_PROTO')) {
+            return $this->headers['HTTP_X_FORWARDED_PROTO'];
         }
 
-        return $this->headers('HTTPS') && $this->headers['HTTPS'] === 'on' ? 'https' : 'http';
+        if (
+            ($this->server('HTTPS') && $this->server('HTTPS', '') !== 'off') ||
+            ($this->server('SERVER_PORT') && $this->server('SERVER_PORT', null) == 443) ||
+            ($this->server('REQUEST_SCHEME') && $this->server('REQUEST_SCHEME', '') === 'https')
+        ) {
+            return 'https';
+        }
+
+        return 'http';
     }
 
     public function host()

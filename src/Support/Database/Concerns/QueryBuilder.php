@@ -789,7 +789,7 @@ trait QueryBuilder
         return $this;
     }
 
-    private function _save($is_protected = true, $select = []): bool|\Eyika\Atom\Framework\Support\Database\Model
+    private function _save($is_protected = true, $select = []): bool|self
     {
         if ($this->isSaved()) {
             $this->child->boot($this->child, 'saving');
@@ -813,43 +813,45 @@ trait QueryBuilder
             $this->child->boot($this->child, 'saved');
             $this->child->booted($this->child, 'saved');
             $this->child->booting($this->child, 'saved');
-        } else {
-            $this->child->boot($this->child, 'creating');
-            $this->child->booted($this->child, 'creating');
-            $this->child->booting($this->child, 'creating');
 
-            $values = Arr::where($this->_toArray(false, ignore: ['deleted_at']), function ($v, $k) {      // to be used to filter out empty values in future
-                return true;
-            }, ARRAY_FILTER_USE_BOTH);
-
-            $timestamps = ['created_at', 'updated_at'];
-    
-            foreach ($timestamps as $timestamp) {
-                if (array_key_exists($timestamp, $values) && empty($values[$timestamp]))
-                    $values[$timestamp] = Carbon::now();
-            }
-    
-            if (!$id = mysqly::insert($this->table, $values)) {
-                return false;
-            }
-
-            if (count($select)) {
-                $fields = $select;
-            } else {
-                $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
-            }
-    
-            if (!$model = mysqly::fetch($this->table, ['id' => $id], $fields)) {
-                return true;
-            }
-            $this->child->fill($model[0]);
-    
-            $this->child->boot($this->child, 'created');
-            $this->child->booted($this->child, 'created');
-            $this->child->booting($this->child, 'created');
-    
             return $this->child;
         }
+
+        $this->child->boot($this->child, 'creating');
+        $this->child->booted($this->child, 'creating');
+        $this->child->booting($this->child, 'creating');
+
+        $values = Arr::where($this->_toArray(false, ignore: ['deleted_at']), function ($v, $k) {      // to be used to filter out empty values in future
+            return true;
+        }, ARRAY_FILTER_USE_BOTH);
+
+        $timestamps = ['created_at', 'updated_at'];
+
+        foreach ($timestamps as $timestamp) {
+            if (array_key_exists($timestamp, $values) && empty($values[$timestamp]))
+                $values[$timestamp] = Carbon::now();
+        }
+
+        if (!$id = mysqly::insert($this->table, $values)) {
+            return false;
+        }
+
+        if (count($select)) {
+            $fields = $select;
+        } else {
+            $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
+        }
+
+        if (!$model = mysqly::fetch($this->table, ['id' => $id], $fields)) {
+            return true;
+        }
+        $this->child->fill($model[0]);
+
+        $this->child->boot($this->child, 'created');
+        $this->child->booted($this->child, 'created');
+        $this->child->booting($this->child, 'created');
+
+        return $this->child;
     }
 
     private function _toArray($guard = true, $select = [], $ignore = [], $includeDynamicProperties = false, $ignore_null = true)

@@ -12,6 +12,11 @@ class Response extends BaseResponse
         return $this->_plain($message, $statusCode);
     }
 
+    public function image(string $data, int $statusCode = self::STATUS_OK, string $type = "jpeg"): self
+    {
+        return $this->_plain($data, $statusCode, "image/$type");
+    }
+
     public function html(string $message, int $statusCode = self::STATUS_OK): self
     {
         return $this->_plain($message, $statusCode, 'text/html');

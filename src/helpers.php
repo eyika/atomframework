@@ -294,10 +294,14 @@ if (! function_exists('project_namespace')) {
     }
 }
 
+
 if (! function_exists('asset')) {
     function asset(string $folder = ''): string
     {
-        $server_url = Request::schemeAndHttpHost();
+        if (config("app.url"))
+            $server_url = config('app.url');
+        else
+            $server_url = Request::schemeAndHttpHost();
         $folder = empty($folder) ? '' : "/$folder";
         return $server_url.$folder;
     }
