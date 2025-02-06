@@ -71,9 +71,9 @@ if (! function_exists('transaction_ref')) {
     /**
      * Returns a unique transaction reference
      */
-    function transaction_ref(string $prefix = 'btfxtrans-')
+    function transaction_ref(string $prefix = '', bool $more_entropy = false)
     {
-        return uniqid($prefix);
+        return uniqid($prefix, $more_entropy);
     }
 }
 
