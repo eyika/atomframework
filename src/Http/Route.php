@@ -195,7 +195,7 @@ class Route
         // Output the response
         if ($response instanceof BaseResponse)
             return $response->send();
-        elseif (is_string($response)) { 
+        elseif (is_string($response)) {
             echo $response;
             return true;
         } else return true;

@@ -2,10 +2,12 @@
 
 namespace Eyika\Atom\Framework\Support\Facade;
 
+use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\JsonResponse as HttpJsonResponse;
 
 /**
  * @method static HttpJsonResponse getInstance()
+ * @method static BaseResponse terminate()
  * @method static HttpJsonResponse ok(string $message, $data = [])
  * @method static HttpJsonResponse noContent()
  * @method static HttpJsonResponse created(string $message = '', $data = [])

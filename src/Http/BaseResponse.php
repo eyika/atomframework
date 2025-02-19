@@ -60,6 +60,8 @@ class BaseResponse
     protected $viewFileName = '';
     protected Arrayable $cookies;
 
+    protected $_responseSent = false;
+
     public function __construct()
     {
         $this->cookies = new Arrayable();
@@ -94,22 +96,54 @@ class BaseResponse
         return $this;
     }
 
+    public function terminate()
+    {
+        $this->_responseSent = true;
+        return $this;
+    }
+    
+    public function sendDeferred(): void
+    {
+        $this->_send(false);
+    }
+
+    public function send(): bool
+    {
+        $resp = true;
+
+        if (!$this->_responseSent) {
+            $resp = $this->_send();
+        }
+        return $resp;
+    }
+
     // Method to send the response headers and content
-    public function send()
+    /**
+     * @param bool $terminate
+     * 
+     * @return void|bool
+     */
+    public function _send($terminate = true)
     {
         http_response_code($this->statusCode);
         $this->sendHeaders();
 
         if (FacadeRequest::isNotHtml()) {
             echo $this->body;
-            return true;
+            if ($terminate)
+                return true;
+
+            return;
         }
 
         if ($this->isFileResponse) {
             ob_clean();
             flush();
             readfile($this->file_path);
-            return true;
+            if ($terminate)
+                return true;
+
+            return;
         }
 
         if ($this->isRedirect) {
@@ -119,7 +153,10 @@ class BaseResponse
                 Session::set(self::REQUEST_VALIDATION_ERRORS_KEY, $this->validationErrors);
             if (!empty($this->inputs))
                 Session::set(self::REQUEST_OLD_INPUTS_KEY, $this->inputs);
-            return true;
+            if ($terminate)
+                return true;
+
+            return;
         }
 
         if ($this->shouldCompileView) {
@@ -127,12 +164,20 @@ class BaseResponse
         }
 
         echo $this->body;
-        return true;
+        if ($terminate)
+            return true;
+
+        return;
     }
 
     public function getInstance()
     {
         return $this;
+    }
+
+    public function responseSent(): bool
+    {
+        return $this->_responseSent;
     }
 
     public function body(string $content)

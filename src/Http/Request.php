@@ -297,10 +297,6 @@ class Request
 
     public function scheme()
     {
-        info('https is '. $this->server('HTTPS'));
-        info('port is '. $this->server('PORT'));
-        info('schem is '. $this->server('REQUEST_SCHEME'));
-    
         if ($this->isFromTrustedProxy() && $this->headers('HTTP_X_FORWARDED_PROTO')) {
             return $this->headers['HTTP_X_FORWARDED_PROTO'];
         }

@@ -79,10 +79,11 @@ trait RunsOnConsole
         });
         $options = array_diff($options, $found);
 
-        $address = array_key_exists('--host', $kv_options) || array_key_exists('-a', $kv_options) ? ($kv_options['--host'] ?? $kv_options['-a']) : '127.0.0.1';
+        $address = array_key_exists('--host', $kv_options) || array_key_exists('-a', $kv_options) ? ($kv_options['--host'] ?? $kv_options['-a']) : '0.0.0.0';
         $port = array_key_exists('--port', $kv_options) || array_key_exists('-p', $kv_options) ? ($kv_options['--port'] ?? $kv_options['-p']) : '80';
+        $timeout = array_key_exists('--timeout', $kv_options) || array_key_exists('-t', $kv_options) ? " -d ". ($kv_options['--timeout'] ?? $kv_options['-t']) : ""; 
 
-        return "php -S {$address}:{$port} -t . " . implode(' ', $options). base_path("public/index.php");
+        return "php{$timeout} -S {$address}:{$port} -t . " . implode(' ', $options). base_path("public/index.php");
     }
 
     function phpUnitCommander($options = [])
