@@ -45,6 +45,7 @@ class File
     protected array $diskconfig = [];
     protected string $visibility;
     protected string $contents;
+    protected ?FileUploadProperties $uploadProperties;
 
     public function __construct(Filesystem|null $filesystem = null, $disk = null)
     {
@@ -196,6 +197,16 @@ class File
         return $this->contents;
     }
 
+    public function setUploadProperties(FileUploadProperties $properties)
+    {
+        $this->uploadProperties = $properties;
+    }
+
+    public function uploadProperties()
+    {
+        return $this->uploadProperties;
+    }
+
     /**
      * Check if a file or directory exists.
      *
@@ -338,6 +349,22 @@ class File
         $this->filesystem->write(basename($path), $contents);
 
         return strlen($contents);
+    }
+
+    /**
+     * Put the uploaded contents into a file using Flysystem.
+     *
+     * @param string $path The path or folder to upload file to.
+     * @param string $path The path where the file should be stored.
+     * @return int
+     * @throws UnableToWriteFile
+     * @throws FilesystemException
+     */
+    public function store(string $path, string $disk)
+    {
+        $this->setDisk($disk);
+
+        return $this->upload($this->uploadProperties()->tmpName(), $path);
     }
 
     /**

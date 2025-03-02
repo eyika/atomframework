@@ -8,7 +8,11 @@ use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Arrayable;
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
 use Eyika\Atom\Framework\Support\Facade\Session as FacadeSession;
+use Eyika\Atom\Framework\Support\Storage\File;
+use Eyika\Atom\Framework\Support\Storage\FileUploadProperties;
 use Eyika\Atom\Framework\Support\Validator;
+
+use function PHPUnit\Framework\isNull;
 
 class Request
 {
@@ -22,6 +26,7 @@ class Request
     protected $body;
     protected $attributes;
     protected Arrayable $cookies;
+    /** @property File[] $files */
     protected $files;
     protected $server;
     protected array $headers;
@@ -45,7 +50,7 @@ class Request
             // Create a new Cookie instance for each $_COOKIE element
             $this->cookies->set($name, new Cookie($name, $value));
         }
-        $this->files = $_FILES;
+        // $this->files = $_FILES;
         $this->server = $_SERVER;
         $this->headers = getallheaders();
         $this->proxyheader = 0;
@@ -55,6 +60,33 @@ class Request
             $jsonData = json_decode(file_get_contents('php://input'), true);
             if (json_last_error() === JSON_ERROR_NONE) {
                 $this->body = array_merge($this->body, $jsonData ?? []);
+            }
+        }
+    }
+    
+    protected function initRequestFiles()
+    {
+        $this->files = [];
+
+        foreach ($_FILES as $fieldName => $fileData) {
+            // Normalize multiple file uploads
+            if (is_array($fileData['name'])) {
+                foreach ($fileData['name'] as $index => $name) {
+                    $file = new File();
+                    $file->setUploadProperties(new FileUploadProperties(
+                        $name,
+                        $fileData['type'][$index],
+                        $fileData['tmp_name'][$index],
+                        $fileData['error'][$index],
+                        $fileData['size'][$index]
+                    ));
+                    $this->files[$fieldName][] = $file;
+                }
+            } else {
+                // Single file upload
+                $file = new File();
+                $file->setContents($fileData);
+                $this->files[$fieldName] = $file;
             }
         }
     }
@@ -158,11 +190,22 @@ class Request
         return $this->server('CONTENT_LENGTH') ?? 0 > env('CONTENT_LENGTH_MIN');
     }
 
-    public function file($key = null)
+    /**
+     * @return File[]
+     */
+    public function files()
     {
-        if ($key == null)
-            return $this->files;
+        return $this->files;
+    }
+
+    public function file(string $key): File|null
+    {
         return $this->retrieveItem($this->files, $key);
+    }
+
+    public function hasFile(string $key)
+    {
+        return !(isNull($this->files($key)));
     }
 
     /**
