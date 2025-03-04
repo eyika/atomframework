@@ -81,6 +81,11 @@ class File
         $this->diskconfig = is_null($disk) ? config('filesystems.disks')[config('filesystems.default')] : config('filesystems.disks')[$disk];
     }
 
+    public function getDiskConfig()
+    {
+        return $this->diskconfig;
+    }
+
     protected function initAdapter()
     {
         // $classname = self::adapters[$this->diskconfig['driver']] ?? null;
@@ -341,12 +346,19 @@ class File
      */
     public function upload($tempPath, $path)
     {
-        if ($contents = file_get_contents($tempPath) == false) {
+        if (!file_exists($tempPath)) {
+            throw new FilesystemException('Temp file does not exist: ' . $tempPath);
+        }
+        if (!is_readable($tempPath)) {
+            throw new UnableToReadFile('Temp file is not readable');
+        }
+        $contents = file_get_contents($tempPath);
+        if ($contents === false) {
             throw new FilesystemException('unable to read uploaded file');
         }
 
         // Write the file to the specified path
-        $this->filesystem->write(basename($path), $contents);
+        $this->filesystem->write($path, $contents);
 
         return strlen($contents);
     }

@@ -46,7 +46,7 @@ class Server
     {
         try {
             // ErrorHandler::register();
-            $request = new Request();
+            $request = static::$app->make('request');
             static::$app->instance('request', $request);
             if (preg_match('/^.*$/i', $request->requestUri())) {
                 //register controllers

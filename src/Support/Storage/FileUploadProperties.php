@@ -7,10 +7,10 @@ class FileUploadProperties
     protected string $name;
     protected string $type;
     protected string $tmpName;
-    protected string $error;
+    protected string|null $error;
     protected string $size;
 
-    public function __construct(string $name, string $type, string $tmp_name, string $error, string $size)
+    public function __construct(string $name, string $type, string $tmp_name, string $size, ?string $error)
     {
         $this->name = $name;
         $this->type = $type;

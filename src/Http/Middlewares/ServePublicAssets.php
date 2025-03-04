@@ -37,7 +37,18 @@ class ServePublicAssets implements MiddlewareInterface
                     if (array_key_exists($ext, $customMappings)) {
                         $mime = $customMappings[$ext];
                     }
-                    return Response::setHeader("Content-Type", $mime, BaseResponse::STATUS_OK)->body(file_get_contents($path));
+                    $allowedOrigins = config('cors.allowed_origins', ['*']);
+                    $origin = $request->headers('Origin');
+
+                    $response = Response::setHeader("Content-Type", $mime, BaseResponse::STATUS_OK);
+
+                    if ($allowedOrigins[0] === '*' || in_array($origin, $allowedOrigins)) {
+                        $response->setHeader("Access-Control-Allow-Origin", '*');
+                        $response->setHeader('Access-Control-Allow-Methods', "GET, OPTIONS");
+                        $response->setHeader('Access-Control-Allow-Headers', "Content-Type");
+                    }
+
+                    return $response->body(file_get_contents($path));
                 }
 
                 return Response::html("File Not Found", BaseResponse::STATUS_NOT_FOUND);

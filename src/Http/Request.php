@@ -24,6 +24,7 @@ class Request
     protected $query;
     public array $route_params;
     protected $body;
+    protected $input;
     protected $attributes;
     protected Arrayable $cookies;
     /** @property File[] $files */
@@ -39,10 +40,6 @@ class Request
 
     public function __construct()
     {
-        $this->query = $_GET;
-        $this->body = $_POST;
-        $this->attributes = [];
-        $this->route_params = [];
         $this->cookies = new Arrayable();
         $this->isAssetRequest = false;
 
@@ -50,18 +47,119 @@ class Request
             // Create a new Cookie instance for each $_COOKIE element
             $this->cookies->set($name, new Cookie($name, $value));
         }
-        // $this->files = $_FILES;
         $this->server = $_SERVER;
         $this->headers = getallheaders();
+        $this->query = $_GET;
+        $this->setRequestBodyAndFiles();
+        $this->input = [...$this->body, ...$this->files];
+        // $this->body = $_POST;
+        $this->attributes = [];
+        $this->route_params = [];
         $this->proxyheader = 0;
+    }
 
-        // Handle JSON payload
-        if ($this->isJson()) {
+    protected function setRequestBodyAndFiles()
+    {
+        if ($this->isMethod('PUT') && strpos($this->headers['Content-Type'] ?? '', 'multipart/form-data') === 0) {
+            $this->body = $this->parseMultipartPutRequest();
+        } elseif ($this->isJson()) {
+            // Read raw JSON input if content-type is JSON
             $jsonData = json_decode(file_get_contents('php://input'), true);
             if (json_last_error() === JSON_ERROR_NONE) {
-                $this->body = array_merge($this->body, $jsonData ?? []);
+                $this->body = $jsonData ?? [];
+            } else {
+                $this->body = [];
+            }
+        } else {
+            $this->body = $_POST;
+        }
+    
+        $this->initRequestFiles();
+    }
+
+    protected function parseMultipartPutRequest()
+    {
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+    
+        // Ensure it's a multipart/form-data request
+        if (strpos($contentType, 'multipart/form-data') !== 0) {
+            return ['error' => 'Invalid Content-Type'];
+        }
+    
+        // Extract boundary from Content-Type
+        preg_match('/boundary=(.*)$/', $contentType, $matches);
+        if (!isset($matches[1])) {
+            return ['error' => 'No boundary found'];
+        }
+        $boundary = $matches[1];
+    
+        // Read raw input
+        $rawData = file_get_contents("php://input");
+    
+        // Split by boundary
+        $parts = explode("--" . $boundary, $rawData);
+    
+        $files = [];
+        $fields = [];
+    
+        foreach ($parts as $part) {
+            $part = trim($part);
+            if (empty($part) || $part === "--") continue; // Skip empty or closing boundary
+    
+            // Ensure the part contains headers and body
+            if (!str_contains($part, "\r\n\r\n")) {
+                continue; // Skip malformed parts
+            }
+    
+            // Separate headers from content
+            $sections = explode("\r\n\r\n", $part, 2);
+            if (count($sections) < 2) {
+                continue; // Skip invalid parts
+            }
+    
+            list($rawHeaders, $content) = $sections;
+    
+            $rawHeaders = trim($rawHeaders);
+            $content = trim($content);
+    
+            // Parse headers
+            $headers = [];
+            foreach (explode("\r\n", $rawHeaders) as $header) {
+                if (!str_contains($header, ": ")) continue; // Ensure valid header format
+                list($name, $value) = explode(": ", $header, 2);
+                $headers[strtolower($name)] = $value;
+            }
+    
+            // Check if it's a file
+            if (isset($headers['content-disposition']) && preg_match('/name="([^"]+)"(?:; filename="([^"]+)")?/', $headers['content-disposition'], $matches)) {
+                $fieldName = $matches[1];
+                $fileName = $matches[2] ?? null;
+    
+                if ($fileName) {
+                    // It's a file
+                    $files[$fieldName] = [
+                        'name' => $fileName,
+                        'type' => $headers['content-type'] ?? 'application/octet-stream',
+                        'tmp_name' => $this->saveTempFile($content),
+                        'size' => strlen($content),
+                    ];
+                } else {
+                    // It's a normal form field
+                    $fields[$fieldName] = $content;
+                }
             }
         }
+    
+        $_FILES = $files;
+        return $fields;
+    }    
+
+    // Save file to a temporary location
+    protected function saveTempFile($content)
+    {
+        $tempFile = tempnam(sys_get_temp_dir(), 'put_');
+        file_put_contents($tempFile, $content);
+        return $tempFile;
     }
     
     protected function initRequestFiles()
@@ -77,15 +175,21 @@ class Request
                         $name,
                         $fileData['type'][$index],
                         $fileData['tmp_name'][$index],
-                        $fileData['error'][$index],
-                        $fileData['size'][$index]
+                        $fileData['size'][$index],
+                        $fileData['error'][$index] ?? null
                     ));
                     $this->files[$fieldName][] = $file;
                 }
             } else {
                 // Single file upload
                 $file = new File();
-                $file->setContents($fileData);
+                $file->setUploadProperties(new FileUploadProperties(
+                    $fileData['name'],
+                    $fileData['type'],
+                    $fileData['tmp_name'],
+                    $fileData['size'],
+                    $fileData['error'] ?? null
+                ));
                 $this->files[$fieldName] = $file;
             }
         }
@@ -124,26 +228,33 @@ class Request
         return $this->retrieveItem($this->query, $key, $default);
     }
 
-    public function input($key = null, $default = null)
+    public function body($key = null, $default = null)
     {
         if ($key == null)
             return $this->body;
         return $this->retrieveItem($this->body, $key, $default);
     }
 
+    public function input($key = null, $default = null)
+    {
+        if ($key == null)
+            return $this->input;
+        return $this->retrieveItem($this->input, $key, $default);
+    }
+
     public function merge(array $data)
     {
-        $this->body = array_merge($this->body, $data);
+        $this->body = array_merge($this->input, $data);
     }
 
     public function only(array $keys)
     {
-        return Arr::only($this->input(), $keys);
+        return Arr::only($this->body, $keys);
     }
 
     public function except(array $keys)
     {
-        return Arr::except($this->input(), $keys);
+        return Arr::except($this->body, $keys);
     }
 
     public function replaceInput(array $input)

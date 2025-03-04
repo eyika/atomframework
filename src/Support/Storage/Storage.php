@@ -209,7 +209,7 @@ class Storage
         //TODO:: implement for adapters that are not supported by flysystem by default
         $adapter = $this->file->getFileSystemAdapter();
 
-        return $adapter->publicUrl($path);
+        return $adapter->publicUrl($path, $this->file->getDiskConfig());
     }
 
     public function temporaryUrl(string $path, \DateTimeInterface $expiration, array $options = []): string

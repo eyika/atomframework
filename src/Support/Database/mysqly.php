@@ -41,15 +41,16 @@ class mysqly {
       $where[] = "`{$k}` {$_operator} ($in){$or_and}";
       $incr_operator = false;
     }
-    else if ($v !== null && str_contains((string)$v, 'NULL')) {
+    else if ($v !== null && is_string($v) && str_contains(strtoupper($v), 'NULL')) {
+      $v = strtoupper($v);
       $where[] = "`{$k}` {$v}{$or_and}";
       $incr_operator = false;
     }
-    else if ($v !== null && is_string($v) && str_contains($v, 'now')) {
+    else if ($v !== null && is_string($v) && str_contains(strtolower($v), 'now')) {
       $where[] = "`{$k}` $_operator now(){$or_and}";
       $incr_operator = true;
     }
-    else if ($_operator !== null && str_contains((string)$_operator, 'LIKE')) {
+    else if ($_operator !== null && is_string($_operator) && str_contains(strtoupper($_operator), 'LIKE')) {
       $where[] = "LOWER({$k}) $_operator LOWER(:$k){$or_and}";
       $bind[":{$k}"] = "%$v%";
       $incr_operator = false;
@@ -80,6 +81,9 @@ class mysqly {
       }
       else if ($value !== null && is_string($value) && str_contains($value, 'now')) {
         $values[] = "`{$name}` = current_timestamp";
+      } else if ($value === null or $value === 'null') {
+        $values[] = "`{$name}` = :{$name}";
+        $bind[":{$name}"] = null;
       }
       else {
         $values[] = "`{$name}` = :{$name}";
@@ -399,7 +403,6 @@ class mysqly {
   
   public static function count($sql_or_table, $bind_or_filter = [], array|string $operators = '=', array|string $or_ands = "AND")
   {
-    // logger()->info('got to count');
     $_select_str = '*';
     $operators = Arr::wrap($operators);
 

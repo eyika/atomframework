@@ -4,10 +4,12 @@ namespace Eyika\Atom\Framework\Support;
 
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Support\Database\mysqly;
+use Eyika\Atom\Framework\Support\Storage\File;
 use Eyika\Atom\Framework\Support\Str;
 
 class Validator {
     private static array $req_data;
+    private static array $req_files;
     public static array $errors;
     private static array $validated;
     private static array $confirms;
@@ -15,6 +17,7 @@ class Validator {
     public function __construct(Request|array $_req_obj = [])
     {
         self::$req_data = $_req_obj instanceof Request ? $_req_obj->input() : $_req_obj;
+        self::$req_files = $_req_obj instanceof Request ? $_req_obj->files() : [];
         self::$errors = [];
         self::$validated = [];
         self::$confirms = [];
@@ -31,8 +34,10 @@ class Validator {
                 static::$errors[$paramKey] = $resp;
                 continue;
             }
-            if (Arr::keyExists(static::$req_data, $paramKey))
-                static::$validated[$paramKey] = static::$req_data[$paramKey];
+            $dat = array_merge(static::$req_data, static::$req_files);
+
+            if (Arr::keyExists($dat, $paramKey))
+                static::$validated[$paramKey] = $dat[$paramKey];
         }
 
         foreach (static::$confirms as $paramKey => $paramValue) {
@@ -84,88 +89,119 @@ class Validator {
                 if (gettype($paramval) !== 'boolean' || $paramval != false)
                     $resp = '';
                 else
-                    $resp = "{$param} is required";
+                    $resp = "$param is required";
                 break;
             case 'forbidden':
-                $resp = "{$param} is forbidden in this request";
+                $resp = "$param is forbidden in this request";
                 break;
             case 'string':
                 $stat = is_string($paramval);
-                $resp = !$stat ? "{$param} should be a string" : '';
+                $resp = !$stat ? "$param should be a string" : '';
                 break;
             case 'bool':
                 $stat = !is_bool($paramval);
-                $resp = $stat ? "{$param} should be a boolean" : '';
+                $resp = $stat ? "$param should be a boolean" : '';
                 break;
             case 'boolean':
                 $stat = !is_bool($paramval);
-                $resp = $stat ? "{$param} should be a boolean" : '';
+                $resp = $stat ? "$param should be a boolean" : '';
                 break;
             case 'float':
                 $stat = is_float($paramval) || is_int($paramval) || is_numeric($paramval);
-                $resp = !$stat ? "{$param} should be a float" : '';
+                $resp = !$stat ? "$param should be a float" : '';
                 break;
             case 'double':
                 $stat = is_double($paramval) || is_int($paramval) || is_numeric($paramval);
-                $resp = !$stat ? "{$param} should be a double" : '';
+                $resp = !$stat ? "$param should be a double" : '';
                 break;
             case 'integer':
                 $stat = is_integer($paramval) || is_int($paramval) || is_numeric($paramval) && !stripos($paramval,'.');
-                $resp = !$stat ? "{$param} should be an integer" : '';
+                $resp = !$stat ? "$param should be an integer" : '';
                 break;
             case 'int':
                 $stat = is_integer($paramval) || is_int($paramval) || is_numeric($paramval) && !stripos($paramval,'.');
-                $resp = !$stat ? "{$param} should be an integer" : '';
+                $resp = !$stat ? "$param should be an integer" : '';
                 break;
             case 'numeric':
                 $stat = is_numeric($paramval);
-                $resp = !$stat ? "{$param} should be a numeric" : '';
+                $resp = !$stat ? "$param should be a numeric" : '';
                 break;
             case 'url':
                 $stat = is_link($paramval);
-                $resp = !$stat ? "{$param} should be an url" : '';
+                $resp = !$stat ? "$param should be an url" : '';
                 break;
             case 'file':
                 $stat = is_file($paramval);
-                $resp = !$stat ? "{$param} should be a file" : '';
+                $resp = !$stat ? "$param should be a file" : '';
                 break;
             case 'array':
                 $stat = is_array($paramval);
-                $resp = !$stat ? "{$param} should be an array" : '';
+                $resp = !$stat ? "$param should be an array" : '';
                 break;
             case 'json':
                 $stat = is_string($paramval) && Str::isJson($paramval);
-                $resp = !$stat ? "{$param} should be a valid json string" : '';
+                $resp = !$stat ? "$param should be a valid json string" : '';
                 break;
             case 'uuid':
                 $stat = is_string($paramval) && Str::isUuid($paramval);
-                $resp = !$stat ? "{$param} should be a valid uuid string" : '';
+                $resp = !$stat ? "$param should be a valid uuid string" : '';
                 break;
             case 'ascii':
                 $stat = is_string($paramval) && Str::isAscii($paramval);
-                $resp = !$stat ? "{$param} should be a valid ascii string" : '';
+                $resp = !$stat ? "$param should be a valid ascii string" : '';
                 break;
             case 'phone':
                 $stat = is_string($paramval) && Str::isPhoneNumber($paramval);
-                $resp = !$stat ? "{$param} should be a valid phone string" : '';
+                $resp = !$stat ? "$param should be a valid phone string" : '';
                 break;
             case 'email':
                 $stat = is_string($paramval) && Str::isEmail($paramval);
-                $resp = !$stat ? "{$param} should be a valid email string" : '';
+                $resp = !$stat ? "$param should be a valid email string" : '';
                 break;
             case 'base64':
                 $stat = is_string($paramval) && Str::isBase64($paramval);
-                $resp = !$stat ? "{$param} should be a valid base64 string" : '';
+                $resp = !$stat ? "$param should be a valid base64 string" : '';
                 break;
             case 'confirm':
                 static::$confirms[$param] = $paramval;
                 $resp = '';
+                break;
+            case 'image':
+                $image_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+                $is_image = $paramval instanceof File && Arr::exists($image_types, $paramval->uploadProperties()->type());
+                $resp = $is_image ? '' : "$param should be a valid image file";
                 break;
             default:
                 $resp = $this->performAdvanceValidation($type, $param, $paramval);
         }
         return $resp;
     }
+
+    private function isGreaterThanMax($param, $paramval, $max): string
+    {
+        if ($paramval instanceof File) {
+            return ($paramval->uploadProperties()->size() / 1024) > $max ? "{$param} should not be more than $max kb" : '';
+        } elseif (is_string($paramval) || is_array($paramval)) {
+            return count($paramval) > $max ? "{$param} should not contain more than $max ". (is_string($paramval) ? 'characters' : 'items') : '';
+        } elseif (is_numeric($paramval)) {
+            return (float)$paramval > $max ? "{$param} should not be greater than $max" : '';
+        }
+    
+        return '';
+    }
+
+    private function isLessThanMin($param, $paramval, $min): string
+    {
+        if ($paramval instanceof File) {
+            return ($paramval->uploadProperties()->size() / 1024) < $min ? "{$param} should not be less than $min kb" : '';
+        } elseif (is_string($paramval) || is_array($paramval)) {
+            return count($paramval) < $min ? ("{$param} should not contain less than $min ". is_string($paramval) ? 'characters' : 'items') : '';
+        } elseif (is_numeric($paramval)) {
+            return (float)$paramval < $min ? "{$param} should not be less than $min" : '';
+        }
+    
+        return '';
+    } 
 
     private function performAdvanceValidation(string $type, $param, $paramval)
     {
@@ -176,10 +212,10 @@ class Validator {
 
             switch ($items[0]) {
                 case 'max':
-                    $resp = $paramval > (int)$items[1] ? "{$param} should not be greater than {$items[1]}" : '';
+                    $resp = $this->isGreaterThanMax($param, $paramval, $items[1]);
                     break;
                 case 'min':
-                    $resp = $paramval < (int)$items[1] ? "{$param} should not be less than {$items[1]}" : '';
+                    $resp = $this->isLessThanMin($param, $paramval, $items[1]);
                     break;
                 case 'equals':
                     $resp = $paramval === $items[1] ? '' : "{$param} should be same as " . str_replace('_confirm', '', $param);
@@ -209,6 +245,19 @@ class Validator {
                     $stat = Arr::has($items[0], $items[1]);
                     $resp = !$stat ? "{$param} should be an array that has $items[1]" : '';
                     break;
+                case 'mimes':
+                    $mimes = explode(',', $items[1]);
+                    $mimeParts = explode('/', mime_content_type($paramval->uploadProperties()->tmpName()));
+                    $mime = $mimeParts[1] ?? '';
+                    $is_valid_mime = $paramval instanceof File && Arr::exists($mimes, $mime);
+                    $resp = $is_valid_mime ? '' : "$param should be a file with one of " . $items[1] ."mime";
+                    break;
+                case 'mimetypes':
+                    $mimes = explode(',', $items[1]);
+                    $mimeType = mime_content_type($paramval->uploadProperties()->tmpName());
+                    $is_valid_mime = $paramval instanceof File && Arr::exists($mimes, $mimeType);
+                    $resp = $is_valid_mime ? '' : "$param should be a file with one of " . $items[1] ."mime type";
+                    break;
                 default:
                     $resp = '';
             }
@@ -217,11 +266,13 @@ class Validator {
         return $resp;
     }
 
-    private function getParamValue(string $param): int|bool|float|string|array
+    private function getParamValue(string $param): int|bool|float|string|array|File
     {
-        if (!array_key_exists($param, self::$req_data)) {
+        $dat = array_merge(self::$req_data, self::$req_files);
+
+        if (!array_key_exists($param, $dat)) {
             return false;
         }
-        return self::$req_data[$param] ?? '';
+        return $dat[$param] ?? '';
     }
 }
