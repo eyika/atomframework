@@ -9,14 +9,14 @@ use Psr\Log\LogLevel;
 class ConsoleColorizer extends LineFormatter
 {
     private array $levelColors = [
-        LogLevel::DEBUG => "\033[36m",  // Cyan
-        LogLevel::INFO => "\033[32m",   // Green
-        LogLevel::NOTICE => "\033[34m", // Blue
-        LogLevel::WARNING => "\033[33m", // Yellow
-        LogLevel::ERROR => "\033[31m",   // Red
-        LogLevel::CRITICAL => "\033[35m", // Magenta
-        LogLevel::ALERT => "\033[41m",   // Red Background
-        LogLevel::EMERGENCY => "\033[41;97m" // Red Background + White Text
+        100 => "\033[36m",  // Cyan
+        200 => "\033[32m",   // Green
+        250 => "\033[34m", // Blue
+        300 => "\033[33m", // Yellow
+        400 => "\033[31m",   // Red
+        500 => "\033[35m", // Magenta
+        550 => "\033[41m",   // Red Background
+        600 => "\033[41;97m" // Red Background + White Text
     ];
 
     public function format(LogRecord $record): string

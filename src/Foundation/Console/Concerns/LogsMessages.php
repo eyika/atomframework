@@ -1,10 +1,6 @@
 <?php
 namespace Eyika\Atom\Framework\Foundation\Console\Concerns;
 
-use Eyika\Atom\Framework\Foundation\Console\ConsoleColorizer;
-use Monolog\Handler\StreamHandler;
-use Monolog\Level;
-
 trait LogsMessages
 {
     public function info(string $message, array $context = [], $to_log_file = false): void
@@ -12,13 +8,7 @@ trait LogsMessages
         if ($to_log_file) {
             info($message, $context);
         } else {
-            // Use custom formatter
-            $formatter = new ConsoleColorizer("[%datetime%] %channel%.%level_name%: %message%\n");
-
-            $handler = new StreamHandler('php://stdout', Level::Debug);
-            $handler->setFormatter($formatter);
-
-            logger(name: 'console')->pushHandler($handler)->info($message);
+            logger(isConsole: true)->info($message);
         }
     }
 
@@ -27,13 +17,7 @@ trait LogsMessages
         if ($to_log_file) {
             error($message, $context);
         } else {
-            // Use custom formatter
-            $formatter = new ConsoleColorizer("[%datetime%] %channel%.%level_name%: %message%\n");
-
-            $handler = new StreamHandler('php://stdout', Level::Error);
-            $handler->setFormatter($formatter);
-
-            logger(name: 'console')->pushHandler($handler)->error($message);
+            logger(isConsole: true)->error($message);
         }
     }
 
@@ -42,13 +26,7 @@ trait LogsMessages
         if ($to_log_file) {
             notice($message, $context);
         } else {
-            // Use custom formatter
-            $formatter = new ConsoleColorizer("[%datetime%] %channel%.%level_name%: %message%\n");
-
-            $handler = new StreamHandler('php://stdout', Level::Notice);
-            $handler->setFormatter($formatter);
-
-            logger(name: 'console')->pushHandler($handler)->notice($message);
+            logger(isConsole: true)->notice($message);
         }
     }
 
@@ -57,13 +35,7 @@ trait LogsMessages
         if ($to_log_file) {
             emergency($message, $context);
         } else {
-            // Use custom formatter
-            $formatter = new ConsoleColorizer("[%datetime%] %channel%.%level_name%: %message%\n");
-
-            $handler = new StreamHandler('php://stdout', Level::Emergency);
-            $handler->setFormatter($formatter);
-
-            logger(name: 'console')->pushHandler($handler)->emergency($message);
+            logger(isConsole: true)->emergency($message);
         }
     }
 
@@ -72,13 +44,7 @@ trait LogsMessages
         if ($to_log_file) {
             warning($message, $context);
         } else {
-            // Use custom formatter
-            $formatter = new ConsoleColorizer("[%datetime%] %channel%.%level_name%: %message%\n");
-
-            $handler = new StreamHandler('php://stdout', Level::Warning);
-            $handler->setFormatter($formatter);
-
-            logger(name: 'console')->pushHandler($handler)->warning($message);
+            logger(isConsole: true)->warning($message);
         }
     }
 
@@ -92,13 +58,7 @@ trait LogsMessages
         if ($to_log_file) {
             debug($message, $context);
         } else {
-            // Use custom formatter
-            $formatter = new ConsoleColorizer("[%datetime%] %channel%.%level_name%: %message%\n");
-
-            $handler = new StreamHandler('php://stdout', Level::Debug);
-            $handler->setFormatter($formatter);
-
-            logger(name: 'console')->pushHandler($handler)->debug($message);
+            logger(isConsole: true)->debug($message);
         }
     }
 
@@ -107,13 +67,7 @@ trait LogsMessages
         if ($to_log_file) {
             critical($message, $context);
         } else {
-            // Use custom formatter
-            $formatter = new ConsoleColorizer("[%datetime%] %channel%.%level_name%: %message%\n");
-
-            $handler = new StreamHandler('php://stdout', Level::Critical);
-            $handler->setFormatter($formatter);
-
-            logger(name: 'console')->pushHandler($handler)->critical($message);
+            logger(isConsole: true)->critical($message);
         }
     }
 }

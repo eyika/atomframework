@@ -9,6 +9,8 @@ use Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel as ContractsConsoleK
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\NamespaceHelper;
 use Eyika\Atom\Framework\Foundation\Console\Command;
+use Eyika\Atom\Framework\Foundation\Console\Concerns\LogsMessages;
+use Eyika\Atom\Framework\Foundation\Console\Contracts\ShouldLogMessages;
 use Eyika\Atom\Framework\Foundation\Console\Scheduler;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Support\Encrypter;
@@ -16,9 +18,9 @@ use Eyika\Atom\Framework\Support\Facade\App;
 use Eyika\Atom\Framework\Support\Storage\File;
 use Eyika\Atom\Framework\Support\Storage\Storage;
 
-class ConsoleKernel implements ContractsConsoleKernel
+class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
 {
-    use ClassDependencyResolver;
+    use ClassDependencyResolver, LogsMessages;
 
     /**
      * The Artisan commands provided by your application.
@@ -61,7 +63,7 @@ class ConsoleKernel implements ContractsConsoleKernel
 
     public function comment(string $comment)
     {
-        consoleLog(0, "Info: $comment." . PHP_EOL);
+        $this->info($comment);
     }
 
     public function run(string $name, array $arguments = [], bool $requireConsoleRoute = false)
@@ -80,7 +82,7 @@ class ConsoleKernel implements ContractsConsoleKernel
             } else if (is_callable($command))
                 $this->status = $command($arguments);
         } else {
-            consoleLog(1, "Error: Command '$name' not found." . PHP_EOL);
+            $this->error("Command '$name' not found.");
         }
     }
 
@@ -102,15 +104,16 @@ class ConsoleKernel implements ContractsConsoleKernel
                 if ($this->shouldIgnoreCommand($command))
                     return;
 
-                $command_obj = $this->resolve($command);
-                // $command_obj = new $command;
+                // $command_obj = $this->resolve($command);
+                $command_obj = new $command;
     
                 $args = explode(' ', $command_obj->signature);
                 $signature = array_shift($args) ?? strtolower($class_name);
                 $this->register($signature, $command_obj, $args);
             }, $base_folder);
         } catch (Exception $e) {
-            logger()->info("INTERNAL: ".$e->getMessage(), $e->getTrace());
+            $this->error($e->getMessage(), $e->getTrace());
+            $this->error($e->getMessage(), $e->getTrace(), true);
             ///TODO handle exception
         }
     }
@@ -154,7 +157,8 @@ class ConsoleKernel implements ContractsConsoleKernel
                 $app->instance($tag, $facade_obj);
             }
         } catch (Exception $e) {
-            logger()->info("INTERNAL: ".$e->getMessage(), $e->getTrace());
+            $this->error($e->getMessage(), $e->getTrace());
+            $this->error($e->getMessage(), $e->getTrace(), true);
             ///TODO handle exception
         }
     }

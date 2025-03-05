@@ -11,8 +11,6 @@ use Eyika\Atom\Framework\Support\Database\Schema\Migrations\CreateMigrationsTabl
 use Eyika\Atom\Framework\Support\Database\Schema\Migrations\Migration;
 use Eyika\Atom\Framework\Support\Storage\Filesystem;
 
-use function PHPUnit\Framework\isObject;
-
 class Migrate extends Command
 {
     use RunsOnConsole;
@@ -21,9 +19,9 @@ class Migrate extends Command
 
     public string $signature = 'migrate {--seed} {--path=} {--basepath=} {--pretend} {--force}';
 
-    public function __construct(Filesystem $filesystem)
+    public function __construct()
     {
-        $this->filesystem = $filesystem;
+        $this->filesystem = new Filesystem;
     }
 
     public function handle(): bool

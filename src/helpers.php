@@ -2,6 +2,7 @@
 
 use DebugBar\JavascriptRenderer;
 use DebugBar\StandardDebugBar;
+use Eyika\Atom\Framework\Foundation\Console\ConsoleColorizer;
 use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\Route;
 use Eyika\Atom\Framework\Support\Auth\Auth;
@@ -24,6 +25,8 @@ use Eyika\Atom\Framework\Support\View\Twig;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\NoopHandler;
 use Monolog\Handler\StreamHandler;
+use Monolog\Handler\Conso;
+use Monolog\Level;
 use Monolog\Logger;
 
 if (! function_exists('classFromFile')) {
@@ -442,27 +445,53 @@ if (!function_exists('is_windows')) {
 }
 
 if (! function_exists('logger')) {
-    function logger(string|null $path = null, Monolog\Level $level = Monolog\Level::Debug, $bubble = true, $filePermission = 0664, $useLocking = false, $internal = false, string|null $name = null)
-    {
+    function logger(
+        string|null $path = null,
+        Level $level = Level::Debug,
+        bool $bubble = true,
+        int $filePermission = 0664,
+        bool $useLocking = false,
+        bool $internal = false,
+        string|null $name = null,
+        bool $isConsole = false
+    ) {
         if ($internal && config('app.debug') == false) {
             return (new Logger(''))->pushHandler(new NoopHandler());
         }
+
         $path = $path ?? storage_path("logs/custom.log");
-        // echo $path;
-        if (!$name)
+
+        if (!$name) {
             $name = config('app.name');
+        }
+
         $log = new Logger($name);
-        // Define the date format to match Laravel's
-        $dateFormat = "Y-m-d H:i:s";
 
-        // Define the output format including the date format
-        $output = "[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n";
+        if ($isConsole) {
+            // Date format: Tue Mar  4 10:25:40 2025
+            $dateFormat = 'D M  j H:i:s Y';
+            // Custom formatter with colorized output
+            $formatter = new ConsoleColorizer(
+                "%datetime% %channel%.%level_name%: %message%\n",
+                $dateFormat,
+                true,
+                true
+            );
 
-        // Create a formatter with the specified date format and output format
-        $formatter = new LineFormatter($output, $dateFormat, true, true);
-        $streamHandler = new StreamHandler($path, $level, $bubble, $filePermission, $useLocking);
-        $streamHandler->setFormatter($formatter);
-        return $log->pushHandler($streamHandler);
+            // Apply colors dynamically to log level
+            $formatter->includeStacktraces();
+
+            // Console handler (for stdout)
+            $handler = new StreamHandler('php://stdout', $level);
+            $handler->setFormatter($formatter);
+        } else {
+            // File handler (for log storage)
+            $dateFormat = "Y-m-d H:i:s";
+            $handler = new StreamHandler($path, $level, $bubble, $filePermission, $useLocking);
+            $handler->setFormatter(new LineFormatter("[%datetime%] %channel%.%level_name%: %message%\n", $dateFormat, true, true));
+        }
+
+        return $log->pushHandler($isConsole ? $handler : $handler);
     }
 }
 
