@@ -3,20 +3,20 @@
 namespace Eyika\Atom\Framework\Foundation\Console;
 
 use Monolog\Formatter\LineFormatter;
-use Monolog\Level;
 use Monolog\LogRecord;
+use Psr\Log\LogLevel;
 
 class ConsoleColorizer extends LineFormatter
 {
     private array $levelColors = [
-        Level::Debug => "\033[36m",  // Cyan
-        Level::Info => "\033[32m",   // Green
-        Level::Notice => "\033[34m", // Blue
-        Level::Warning => "\033[33m", // Yellow
-        Level::Error => "\033[31m",   // Red
-        Level::Critical => "\033[35m", // Magenta
-        Level::Alert => "\033[41m",   // Red Background
-        Level::Emergency => "\033[41;97m" // Red Background + White Text
+        LogLevel::DEBUG => "\033[36m",  // Cyan
+        LogLevel::INFO => "\033[32m",   // Green
+        LogLevel::NOTICE => "\033[34m", // Blue
+        LogLevel::WARNING => "\033[33m", // Yellow
+        LogLevel::ERROR => "\033[31m",   // Red
+        LogLevel::CRITICAL => "\033[35m", // Magenta
+        LogLevel::ALERT => "\033[41m",   // Red Background
+        LogLevel::EMERGENCY => "\033[41;97m" // Red Background + White Text
     ];
 
     public function format(LogRecord $record): string
