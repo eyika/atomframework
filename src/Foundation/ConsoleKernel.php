@@ -22,6 +22,7 @@ class ConsoleKernel implements ContractsConsoleKernel
      * @var array
      */
     protected $commands = [];
+    protected const ignore_commands = ['BaseMake'];
 
     protected const ignore_facades = ['app', 'application'];
     protected const facadables = [
@@ -93,6 +94,9 @@ class ConsoleKernel implements ContractsConsoleKernel
             $namespace = $namespace ??  framework_namespace();
 
             NamespaceHelper::loadAndPerformActionOnClasses($namespace, $fullPath, function (string $class_name, string $command) {
+                if ($this->shouldIgnoreCommand($command))
+                    return;
+
                 $command_obj = new $command;
     
                 $args = explode(' ', $command_obj->signature);
@@ -103,6 +107,15 @@ class ConsoleKernel implements ContractsConsoleKernel
             logger()->info("INTERNAL: ".$e->getMessage(), $e->getTrace());
             ///TODO handle exception
         }
+    }
+
+    protected function shouldIgnoreCommand(string $commandName)
+    {
+        foreach ($this::ignore_commands as $command) {
+            if (str_contains($commandName, $command))
+                return true;
+        }
+        return false;
     }
 
     /**
