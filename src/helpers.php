@@ -44,6 +44,26 @@ if (! function_exists('classFromFile')) {
     }
 }
 
+if (! function_exists('class_basename')) {
+    /**
+     * Get the class "basename" of the given object / class.
+     *
+     * @param  string|object  $class
+     * @param  bool  $isFilePath
+     * @return string
+     */
+    function class_basename($class, $isFilePath = false)
+    {
+        if ($isFilePath) {
+            require_once $seeder;
+            return pathinfo($seeder, PATHINFO_FILENAME);
+        }
+        $class = is_object($class) ? get_class($class) : $class;
+
+        return basename(str_replace('\\', '/', $class));
+    }
+}
+
 if (! function_exists("array_key_last")) {
     function array_key_last($array) {
         if (!is_array($array) || empty($array)) {
@@ -269,6 +289,74 @@ if (!function_exists("consoleLog")) {
     }
 }
 
+if (! function_exists('class_uses_recursive')) {
+    /**
+     * Returns all traits used by a class, its parent classes and trait of their traits.
+     *
+     * @param  object|string  $class
+     * @return array
+     */
+    function class_uses_recursive($class)
+    {
+        if (is_object($class)) {
+            $class = get_class($class);
+        }
+
+        $results = [];
+
+        foreach (array_reverse(class_parents($class) ?: []) + [$class => $class] as $class) {
+            $results += trait_uses_recursive($class);
+        }
+
+        return array_unique($results);
+    }
+}
+
+if (! function_exists('trait_uses_recursive')) {
+    /**
+     * Returns all traits used by a trait and its traits.
+     *
+     * @param  object|string  $trait
+     * @return array
+     */
+    function trait_uses_recursive($trait)
+    {
+        $traits = class_uses($trait) ?: [];
+
+        foreach ($traits as $trait) {
+            $traits += trait_uses_recursive($trait);
+        }
+
+        return $traits;
+    }
+}
+
+if (! function_exists('e')) {
+    /**
+     * Encode HTML special characters in a string.
+     *
+     * @param  \BackedEnum|string|null  $value
+     * @param  bool  $doubleEncode
+     * @return string
+     */
+    function e($value, $doubleEncode = true)
+    {
+        // if ($value instanceof DeferringDisplayableValue) {
+        //     $value = $value->resolveDisplayableValue();
+        // }
+
+        // if ($value instanceof Htmlable) {
+        //     return $value->toHtml();
+        // }
+
+        if ($value instanceof BackedEnum) {
+            $value = $value->value;
+        }
+
+        return htmlspecialchars($value ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', $doubleEncode);
+    }
+}
+
 if (! function_exists('base_path')) {
     function base_path(string $folder = ''): string
     {
@@ -354,14 +442,16 @@ if (!function_exists('is_windows')) {
 }
 
 if (! function_exists('logger')) {
-    function logger(string|null $path = null, Monolog\Level $level = Monolog\Level::Debug, $bubble = true, $filePermission = 0664, $useLocking = false, $internal = false)
+    function logger(string|null $path = null, Monolog\Level $level = Monolog\Level::Debug, $bubble = true, $filePermission = 0664, $useLocking = false, $internal = false, string|null $name = null)
     {
         if ($internal && config('app.debug') == false) {
             return (new Logger(''))->pushHandler(new NoopHandler());
         }
         $path = $path ?? storage_path("logs/custom.log");
         // echo $path;
-        $log = new Logger(config('app.name'));
+        if (!$name)
+            $name = config('app.name');
+        $log = new Logger($name);
         // Define the date format to match Laravel's
         $dateFormat = "Y-m-d H:i:s";
 
@@ -391,6 +481,12 @@ if (!function_exists('notice')) {
 if (!function_exists('warning')) {
     function warning(string $message, array $context = []) {
         logger()->warning($message, $context);
+    }
+}
+
+if (!function_exists('debug')) {
+    function debug(string $message, array $context = []) {
+        logger()->debug($message, $context);
     }
 }
 

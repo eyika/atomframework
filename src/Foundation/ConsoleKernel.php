@@ -60,10 +60,11 @@ class ConsoleKernel implements ContractsConsoleKernel
         consoleLog(0, "Info: $comment." . PHP_EOL);
     }
 
-    public function run(string $name, array $arguments = [])
+    public function run(string $name, array $arguments = [], bool $requireConsoleRoute = false)
     {
         //Load console route command definitions into $commands array
-        require base_path('routes/console.php');
+        if ($requireConsoleRoute)
+            require base_path('routes/console.php');
 
         if (isset($this->commands[$name])) {
             $command = $this->commands[$name]['command'];

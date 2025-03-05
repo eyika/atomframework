@@ -11,7 +11,7 @@ abstract class BaseMake extends Command
 
     public function handle(): bool
     {
-        $name = $this->argument(0);
+        $name = $this->filename();
         if (!$name) {
             $this->error("Please provide a name for the {$this->type}.");
             return false;
@@ -34,5 +34,10 @@ abstract class BaseMake extends Command
     protected function stubContent(): string
     {
         return $this->stub ?: '';
+    }
+
+    protected function filename(): null|string
+    {
+        return $this->argument(0);
     }
 }

@@ -62,6 +62,20 @@ class DB
             self::$transaction_mode = false;
     }
 
+    public static function statement(string $stmt)
+    {
+        $stat = mysqly::exec($stmt);
+
+        return $stat !== false;
+    }
+
+    public static function select(string $select_stmt)
+    {
+        $statement = mysqly::exec($select_stmt);
+
+        return $statement->fetchAll();
+    }
+
     protected function resetInstance()
     {
         static::$bind_or_filter = null;
@@ -108,6 +122,11 @@ class DB
     public function find(int $id, array|string $fields = '*')
     {
         return static::_find($id, $fields);
+    }
+
+    public function exists()
+    {
+        return (bool)count((static::all() ?? []));
     }
 
     public function findOr($id = 0, $callable = null)

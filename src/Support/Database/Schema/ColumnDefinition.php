@@ -23,6 +23,12 @@ class ColumnDefinition
         return $this;
     }
 
+    public function varChar(int $len = 255): self
+    {
+        $this->modifiers[] = "VARCHAR($len)";
+        return $this;
+    }
+
     public function unique(): self
     {
         $this->modifiers[] = "UNIQUE";

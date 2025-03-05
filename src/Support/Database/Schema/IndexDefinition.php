@@ -1,4 +1,5 @@
 <?php
+namespace Eyika\Atom\Framework\Support\Database\Schema;
 
 class IndexDefinition
 {

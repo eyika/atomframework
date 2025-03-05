@@ -2,7 +2,6 @@
 namespace Eyika\Atom\Framework\Support\Database\Schema;
 
 use Closure;
-use IndexDefinition;
 use InvalidArgumentException;
 
 class Blueprint

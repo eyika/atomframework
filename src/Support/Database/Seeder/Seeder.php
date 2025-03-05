@@ -6,10 +6,12 @@ use Eyika\Atom\Framework\Support\Database\DB;
 
 abstract class Seeder
 {
+    protected string $table = '';
+
     /**
      * Run the seeder.
      */
-    abstract public function run(): void;
+    abstract public function run(): bool;
 
     /**
      * Seed into a given table.

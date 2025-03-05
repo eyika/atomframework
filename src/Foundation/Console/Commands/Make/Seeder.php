@@ -16,15 +16,17 @@ class Seeder extends BaseMake
 namespace Database\Seeds;
 
 use Atom\Framework\Support\Database\DB;
+use Eyika\Atom\Framework\Database\Seeder\Seeder;
 
-class {{name}}
+class {{name}} extends Seeder
 {
+    protected string \$table = '';
+
     public function run()
     {
+        \$data = [];
         // Insert seeder logic here
-        DB::table('table_name')->insert([
-            // Sample data
-        ]);
+        \$this->insert(\$data);
     }
 }
 

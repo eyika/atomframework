@@ -5,7 +5,7 @@ namespace Eyika\Atom\Framework\Support;
 use ArrayAccess;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 
-Class Arrayable implements ArrayAccess
+class Arrayable implements ArrayAccess
 {
     
     /**

@@ -2,11 +2,16 @@
 
 namespace Eyika\Atom\Framework\Foundation\Console;
 
+use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
-use Monolog\Level;
+use Eyika\Atom\Framework\Foundation\Console\Concerns\LogsMessages;
+use Eyika\Atom\Framework\Foundation\Console\Contracts\ShouldLogMessages;
+use Eyika\Atom\Framework\Support\Arr;
 
-abstract class Command
+abstract class Command implements ShouldLogMessages
 {
+    use LogsMessages;
+
     // Store parsed options
     protected array $options;
     protected array $allowedOptions;
@@ -54,15 +59,30 @@ abstract class Command
     }
 
     // Method to get command line options
-    public function option($name)
+    public function option($name): null|string
     {
         return $this->options[$name] ?? null;
+    }
+
+    // Method to get command line options
+    public function setOption($name, $value)
+    {
+        if (!Arr::keyExists($this->allowedOptions, $name)) {
+            throw new BaseConsoleException("option $name is not in allowed options for this commmand");
+        }
+
+        $this->options[$name] = $value;
     }
 
     public function setAllowedOptions(array $options)
     {
         $this->allowedOptions = $options;
         return $this;
+    }
+
+    public function allowedOptions()
+    {
+        return $this->allowedOptions;
     }
     
     // Method to parse command-line options
@@ -95,43 +115,32 @@ abstract class Command
         }
     }
 
-    public function info(string $message, array $context = [], $to_log_file = false)
+    protected function call(string $name, array $arguments = [])
     {
-        $to_log_file ? logger()->info($message, $context) : consoleLog(200, $message);
+        Artisan::call($name, $arguments, true);
     }
 
-    public function error(string $message, array $context = [], $to_log_file = false)
+    protected function table(array $headers, array $rows)
     {
-        $to_log_file ? logger()->error($message, $context) : consoleLog(400, $message);
-    }
+        $columnWidths = array_map('strlen', $headers);
 
-    public function notice(string $message, array $context = [], $to_log_file = false)
-    {
-        $to_log_file ? logger()->notice($message, $context) : consoleLog(250, $message);
-    }
+        foreach ($rows as $row) {
+            foreach ($row as $i => $cell) {
+                $columnWidths[$i] = max($columnWidths[$i], strlen($cell));
+            }
+        }
 
-    public function emergency(string $message, array $context = [], $to_log_file = false)
-    {
-        $to_log_file ? logger()->emergency($message, $context) : consoleLog(600, $message);
-    }
+        $separator = '+-' . implode('-+-', array_map(fn ($w) => str_repeat('-', $w), $columnWidths)) . '-+';
+        $headerRow = '| ' . implode(' | ', array_map(fn ($h, $w) => str_pad($h, $w), $headers, $columnWidths)) . ' |';
 
-    public function warning(string $message, array $context = [], $to_log_file = false)
-    {
-        $to_log_file ? logger()->warning($message, $context) : consoleLog(300, $message);
-    }
+        $output = [$separator, $headerRow, $separator];
 
-    public function warn(string $message, array $context = [], $to_log_file = false)
-    {
-        $to_log_file ? logger()->warning($message, $context) : consoleLog(300, $message);
-    }
+        foreach ($rows as $row) {
+            $output[] = '| ' . implode(' | ', array_map(fn ($cell, $w) => str_pad($cell, $w), $row, $columnWidths)) . ' |';
+        }
 
-    public function debug(string $message, array $context = [], $to_log_file = false)
-    {
-        $to_log_file ? logger()->debug($message, $context) : consoleLog(100, $message);
-    }
+        $output[] = $separator;
 
-    public function critical(string $message, array $context = [], $to_log_file = false)
-    {
-        $to_log_file ? logger()->critical($message, $context) : consoleLog(500, $message);
+        $this->info(implode("\n", $output));
     }
 }

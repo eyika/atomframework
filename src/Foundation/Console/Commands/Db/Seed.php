@@ -11,17 +11,17 @@ class Seed extends Command
 {
     use RunsOnConsole;
 
-    public string $signature = 'db:seed';
+    public string $signature = 'db:seed {--path=} {--class=} {--force=}';
 
     public function handle(): bool
     {
         try {
-            array_unshift($this->arguments, 'seed:run');
+            // array_unshift($this->arguments, 'seed:run');
 
             // $code = $this->executeCommand($this->arguments);
-            echo "Running seeders...\n";
-            (new DatabaseSeeder())->run();
-            echo "Seeding complete!\n";
+            $this->info("Running seeders...");
+            (new DatabaseSeeder($this->option('path'), $this->option('class'), $this->option('force')))->run();
+            $this->info("Seeding complete!\n");
         } catch (BaseConsoleException $e) {
             $this->error($e->getMessage());
             return !(bool)($e->getCode());

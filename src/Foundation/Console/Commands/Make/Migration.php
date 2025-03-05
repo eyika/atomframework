@@ -1,6 +1,7 @@
 <?php
 namespace Eyika\Atom\Framework\Foundation\Console\Commands\Make;
 
+use Eyika\Atom\Framework\Support\Str;
 
 class Migration extends BaseMake
 {
@@ -11,16 +12,16 @@ class Migration extends BaseMake
 
     protected function stubContent(): string
     {
-        $timestamp = date('Y_m_d_His');
         return <<<EOT
 <?php
 
 namespace Database\Migrations;
 
-use Atom\Framework\Support\Database\Schema;
-use Atom\Framework\Support\Database\Blueprint;
+use Eyika\Atom\Framework\Support\Database\Schema\Migrations\Migration;
+use Eyika\Atom\Framework\Support\Database\Schema\Blueprint;
+use Eyika\Atom\Framework\Support\Database\Schema\Schema;
 
-class {$timestamp}_{{name}}
+return new class extends Migration
 {
     public function up()
     {
@@ -37,5 +38,15 @@ class {$timestamp}_{{name}}
 }
 
 EOT;
+    }
+
+    protected function filename(): null|string
+    {
+        $timestamp = date('Y_m_d_His');
+        if (!$name = $this->argument(0)) {
+            return null;
+        }
+
+        return "{$timestamp}_" . Str::snake($name);
     }
 }
