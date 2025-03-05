@@ -3,7 +3,7 @@ namespace Atom\Framework\Console\Commands;
 
 use Atom\Framework\Console\BaseMake;
 
-class MakeMigrationCommand extends BaseMake
+class Migration extends BaseMake
 {
     protected string $name = 'make:migration';
     protected string $description = 'Create a new migration file';
