@@ -9,7 +9,7 @@ use Eyika\Atom\Framework\Foundation\Console\Command;
 
 class Migrations extends Command
 {
-    public string $signature = 'make:migration';
+    public string $signature = 'make:migrations';
 
     use RunsOnConsole;
 
