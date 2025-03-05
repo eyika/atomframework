@@ -7,7 +7,7 @@ use Monolog\Level;
 
 trait LogsMessages
 {
-    public function info(string $message, array $context = [], $to_log_file = false)
+    public function info(string $message, array $context = [], $to_log_file = false): void
     {
         if ($to_log_file) {
             info($message, $context);
@@ -22,7 +22,7 @@ trait LogsMessages
         }
     }
 
-    public function error(string $message, array $context = [], $to_log_file = false)
+    public function error(string $message, array $context = [], $to_log_file = false): void
     {
         if ($to_log_file) {
             error($message, $context);
@@ -37,7 +37,7 @@ trait LogsMessages
         }
     }
 
-    public function notice(string $message, array $context = [], $to_log_file = false)
+    public function notice(string $message, array $context = [], $to_log_file = false): void
     {
         if ($to_log_file) {
             notice($message, $context);
@@ -52,7 +52,7 @@ trait LogsMessages
         }
     }
 
-    public function emergency(string $message, array $context = [], $to_log_file = false)
+    public function emergency(string $message, array $context = [], $to_log_file = false): void
     {
         if ($to_log_file) {
             emergency($message, $context);
@@ -67,7 +67,7 @@ trait LogsMessages
         }
     }
 
-    public function warning(string $message, array $context = [], $to_log_file = false)
+    public function warning(string $message, array $context = [], $to_log_file = false): void
     {
         if ($to_log_file) {
             warning($message, $context);
@@ -82,12 +82,12 @@ trait LogsMessages
         }
     }
 
-    public function warn(string $message, array $context = [], $to_log_file = false)
+    public function warn(string $message, array $context = [], $to_log_file = false): void
     {
         $this->warning($message, $context, $to_log_file);
     }
 
-    public function debug(string $message, array $context = [], $to_log_file = false)
+    public function debug(string $message, array $context = [], $to_log_file = false): void
     {
         if ($to_log_file) {
             debug($message, $context);
@@ -102,7 +102,7 @@ trait LogsMessages
         }
     }
 
-    public function critical(string $message, array $context = [], $to_log_file = false)
+    public function critical(string $message, array $context = [], $to_log_file = false): void
     {
         if ($to_log_file) {
             critical($message, $context);
