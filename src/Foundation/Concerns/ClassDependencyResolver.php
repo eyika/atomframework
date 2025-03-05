@@ -3,7 +3,9 @@
 namespace Eyika\Atom\Framework\Foundation\Concerns;
 
 use Eyika\Atom\Framework\Exceptions\BaseException;
+use Eyika\Atom\Framework\Support\Facade\App;
 use ReflectionClass;
+use ReflectionParameter;
 
 trait ClassDependencyResolver
 {
@@ -28,13 +30,18 @@ trait ClassDependencyResolver
         return $reflectionClass->newInstanceArgs($dependencies);
     }
 
-    // Resolve the dependencies of a class constructor
-    protected function resolveDependencies(array $parameters): array
+    /**
+     * Resolve the dependencies of a class constructor
+     * 
+     * @property ReflectionParameter[] $parameters
+     */
+    protected function resolveDependencies($parameters): array
     {
         $dependencies = [];
 
         foreach ($parameters as $parameter) {
-            $dependency = $parameter->getClass();
+            /** @var ReflectionParameter $parameter */
+            $dependency = $parameter->getType();
 
             if ($dependency === null) {
                 if ($parameter->isDefaultValueAvailable()) {
@@ -43,7 +50,7 @@ trait ClassDependencyResolver
                     throw new BaseException("Cannot resolve dependency {$parameter->name}");
                 }
             } else {
-                $dependencies[] = $this->make($dependency->name);
+                $dependencies[] = App::make($dependency->getName());
             }
         }
 
