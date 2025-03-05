@@ -2,9 +2,9 @@
 
 namespace Atom\Framework\Console\Commands;
 
-use Atom\Framework\Console\GeneratorCommand;
+use Atom\Framework\Console\BaseMake;
 
-class Factory extends GeneratorCommand
+class Factory extends BaseMake
 {
     protected string $name = 'make:factory';
     protected string $description = 'Create a new factory class';

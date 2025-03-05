@@ -2,9 +2,9 @@
 
 namespace Atom\Framework\Console\Commands;
 
-use Atom\Framework\Console\GeneratorCommand;
+use Atom\Framework\Console\BaseMake;
 
-class MakeSeederCommand extends GeneratorCommand
+class MakeSeederCommand extends BaseMake
 {
     protected string $name = 'make:seeder';
     protected string $description = 'Create a new database seeder';

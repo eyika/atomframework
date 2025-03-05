@@ -1,9 +1,9 @@
 <?php
 namespace Atom\Framework\Console\Commands;
 
-use Atom\Framework\Console\GeneratorCommand;
+use Atom\Framework\Console\BaseMake;
 
-class MakeMigrationCommand extends GeneratorCommand
+class MakeMigrationCommand extends BaseMake
 {
     protected string $name = 'make:migration';
     protected string $description = 'Create a new migration file';

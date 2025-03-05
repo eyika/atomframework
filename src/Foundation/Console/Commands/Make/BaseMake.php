@@ -4,7 +4,7 @@ namespace Atom\Framework\Console;
 
 use Eyika\Atom\Framework\Foundation\Console\Command;
 
-abstract class GeneratorCommand extends Command
+abstract class BaseMake extends Command
 {
     protected string $type = '';
     protected string $stub = '';
