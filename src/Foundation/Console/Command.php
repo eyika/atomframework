@@ -18,6 +18,7 @@ abstract class Command implements ShouldLogMessages
     protected array $arguments;
     protected string $directory;
 
+    public string $description = '';
     public string $signature = '';
 
     public function __construct()
@@ -115,9 +116,9 @@ abstract class Command implements ShouldLogMessages
         }
     }
 
-    protected function call(string $name, array $arguments = [])
+    protected function call(string $name, array $arguments = [], bool $requireConsoleRoute = false)
     {
-        Artisan::call($name, $arguments, true);
+        Artisan::call($name, $arguments, $requireConsoleRoute);
     }
 
     protected function table(array $headers, array $rows)

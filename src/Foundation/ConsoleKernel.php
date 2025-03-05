@@ -66,7 +66,7 @@ class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
         $this->info($comment);
     }
 
-    public function run(string $name, array $arguments = [], bool $requireConsoleRoute = false)
+    public function run(string $name, array $arguments = [], bool $requireConsoleRoute = true)
     {
         //Load console route command definitions into $commands array
         if ($requireConsoleRoute)
@@ -104,12 +104,12 @@ class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
                 if ($this->shouldIgnoreCommand($command))
                     return;
 
-                // $command_obj = $this->resolve($command);
-                $command_obj = new $command;
-    
+                $command_obj = $this->resolve($command);
+                // $command_obj = new $command;
+
                 $args = explode(' ', $command_obj->signature);
                 $signature = array_shift($args) ?? strtolower($class_name);
-                $this->register($signature, $command_obj, $args);
+                $this->register($signature, $command_obj, $args, $command_obj instanceof Command ? $command_obj->description : '');
             }, $base_folder);
         } catch (Exception $e) {
             $this->error($e->getMessage(), $e->getTrace());

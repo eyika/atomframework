@@ -6,7 +6,7 @@ use Eyika\Atom\Framework\Support\Str;
 class Migration extends BaseMake
 {
     protected string $name = 'make:migration';
-    protected string $description = 'Create a new migration file';
+    public string $description = 'Create a new migration file';
     protected string $type = 'Migration';
     protected string $directory = 'migrations';
 

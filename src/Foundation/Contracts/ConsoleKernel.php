@@ -12,7 +12,7 @@ interface ConsoleKernel
 
     public function comment(string $comment);
 
-    public function run(string $name, array $arguments = []);
+    public function run(string $name, array $arguments = [], bool $requireConsoleRoute = false);
 
     public function terminate($inputs = []): int;
 }
