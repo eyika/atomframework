@@ -68,8 +68,9 @@ class ConsoleKernel implements ContractsConsoleKernel
             $command = $this->commands[$name]['command'];
 
             if ($command instanceof Command) {
-                $this->commands[$name]['command']->setAllowedOptions($this->commands[$name]['options']);
-                $this->status = $command->handle($arguments);
+                $this->status = $command->setAllowedOptions($this->commands[$name]['options'])
+                    ->setArguments($arguments)
+                    ->handle();
             } else if (is_callable($command))
                 $this->status = $command($arguments);
         } else {

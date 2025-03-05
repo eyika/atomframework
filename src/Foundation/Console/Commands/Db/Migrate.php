@@ -12,12 +12,12 @@ class Migrate extends Command
 
     public string $signature = 'migrate';
 
-    public function handle(array $arguments = []): bool
+    public function handle(): bool
     {
         try {
-            array_unshift($arguments, 'migrate');
+            array_unshift($this->arguments, 'migrate');
 
-            $code = $this->executeCommand($arguments);
+            $code = $this->executeCommand($this->arguments);
         } catch (BaseConsoleException $e) {
             $this->error($e->getMessage());
             return !(bool)($e->getCode());

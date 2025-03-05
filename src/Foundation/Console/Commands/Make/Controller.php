@@ -12,13 +12,13 @@ class Controller extends Command
 {
     public string $signature = 'make:controller';
 
-    public function handle(array $arguments = []): bool
+    public function handle(): bool
     {
         try {
-            if (empty($name = $arguments[0] ?? '')) {
+            if (empty($name = $this->arguments[0] ?? '')) {
                 throw new InvalidInputException('name of controller is not specified', 1);
             }
-            $type = $arguments[1] ?? '--web';
+            $type = $this->arguments[1] ?? '--web';
     
             $name = Str::pascal($name);
             $controller_str = Str::snake($name);

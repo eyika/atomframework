@@ -10,7 +10,7 @@ class work extends Command
 {
     public string $signature = 'queue:work';
 
-    public function handle(array $arguments = []): bool
+    public function handle(): bool
     {
         try {
             call_user_func(new JobRunner);

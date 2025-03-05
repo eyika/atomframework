@@ -12,7 +12,7 @@ class Publish extends Command
 
     public string $description = 'implementation of vendor:publish command';
 
-    public function handle(array $arguments = []): bool
+    public function handle(): bool
     {
         try {
             $tag = $this->option('tag');

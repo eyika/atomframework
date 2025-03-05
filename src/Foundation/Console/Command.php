@@ -10,19 +10,47 @@ abstract class Command
     // Store parsed options
     protected array $options;
     protected array $allowedOptions;
+    protected array $arguments;
+    protected string $directory;
 
     public string $signature = '';
 
     public function __construct()
     {
+        $this->directory = '';
         $this->options = [];
         $this->allowedOptions = [];
         $this->parseOptions();
     }
 
-    public function handle(array $arguments = []): bool
+    public function handle(): bool
     {
         throw new NotImplementedException('method is not implemented');
+    }
+
+    public function setBaseDir(string $directory)
+    {
+        $this->directory = $directory;
+        return $this;
+    }
+
+    public function setArguments(array $arguments = [])
+    {
+        $this->arguments = $arguments;
+        return $this;
+    }
+
+    public function arguments()
+    {
+        return $this->arguments;
+    }
+
+    public function argument(int $index): null|string
+    {
+        if (!array_key_exists($index, $this->arguments)) {
+            return null;
+        }
+        return $this->arguments[$index];
     }
 
     // Method to get command line options
@@ -34,6 +62,7 @@ abstract class Command
     public function setAllowedOptions(array $options)
     {
         $this->allowedOptions = $options;
+        return $this;
     }
     
     // Method to parse command-line options

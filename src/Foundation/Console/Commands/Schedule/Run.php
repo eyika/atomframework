@@ -12,7 +12,7 @@ class Run extends Command
 {
     public string $signature = 'schedule:run';
 
-    public function handle(array $arguments = []): bool
+    public function handle(): bool
     {
         $app = Facade::getFacadeApplication();
         $kernel = $app->make(ConsoleKernel::class);

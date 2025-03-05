@@ -1,32 +1,42 @@
 <?php
+namespace Atom\Framework\Console\Commands;
 
-namespace Eyika\Atom\Framework\Foundation\Console\Commands\Make;
+use Atom\Framework\Console\GeneratorCommand;
 
-use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
-use Eyika\Atom\Framework\Exceptions\Console\InvalidInputException;
-use Eyika\Atom\Framework\Foundation\Console\Concerns\RunsOnConsole;
-use Eyika\Atom\Framework\Foundation\Console\Command;
-
-class Migration extends Command
+class MakeMigrationCommand extends GeneratorCommand
 {
-    public string $signature = 'make:migration';
+    protected string $name = 'make:migration';
+    protected string $description = 'Create a new migration file';
+    protected string $type = 'Migration';
+    protected string $directory = 'migrations';
 
-    use RunsOnConsole;
-
-    public function handle(array $arguments = []): bool
+    protected function stubContent(): string
     {
-        try {
-            if (empty($arguments[0] ?? '')) {
-                throw new InvalidInputException('name of migration is not specified', 1);
-            }
-    
-            array_unshift($arguments, 'create');
+        $timestamp = date('Y_m_d_His');
+        return <<<EOT
+<?php
 
-            $code = $this->executeCommand($arguments);
-        } catch (BaseConsoleException $e) {
-            $this->error($e->getMessage());
-            return !(bool)$e->getCode();
-        }
-        return !(bool)$code;
+namespace Database\Migrations;
+
+use Atom\Framework\Support\Database\Schema;
+use Atom\Framework\Support\Database\Blueprint;
+
+class {$timestamp}_{{name}}
+{
+    public function up()
+    {
+        Schema::create('table_name', function (Blueprint \$table) {
+            \$table->id();
+            \$table->timestamps();
+        });
+    }
+
+    public function down()
+    {
+        Schema::dropIfExists('table_name');
+    }
+}
+
+EOT;
     }
 }
