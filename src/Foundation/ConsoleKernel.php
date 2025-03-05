@@ -4,6 +4,7 @@ namespace Eyika\Atom\Framework\Foundation;
 
 use Exception;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
+use Eyika\Atom\Framework\Foundation\Concerns\ClassDependencyResolver;
 use Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel as ContractsConsoleKernel;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\NamespaceHelper;
@@ -11,11 +12,14 @@ use Eyika\Atom\Framework\Foundation\Console\Command;
 use Eyika\Atom\Framework\Foundation\Console\Scheduler;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Support\Encrypter;
+use Eyika\Atom\Framework\Support\Facade\App;
 use Eyika\Atom\Framework\Support\Storage\File;
 use Eyika\Atom\Framework\Support\Storage\Storage;
 
 class ConsoleKernel implements ContractsConsoleKernel
 {
+    use ClassDependencyResolver;
+
     /**
      * The Artisan commands provided by your application.
      *
@@ -98,7 +102,8 @@ class ConsoleKernel implements ContractsConsoleKernel
                 if ($this->shouldIgnoreCommand($command))
                     return;
 
-                $command_obj = new $command;
+                $command_obj = $this->resolve($command);
+                // $command_obj = new $command;
     
                 $args = explode(' ', $command_obj->signature);
                 $signature = array_shift($args) ?? strtolower($class_name);
