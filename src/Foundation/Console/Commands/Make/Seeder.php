@@ -1,8 +1,7 @@
 <?php
 
-namespace Atom\Framework\Console\Commands;
+namespace Eyika\Atom\Framework\Foundation\Console\Commands\Make;
 
-use Atom\Framework\Console\BaseMake;
 
 class Seeder extends BaseMake
 {

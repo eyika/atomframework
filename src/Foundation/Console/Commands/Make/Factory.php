@@ -1,8 +1,6 @@
 <?php
 
-namespace Atom\Framework\Console\Commands;
-
-use Atom\Framework\Console\BaseMake;
+namespace Eyika\Atom\Framework\Foundation\Console\Commands\Make;
 
 class Factory extends BaseMake
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Atom\Framework\Console;
+namespace Eyika\Atom\Framework\Foundation\Console\Commands\Make;
 
 use Eyika\Atom\Framework\Foundation\Console\Command;
 
