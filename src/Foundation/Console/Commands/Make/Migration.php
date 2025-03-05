@@ -5,10 +5,10 @@ use Eyika\Atom\Framework\Support\Str;
 
 class Migration extends BaseMake
 {
-    protected string $name = 'make:migration';
+    public string $signature = 'make:migration';
     public string $description = 'Create a new migration file';
     protected string $type = 'Migration';
-    protected string $directory = 'migrations';
+    protected string $directory = 'database/migrations';
 
     protected function stubContent(): string
     {
@@ -35,7 +35,7 @@ return new class extends Migration
     {
         Schema::dropIfExists('table_name');
     }
-}
+};
 
 EOT;
     }

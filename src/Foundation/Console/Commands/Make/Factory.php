@@ -6,7 +6,7 @@ class Factory extends BaseMake
 {
     public string $description = 'Create a new factory class';
 
-    protected string $name = 'make:factory';
+    public string $signature = 'make:factory';
     protected string $type = 'Factory';
     protected string $directory = 'database/factories';
 

@@ -487,8 +487,10 @@ if (! function_exists('logger')) {
         } else {
             // File handler (for log storage)
             $dateFormat = "Y-m-d H:i:s";
+            $output = "[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n";
+
             $handler = new StreamHandler($path, $level, $bubble, $filePermission, $useLocking);
-            $handler->setFormatter(new LineFormatter("[%datetime%] %channel%.%level_name%: %message%\n", $dateFormat, true, true));
+            $handler->setFormatter(new LineFormatter($output, $dateFormat, true, true));
         }
 
         return $log->pushHandler($isConsole ? $handler : $handler);

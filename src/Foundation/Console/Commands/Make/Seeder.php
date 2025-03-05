@@ -5,7 +5,7 @@ namespace Eyika\Atom\Framework\Foundation\Console\Commands\Make;
 
 class Seeder extends BaseMake
 {
-    protected string $name = 'make:seeder';
+    public string $signature = 'make:seeder';
     public string $description = 'Create a new database seeder';
     protected string $type = 'Seeder';
     protected string $directory = 'database/seeds';

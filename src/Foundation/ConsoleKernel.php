@@ -105,7 +105,6 @@ class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
                     return;
 
                 $command_obj = $this->resolve($command);
-                // $command_obj = new $command;
 
                 $args = explode(' ', $command_obj->signature);
                 $signature = array_shift($args) ?? strtolower($class_name);

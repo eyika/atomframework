@@ -3,11 +3,19 @@
 namespace Eyika\Atom\Framework\Foundation\Console\Commands\Make;
 
 use Eyika\Atom\Framework\Foundation\Console\Command;
+use Eyika\Atom\Framework\Support\Storage\Filesystem;
 
 abstract class BaseMake extends Command
 {
     protected string $type = '';
     protected string $stub = '';
+    
+    protected Filesystem $filesystem;
+
+    public function __construct()
+    {
+        $this->filesystem = new Filesystem;
+    }
 
     public function handle(): bool
     {
@@ -17,16 +25,17 @@ abstract class BaseMake extends Command
             return false;
         }
 
-        $path = base_path("{{$this->directory}/{$name}.php");
+        $path = base_path("{$this->directory}/{$name}.php");
 
-        if (file_exists($path)) {
-            $this->error("The {$this->type} '{$name}' already exists.");
+        if ($this->filesystem->exists($path)) {
+            $this->error("The {$this->type} at '{$path}' already exists.");
             return false;
         }
 
         $content = str_replace('{{name}}', $name, $this->stubContent());
-        file_put_contents($path, $content);
-        $this->info("{$this->type} '{$name}' created successfully at {$this->directory}/");
+
+        $this->filesystem->put($path, $content);
+        $this->info("{$this->type} '{$path}' created successfully at {$this->directory}/");
 
         return true;
     }
