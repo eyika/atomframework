@@ -25,6 +25,8 @@ class DB
         static::$or_ands = 'AND';
         static::$operators = '=';
         static::$instantiated = true;
+        static::$order = '';
+        static::$bind_or_filter = null;
     }
 
     public static function table(string $table)
@@ -126,7 +128,7 @@ class DB
 
     public function exists()
     {
-        return (bool)count((static::all() ?? []));
+        return (bool)static::count();
     }
 
     public function findOr($id = 0, $callable = null)
@@ -234,7 +236,7 @@ class DB
 
     public function get($select = '*')
     {
-        return static::all(static::$table, $select);
+        return static::all($select);
     }
 
     public function paginate($currentPage = null, $recordsPerPage = null)
@@ -258,27 +260,139 @@ class DB
         return PaginatedData::init($data, $totalRecords, $recordsPerPage, $totalPages, $currentPage);
     }
 
+    // public function count($column = "*")
+    // {
+    //     return static::_count(static::$table, $column);
+    // }
+
+    // public function _count($column = "*", $reset_instance = true)
+    // {
+    //     $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
+
+    //     $i = 0;
+    //     // foreach ($keys as $key) {
+    //     //     $query_arr[$key] = $values[$i];
+    //     //     $i++;
+    //     // }
+
+    //     if (!$count = mysqly::count(static::$table, $query_arr, static::$operators, static::$or_ands)) {
+    //         if ($reset_instance)
+    //             static::resetInstance();
+    //         return false;
+    //     }
+    //     if ($reset_instance)
+    //         static::resetInstance();
+
+    //     return $count;
+    // }
+
+
     public function random()
     {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
+        $data = static::_aggregate(method: 'random', reset_instance: false);
+
+        return $data;
     }
 
     public function count($column = "*")
     {
-        return static::_count(static::$table, $column);
+        if (!$dat = static::_aggregate($column)) {
+            return 0;
+        }
+        return $dat;
     }
 
-    public function _count($column = "*", $reset_instance = true)
+    public function avg($column)
+    {
+        if (!$dat = static::_aggregate($column, 'avg')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function max($column)
+    {
+        if (!$dat = static::_aggregate($column, 'max')) {
+            return 0;
+        }
+        return $dat;
+    }
+    
+    public function min($column)
+    {
+        if (!$dat = static::_aggregate($column, 'min')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function sum($column)
+    {
+        if (!$dat = static::_aggregate($column, 'sum')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function group_concat($column)
+    {
+        if (!$dat = static::_aggregate($column, 'group_concat')) {
+            return '';
+        }
+        return $dat;
+    }
+    
+    public function var_pop($column)
+    {
+        if (!$dat = static::_aggregate($column, 'var_pop')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function stddev($column)
+    {
+        if (!$dat = static::_aggregate($column, 'stddev')) {
+            return 0;
+        }
+        return $dat;
+    }
+    
+    public function bit_and($column)
+    {
+        if (!$dat = static::_aggregate($column, 'bit_and')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function bit_or($column)
+    {
+        if (!$dat = static::_aggregate($column, 'bit_or')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function bit_xor($column)
+    {
+        if (!$dat = static::_aggregate($column, 'bit_xor')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function _aggregate($column = "*", $method = 'count', $reset_instance = true)
     {
         $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
 
-        $i = 0;
-        // foreach ($keys as $key) {
-        //     $query_arr[$key] = $values[$i];
-        //     $i++;
-        // }
+        if ($method == 'count' && $column != '*') {
+            static::$operators[] = "DISTINCT $column";
+        }
 
-        if (!$count = mysqly::count(static::$table, $query_arr, static::$operators, static::$or_ands)) {
+        $method = $method == 'count' ? $method : $method."_".$column;
+
+        if (!$aggregate = mysqly::{$method}(static::$table, $query_arr, static::$operators, static::$or_ands)) {
             if ($reset_instance)
                 static::resetInstance();
             return false;
@@ -286,22 +400,7 @@ class DB
         if ($reset_instance)
             static::resetInstance();
 
-        return $count;
-    }
-
-    public function avg($column)
-    {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
-    }
-
-    public function max($column)
-    {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
-    }
-    
-    public function min($column)
-    {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
+        return $aggregate;
     }
 
     public function update(array $values, int|null $id = null)
