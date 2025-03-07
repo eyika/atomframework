@@ -28,8 +28,7 @@ class Schema
      */
     public static function dropIfExists(string $table): void
     {
-        $sql = "DROP TABLE IF EXISTS `{$table}`";
-        mysqly::exec($sql);
+        mysqly::exec((new Blueprint($table))->rollback());
     }
 
     /**

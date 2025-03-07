@@ -2,6 +2,7 @@
 namespace Eyika\Atom\Framework\Support\Database\Schema;
 
 use Closure;
+use Eyika\Atom\Framework\Support\Arr;
 use InvalidArgumentException;
 
 class Blueprint
@@ -29,32 +30,37 @@ class Blueprint
 
     public function bigIncrements(string $column): ColumnDefinition
     {
-        return $this->addColumn("`$column` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY");
+        return $this->addColumn("BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY", $column);
     }
 
     public function string(string $column, int $length = 255): ColumnDefinition
     {
-        return $this->addColumn("`$column` VARCHAR($length)");
+        return $this->addColumn("VARCHAR", $column, [$length]);
     }
 
     public function integer(string $column, bool $unsigned = false): ColumnDefinition
     {
-        return $this->addColumn("`$column` INT" . ($unsigned ? " UNSIGNED" : ""));
+        return $this->addColumn("INT" . ($unsigned ? " UNSIGNED" : ""), $column);
+    }
+
+    public function unsignedInteger(string $column): ColumnDefinition
+    {
+        return $this->integer($column, true);
     }
     
     public function unsignedBigInteger(string $column): ColumnDefinition
     {
-        return $this->addColumn("`$column` BIGINT UNSIGNED");
+        return $this->addColumn("BIGINT UNSIGNED", $column);
     }
 
     public function text(string $column): ColumnDefinition
     {
-        return $this->addColumn("`$column` TEXT");
+        return $this->addColumn("TEXT", $column);
     }
 
     public function json(string $column): ColumnDefinition
     {
-        return $this->addColumn("`$column` JSON");
+        return $this->addColumn("JSON", $column);
     }
 
     public function uuid(string $name): ColumnDefinition
@@ -64,12 +70,12 @@ class Blueprint
 
     public function decimal(string $name, int $precision = 8, int $scale = 2): ColumnDefinition
     {
-        return $this->addColumn("DECIMAL({$precision},{$scale})", $name);
+        return $this->addColumn("DECIMAL", $name, [$precision, $scale]);
     }
 
     public function boolean(string $column): ColumnDefinition
     {
-        return $this->addColumn("`$column` TINYINT(1)");
+        return $this->addColumn("TINYINT", $column, [1]);
     }
 
     public function geometry(string $name): ColumnDefinition
@@ -77,31 +83,39 @@ class Blueprint
         return $this->addColumn('geometry', $name);
     }
 
+    public function binary(string $name): ColumnDefinition
+    {
+        return $this->addColumn('BLOB', $name);
+    }
+
     public function enum(string $name, array $values): ColumnDefinition
     {
-        $valuesString = implode("', '", $values);
-        return $this->addColumn("ENUM('$valuesString')", $name);
+        return $this->addColumn("ENUM", $name, $values);
     }
 
-    public function fulltext(string|array $columns, ?string $name = null): IndexDefinition
+    public function timestamp(string $column): ColumnDefinition
     {
-        return $this->addIndex('FULLTEXT', (array) $columns, $name);
+        return $this->addColumn("TIMESTAMP", $column);
     }
 
-    public function spatialIndex(string|array $columns, ?string $name = null): IndexDefinition
+    public function timestamps(): self
     {
-        return $this->addIndex('SPATIAL', (array) $columns, $name);
+        $this->addColumn("TIMESTAMP DEFAULT CURRENT_TIMESTAMP", "created_at");
+        $this->addColumn("TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP", "updated_at");
+        return $this;
     }
 
-    public function addIndexWithStorage(
-        string $type,
-        array $columns,
-        string $storageType,
-        ?string $name = null
-    ): IndexDefinition {
-        $index = $this->addIndex($type, $columns, $name);
-        $index->storageType = $storageType;
-        return $index;
+    public function softDeletes(): self
+    {
+        $this->timestamp('deleted_at')->nullable();
+        return $this;
+    }
+
+    public function auditColumns(): void
+    {
+        $this->timestamps();
+        $this->unsignedBigInteger('created_by')->nullable();
+        $this->unsignedBigInteger('updated_by')->nullable();
     }
 
     public function rawSql(string $sql): void
@@ -120,42 +134,51 @@ class Blueprint
         return sprintf('DROP TABLE IF EXISTS `%s`;', $this->table);
     }
 
-    public function timestamp(string $column): ColumnDefinition
-    {
-        return $this->addColumn("`$column` TIMESTAMP");
-    }
-
-    public function timestamps(): self
-    {
-        $this->addColumn("`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
-        $this->addColumn("`updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
-        return $this;
-    }
-
-    public function auditColumns(): void
-    {
-        $this->timestamp('created_at')->nullable();
-        $this->timestamp('updated_at')->nullable();
-        $this->unsignedBigInteger('created_by')->nullable();
-        $this->unsignedBigInteger('updated_by')->nullable();
-    }
-
     public function foreign(string $column): ForeignKeyDefinition
     {
         $foreignKey = new ForeignKeyDefinition($column, $this);
-        $this->foreignKeys[] = $foreignKey;
+        // $this->foreignKeys[] = $foreignKey;
         return $foreignKey;
     }
 
-    public function unique(string $column): self
+    public function unique(string|array $column): self
     {
-        $this->indexes[] = "UNIQUE(`$column`)";
+        // $this->indexes[] = is_string($column) ? "UNIQUE(`$column`)" : "UNIQUE(`" . implode("`, `", $column) . "`)";
+        $this->addIndex('UNIQUE', Arr::wrap($column));
         return $this;
+    }
+
+    public function fulltext(string|array $columns, ?string $name = null): IndexDefinition
+    {
+        return $this->addIndex('FULLTEXT', Arr::wrap($columns), $name);
+    }
+
+    public function spatialIndex(string|array $columns, ?string $name = null): IndexDefinition
+    {
+        return $this->addIndex('SPATIAL', Arr::wrap($columns), $name);
+    }
+
+    public function addIndexWithStorage(
+        string $type,
+        array $columns,
+        string $storageType,
+        ?string $name = null
+    ): IndexDefinition {
+        $index = $this->addIndex($type, $columns, $name);
+        $index->storageType = $storageType;
+        return $index;
     }
 
     public function primary(string $column): self
     {
-        $this->indexes[] = "PRIMARY KEY(`$column`)";
+        $this->addIndex("PRIMARY KEY", [$column]);
+        return $this;
+    }
+
+    public function index(string|array $column, ?string $name = null): self
+    {
+        // $this->indexes[] = is_string($column) ? "INDEX(`$column`)" : "INDEX(`" . implode("`, `", $column) . "`)";
+        $this->addIndex("INDEX", Arr::wrap($column), $name);
         return $this;
     }
 
@@ -175,8 +198,8 @@ class Blueprint
     public function toSql(): string
     {
         $columnsSql = array_map(fn(ColumnDefinition $column) => $column->toSql(), $this->columns);
-        $foreignKeysSql = array_map(fn(IndexDefinition $foreign) => $foreign->toSql(), $this->foreignKeys);
-        $indexesSql = array_map(fn(ForeignKeyDefinition $index) => $index->toSql(), $this->indexes);
+        $foreignKeysSql = array_map(fn(ForeignKeyDefinition $foreign) => $foreign->toSql(), $this->foreignKeys);
+        $indexesSql = array_map(fn(IndexDefinition $index) => $index->toSql(), $this->indexes);
 
         $allDefinitions = array_merge($columnsSql, $foreignKeysSql, $indexesSql);
         $definitions = implode(",\n    ", $allDefinitions);
@@ -222,9 +245,24 @@ class Blueprint
         return $this->columns[$name];
     }
 
-    protected function addColumn(string $definition): ColumnDefinition
+    protected function addColumn(string $type, string $name, array $parameters = []): ColumnDefinition
     {
-        $column = new ColumnDefinition($definition);
+        $str_params = [];
+        $number_params = [];
+        foreach ($parameters as $parameter) {
+            if (is_string($parameter)) {
+                $str_params[] = $parameter;
+                continue;
+            }
+            $number_params[] = $parameter;
+        }
+        if (count($parameters)) {
+            $separator = (bool)count($number_params) ? "', " : "'";
+            $param_str = count($str_params) ? "'". implode("', '", $str_params). $separator : "";
+            $param_num = implode(",", $number_params);
+            $type = "$type({$param_str}{$param_num})";
+        }
+        $column = new ColumnDefinition("`$name` $type");
         $this->columns[] = $column;
         return $column;
     }

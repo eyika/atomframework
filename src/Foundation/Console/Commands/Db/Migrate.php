@@ -77,8 +77,8 @@ class Migrate extends Command
             $this->info("Migrations completed.");
         } catch (BaseConsoleException $e) {
             $this->error($e->getMessage());
-            return !(bool)($e->getCode());
+            return false;
         }
-        return !(bool)$code;
+        return true;
     }
 }

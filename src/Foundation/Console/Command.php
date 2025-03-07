@@ -26,7 +26,6 @@ abstract class Command implements ShouldLogMessages
         $this->directory = '';
         $this->options = [];
         $this->allowedOptions = [];
-        $this->parseOptions();
     }
 
     public function handle(): bool
@@ -43,6 +42,7 @@ abstract class Command implements ShouldLogMessages
     public function setArguments(array $arguments = [])
     {
         $this->arguments = $arguments;
+        $this->parseOptions();
         return $this;
     }
 
@@ -59,13 +59,19 @@ abstract class Command implements ShouldLogMessages
         return $this->arguments[$index];
     }
 
-    // Method to get command line options
+    // Method to get command line option
     public function option($name): null|string
     {
         return $this->options[$name] ?? null;
     }
 
     // Method to get command line options
+    public function options(): array
+    {
+        return $this->options;
+    }
+
+    // Method to set command line options
     public function setOption($name, $value)
     {
         if (!Arr::keyExists($this->allowedOptions, $name)) {
@@ -89,28 +95,25 @@ abstract class Command implements ShouldLogMessages
     // Method to parse command-line options
     protected function parseOptions()
     {
-        global $argv;
+        // global $argv;
+        $this->options = [];
 
-        foreach ($argv as $arg) {
-            // Match options in the form --option=value
-            if (preg_match('/^--(\w+)=?(.*)$/', $arg, $matches)) {
+        foreach ($this->arguments as $arg) {
+            // Match options in the form --option=value, --option, -option, -option=
+            if (preg_match('/^-{1,2}([\w-]+)(?:=(.*))?$/', $arg, $matches)) {
                 $name = $matches[1];
-                $value = $matches[2];
-
-                // If value is not provided, set it as true
-                if ($value === '') {
-                    $value = true;
-                }
-
-                // Store the option in the $options array
+                $value = isset($matches[2]) ? $matches[2] : (strpos($name, '=') === false ? true : null); // Set value to true if not provided
+        
+                // Store the option in the $options array only if it's allowed
                 if (
                     !in_array("{--$name=}", $this->allowedOptions) &&
                     !in_array("{--$name}", $this->allowedOptions) &&
                     !in_array("{-$name=}", $this->allowedOptions) &&
                     !in_array("{-$name}", $this->allowedOptions)
                 ) {
-                    //TODO: throw an exception with exit code 1 telling that the command option is not supported
+                    // TODO: throw an exception with exit code 1 telling that the command option is not supported
                 }
+                
                 $this->options[$name] = $value;
             }
         }

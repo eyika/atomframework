@@ -4,7 +4,7 @@ namespace Eyika\Atom\Framework\Support;
 
 class NamespaceHelper
 {
-    public static function getBaseNamespace(string|null $composerJsonPath = null): string
+    public static function getBaseNamespace(?string $composerJsonPath = null, ?string $folderName = null): string
     {
         if (!$composerJsonPath)
             $composerJsonPath = self::findComposerJsonPath();
@@ -14,7 +14,16 @@ class NamespaceHelper
 
             if (isset($composerJson['autoload']['psr-4'])) {
                 $namespaces = array_keys($composerJson['autoload']['psr-4']);
-                return rtrim($namespaces[0], '\\');
+                $folders = array_values($composerJson['autoload']['psr-4']);
+                if ($folderName !== null) {
+                    foreach ($namespaces as $index => $namespace) {
+                        if (str_contains($folders[$index], $folderName)) {
+                            return rtrim($namespaces[$index], '\\');
+                        }
+                    }
+                } else {
+                    return rtrim($namespaces[0], '\\');
+                }
             }
         }
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace Eyika\Atom\Framework\Database\Seeder;
+namespace Eyika\Atom\Framework\Support\Database\Seeder;
 
 use Eyika\Atom\Framework\Support\Database\DB;
 
@@ -11,7 +11,7 @@ abstract class Seeder
     /**
      * Run the seeder.
      */
-    abstract public function run(): bool;
+    abstract public function run();
 
     /**
      * Seed into a given table.

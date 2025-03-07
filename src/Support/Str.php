@@ -174,6 +174,17 @@ final Class Str
     }
 
     /**
+     * Check if a tring is camelCase.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public static function isCamel($value)
+    {
+        return $value === static::camel($value);
+    }
+
+    /**
      * Convert a value to PascalCase.
      * 
      * @param string $value
@@ -186,6 +197,17 @@ final Class Str
         }
 
         return static::$pascalCache[$value] = ucfirst(static::studly($value));
+    }
+
+    /**
+     * Check if a tring is PascalCase.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public static function isPascal($value)
+    {
+        return $value === static::pascal($value);
     }
 
     /**

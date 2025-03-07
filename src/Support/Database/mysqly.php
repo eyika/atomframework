@@ -512,7 +512,7 @@ class mysqly {
     $values = static::values($data, $bind);
     $sql = 'INSERT ' . ($ignore ? ' IGNORE ' : '') . "INTO `{$table}` SET {$values}";
 
-    // logger()->info($sql, $bind);
+    logger()->info($sql, $bind);
     try {
       static::exec($sql, $bind);
     }
@@ -675,16 +675,16 @@ class mysqly {
       list($agr, $col) = explode('_', $name);
       $table = $args[0];
       list($where, $bind) = static::filter($args[1]);
-      $distinct = isset($args[2]) ? 'DISTINCT' : '';
-      $row = static::fetch('SELECT ' . $agr . "($distinct " . $col . ') FROM `' . $table . '` ' . $where, $bind)[0];
+      $distinct = isset($args[2]) ? 'DISTINCT ' : '';
+      $row = static::fetch('SELECT ' . $agr . "($distinct" . $col . ') FROM `' . $table . '` ' . $where, $bind)[0];
       return array_shift($row);
     }
     else if ( $args[0] && (count($args) > 1 || count($args) < 6) && strpos($name, '_') && in_array(strtolower(explode('_', $name)[0] ?? ''), ['min', 'max', 'avg', 'sum', 'group_concat', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor']) ) {
       list($agr, $col) = explode('_', $name);
       $table = $args[0];
       list($where, $bind) = static::filter($args[1], $args[3], $args[2]);
-      $distinct = isset($args[4]) ? 'DISTINCT' : '';
-      $row = static::fetch('SELECT ' . $agr . "($distinct " . $col . ') FROM `' . $table . '` ' . $where, $bind)[0];
+      $distinct = isset($args[4]) ? 'DISTINCT ' : '';
+      $row = static::fetch('SELECT ' . $agr . "($distinct" . $col . ') FROM `' . $table . '` ' . $where, $bind)[0];
       return array_shift($row);
     }
     

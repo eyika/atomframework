@@ -2,6 +2,8 @@
 
 namespace Eyika\Atom\Framework\Foundation\Console\Commands\Make;
 
+use Exception;
+use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
 use Eyika\Atom\Framework\Foundation\Console\Command;
 use Eyika\Atom\Framework\Support\Storage\Filesystem;
 
@@ -19,23 +21,23 @@ abstract class BaseMake extends Command
 
     public function handle(): bool
     {
-        $name = $this->filename();
-        if (!$name) {
-            $this->error("Please provide a name for the {$this->type}.");
+        try {
+            $name = $this->filename();
+
+            $path = base_path("{$this->directory}/{$name}.php");
+    
+            if ($this->filesystem->exists($path)) {
+                throw new BaseConsoleException("The {$this->type} at '{$path}' already exists");
+            }
+    
+            $content = str_replace('{{name}}', $name, $this->stubContent());
+    
+            $this->filesystem->put($path, $content);
+            $this->info("{$this->type} '{$path}' created successfully at {$this->directory}/");
+        } catch (Exception $e) {
+            $this->error($e->getMessage());
             return false;
         }
-
-        $path = base_path("{$this->directory}/{$name}.php");
-
-        if ($this->filesystem->exists($path)) {
-            $this->error("The {$this->type} at '{$path}' already exists.");
-            return false;
-        }
-
-        $content = str_replace('{{name}}', $name, $this->stubContent());
-
-        $this->filesystem->put($path, $content);
-        $this->info("{$this->type} '{$path}' created successfully at {$this->directory}/");
 
         return true;
     }
@@ -45,7 +47,7 @@ abstract class BaseMake extends Command
         return $this->stub ?: '';
     }
 
-    protected function filename(): null|string
+    protected function filename(): string
     {
         return $this->argument(0);
     }

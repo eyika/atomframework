@@ -12,7 +12,7 @@ class ForeignKeyDefinition
     public function __construct(string $column, Blueprint $blueprint)
     {
         $this->column = $column;
-        $blueprint->indexes[] = $this;
+        $blueprint->foreignKeys[] = $this;
     }
 
     public function references(string $references): self

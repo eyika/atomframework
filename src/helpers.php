@@ -37,12 +37,12 @@ if (! function_exists('classFromFile')) {
      * @param  string  $namespace
      * @return string
      */
-    function classFromFile(SplFileInfo $file, string $namespace, $base_folder = 'src'): string
+    function classFromFile(SplFileInfo|string $file, string $namespace, $base_folder = 'src'): string
     {
         return $namespace.str_replace(
             ['/', '.php'],
             ['\\', ''],
-            Str::after($file->getRealPath(), $base_folder)  //may trigger cyclic reference error
+            Str::after(is_string($file) ? $file : $file->getRealPath(), $base_folder)  //may trigger cyclic reference error
         );
     }
 }
@@ -58,8 +58,8 @@ if (! function_exists('class_basename')) {
     function class_basename($class, $isFilePath = false)
     {
         if ($isFilePath) {
-            require_once $seeder;
-            return pathinfo($seeder, PATHINFO_FILENAME);
+            require_once $class;
+            return pathinfo($class, PATHINFO_FILENAME);
         }
         $class = is_object($class) ? get_class($class) : $class;
 
@@ -385,6 +385,21 @@ if (! function_exists('project_namespace')) {
     }
 }
 
+if (! function_exists('database_namespace')) {
+    function database_namespace(string $classname = ''): string
+    {
+        $classname = empty($classname) ? '' : "\\$classname";
+        return $GLOBALS['database_namespace'].$classname;
+    }
+}
+
+if (! function_exists('test_namespace')) {
+    function test_namespace(string $classname = ''): string
+    {
+        $classname = empty($classname) ? '' : "\\$classname";
+        return $GLOBALS['test_namespace'].$classname;
+    }
+}
 
 if (! function_exists('asset')) {
     function asset(string $folder = ''): string

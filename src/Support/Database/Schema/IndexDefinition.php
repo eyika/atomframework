@@ -51,9 +51,10 @@ class IndexDefinition
         $columns = implode(',', $this->columns);
 
         return sprintf(
-            '%s%s INDEX `%s` (%s)%s%s%s',
+            '%s%s%s `%s` (%s)%s%s%s',
             strtoupper($this->type),
             $concurrentlyPart,
+            strtoupper($this->type) === "INDEX" ? "" : " INDEX",
             $this->name,
             $columns,
             $methodPart,

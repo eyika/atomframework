@@ -1,6 +1,7 @@
 <?php
 namespace Eyika\Atom\Framework\Foundation\Console\Commands\Make;
 
+use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
 use Eyika\Atom\Framework\Support\Str;
 
 class Migration extends BaseMake
@@ -12,6 +13,8 @@ class Migration extends BaseMake
 
     protected function stubContent(): string
     {
+        $table_name = Str::snake($this->argument(0));
+
         return <<<EOT
 <?php
 
@@ -25,7 +28,7 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('table_name', function (Blueprint \$table) {
+        Schema::create('$table_name', function (Blueprint \$table) {
             \$table->id();
             \$table->timestamps();
         });
@@ -33,18 +36,19 @@ return new class extends Migration
 
     public function down()
     {
-        Schema::dropIfExists('table_name');
+        Schema::dropIfExists('$table_name');
     }
 };
 
 EOT;
     }
 
-    protected function filename(): null|string
+    protected function filename(): string
     {
         $timestamp = date('Y_m_d_His');
-        if (!$name = $this->argument(0)) {
-            return null;
+        $name =  $this->argument(0);
+        if (is_null($name)) {
+            throw new BaseConsoleException("Please provide a name for the {$this->type}");
         }
 
         return "{$timestamp}_" . Str::snake($name);
