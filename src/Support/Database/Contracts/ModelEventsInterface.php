@@ -2,7 +2,9 @@
 
 namespace Eyika\Atom\Framework\Support\Database\Contracts;
 
-interface ModelEventsInterface
+use Eyika\Atom\Framework\Support\Contracts\CanBeDeepCloned;
+
+interface ModelEventsInterface extends CanBeDeepCloned
 {
     public static function boot(ModelInterface | UserModelInterface | null $model, string $event);
 

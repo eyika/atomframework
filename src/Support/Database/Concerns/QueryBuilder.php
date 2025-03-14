@@ -5,11 +5,10 @@ namespace Eyika\Atom\Framework\Support\Database\Concerns;
 use Carbon\Carbon;
 use Exception;
 use Eyika\Atom\Framework\Support\Arr;
+use Eyika\Atom\Framework\Support\Database\Model;
 use Eyika\Atom\Framework\Support\Str;
 use Eyika\Atom\Framework\Support\Database\mysqly;
 use Eyika\Atom\Framework\Support\Database\PaginatedData;
-
-use function Symfony\Component\Clock\now;
 
 trait QueryBuilder
 {
@@ -26,7 +25,7 @@ trait QueryBuilder
         $this->or_ands = 'AND';
         $this->operators = '=';
         if (count($values))
-            $this->child->fill($values);
+            $this->fill($values);
     }
 
     protected function resetInstance()
@@ -45,21 +44,22 @@ trait QueryBuilder
         return $this;
     }
 
-    public function fill($values)
+    public function fill($values, $returnInstance = false)
     {
-        foreach ($this->child::fillable as $item) {
-            if (Arr::keyExists($values, $item)) {
-                $this->child->{$item} = $values[$item];
-            }
-        }
+        // foreach ($this::fillable as $item) {
+        //     if (Arr::keyExists($values, $item)) {
+        //         $this->{$item} = $values[$item];
+        //     }
+        // }
         foreach ($values as $key => $value) {
-            if (Arr::keyExists($this->child::fillable, $key)) {
-                $this->child->{$key} = $value;
+            if (Arr::exists($this::fillable, $key)) {
+                $this->{$key} = $value;
                 continue;
             }
-            $this->child->dynamicProperties[$key] = $value;
+            $this->dynamicProperties[$key] = $value;
         }
-        return $this->child;
+        if ($returnInstance)
+            return clone $this;
     }
 
     public function toArray($guard = true, $select = [], $ignore = [], $includeDynamicProperties = false)
@@ -74,7 +74,7 @@ trait QueryBuilder
 
     public function create($values, $is_protected = true, $select = [])
     {
-        $this->child->fill($values);
+        $this->fill($values);
 
         return $this->_save($is_protected, $select);
     }
@@ -90,129 +90,145 @@ trait QueryBuilder
     public function find($id = 0, $is_protected = true)
     {
         $query_arr = [];
-        if ($id === 0 && isset($this->child->{$this->child->primaryKey})) {
-            $id = $this->child->{$this->child->primaryKey};
+        if ($id === 0 && isset($this->{$this->primaryKey})) {
+            $id = $this->{$this->primaryKey};
         }
         if ($this->bind_or_filter)
             $query_arr = $this->bind_or_filter;
-
-        
+    
         if ($id > 0)
             $query_arr['id'] = $id;
-        if ($this->child->softdeletes) {
+        if ($this->softdeletes) {
             $query_arr['deleted_at'] = "IS NULL";
             is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
         }
-        
+        $this->useHashForEncryptedColumnComparisonQueries($query_arr);
+    
         $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
-
+    
         if (!$model = mysqly::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
             $this->resetInstance();
             return false;
         }
+        $model = $model[0];
+        $this->decryptValues($model);
 
-        return $this->fetchRelationship($model[0], true, $is_protected);
-        // $this->fill($model[0]);
-
-        // if (!empty($this->with_model_name)) {
-        //     $column = Str::singular($this->child->table)."_".$this->child->primarKey;
-        //     $method = Str::isSingular($this->with_model_name) ? 'first' : 'get';
-        //     if ($item = DB::where($column, $this->child->{$this->child->primaryKey})->{$method}(Str::plural($this->with_model_name))) {
-        //         $this->child->{$this->with_model_name} = $item;
-        //     }
-        // }
-        // $this->resetInstance();
-        // return $this->child;
+        $this->fill($model);
+    
+        // 🔹 Trigger "retrieved" event for the main model
+        $this->boot($this, 'retrieved');
+        $this->booted($this, 'retrieved');
+        $this->booting($this, 'retrieved');
+    
+        return $this->fetchRelationship($this, true, $is_protected);
     }
-
-    private function processRelationship (array $fields, string $with_model_name, bool $is_nested_array, bool $is_protected)
+    
+    /**
+     * @param Model|Model[] $models
+     * @param string $with_model_name
+     * @param bool $is_protected
+     */
+    private function processRelationship ($models, string $with_model_name, bool $is_protected)
     {
         $key_name = Str::snake($with_model_name);
 
-        if ($is_nested_array) {
-            foreach ($fields as $key => $field) {
-                $this->child->{$key_name."_id"} = $field[$key_name."_id"];
+        if (is_array($models)) {
+            foreach ($models as &$model) {
+                // $this->{$key_name."_id"} = $model->{$key_name."_id"};
 
-                if (empty($this->child->{$key_name."_id"})) {
-                    $fields[$key][$with_model_name] = null;
+                if (empty($model->{$key_name."_id"})) {
+                    $model->{$with_model_name} = null;
                     continue;
                 }
-                $item = $this->{$with_model_name}();
-                $fields[$key][$with_model_name] = $item ? $item->toArray($is_protected) : $item;
+                $item = $model->{$with_model_name}();
+                $model->{$with_model_name} = $item;
+                $model->relationshipItems[] = $with_model_name;
+                // $model->{$with_model_name} = $item ? $item->toArray($is_protected) : $item;
             }
-            return $fields;
+            return $models;
         }
 
-        $this->child->{$key_name."_id"} = $fields[$key_name."_id"];
-        if (empty($this->child->{$key_name."_id"})) {
-            $fields[$with_model_name] = null;
-            return $fields;
+        // $this->{$key_name."_id"} = $models->{$key_name."_id"};
+        if (empty($models->{$key_name."_id"})) {
+            $models->{$with_model_name} = null;
+            return $models;
         }
-        $item = $this->{$with_model_name}();
-        $fields[$with_model_name] = $item ? $item->toArray($is_protected) : $item;
+        $item = $models->{$with_model_name}();
+        $models->{$with_model_name} = $item;
+        $models->relationshipItems[] = $with_model_name;
+        // $models->{$with_model_name} = $item ? $item->toArray($is_protected) : $item;
         $this->resetInstance();
 
-        return $fields;
+        return $models;
     }
 
-    private function fetchRelationship($fields, $fill_models = false, $is_protected = true)
+    /**
+     * @param Model|Model[] $model
+     * @param bool $fill_models
+     * @param bool $is_protected
+     */
+    private function fetchRelationship($model, $fill_models = false, $is_protected = true)
     {
         if (empty($this->with_model_names)) {
             $this->resetInstance();
             if ($fill_models)
-                return $this->fill($fields);
+                return $model;
 
-            return $fields;
+            if (is_array($model)) {
+                foreach ($model as &$_model) {
+                    $_model = $_model->toArray($is_protected);
+                }
+                return $model;
+            }
+            return $model->toArray($is_protected);
         }
 
-        $is_nested_array = Arr::isArrayOfArrays($fields);
+        // $is_array_of_model = is_array($model);
         /** @var string[] $with_model_names */
         $with_model_names = $this->with_model_names;
         $this->resetInstance();
 
         foreach ($with_model_names as $with_model_name) {
-            if (method_exists($this->child, $with_model_name)) {
-                $fields = $this->processRelationship($fields, $with_model_name, $is_nested_array, $is_protected);
+            if (method_exists($this, $with_model_name)) {
+                $model = $this->processRelationship($model, $with_model_name, $is_protected);
                 continue;
             }
 
             $plural_camel = Str::camel(Str::plural($with_model_name));
             if (method_exists($this, $plural_camel)) {
-                $fields = $this->processRelationship($fields, $plural_camel, $is_nested_array, $is_protected);
+                $model = $this->processRelationship($model, $plural_camel, $is_protected);
                 continue;
             }
             
             $plural_snake = Str::snake(Str::plural($with_model_name));
             if (method_exists($this, $plural_snake)) {
-                $fields = $this->processRelationship($fields, $plural_snake, $is_nested_array, $is_protected);
+                $model = $this->processRelationship($model, $plural_snake, $is_protected);
                 continue;
             }
 
             $singular_camel = Str::camel(Str::singular($with_model_name));
             if (method_exists($this, $singular_camel)) {
-                $fields = $this->processRelationship($fields, $singular_camel, $is_nested_array, $is_protected);
+                $model = $this->processRelationship($model, $singular_camel, $is_protected);
                 continue;
             }
 
             $singular_snake = Str::snake(Str::singular($with_model_name));
             if (method_exists($this, $singular_snake)) {
-                $fields = $this->processRelationship($fields, $singular_snake, $is_nested_array, $is_protected);
+                $model = $this->processRelationship($model, $singular_snake, $is_protected);
                 continue;
             }
             
-            if ($is_nested_array) {
-                foreach ($fields as $key => $field) {
-                    $fields[$key][$with_model_name] = null;
+            if (is_array($model)) {
+                foreach ($model as $key => $field) {
+                    $model[$key]->$with_model_name = null;
                 }
             } else {
-                $fields[$with_model_name] = null;
+                $model->$with_model_name = null;
             }
             continue;
         }
-        if ($fill_models)
-            return $this->fill($fields);
 
-        return $fields;
+        return $model;
     }
 
     public function findOr($id = 0, $is_protected = true, $callable = null)
@@ -236,7 +252,7 @@ trait QueryBuilder
 
     public function firstOrCreate($search, $keyvalues, $is_protected = true, $select = [])
     {
-        if (!$model = $this->findByArray(array_keys($keyvalues), array_values($keyvalues), 'AND', $is_protected, $select)) {
+        if (!$model = $this->findByArray(array_keys($search), array_values($search), 'AND', $is_protected, $select)) {
             $model = $this->create($keyvalues, $is_protected, $select);
         }
         return $model;
@@ -255,13 +271,15 @@ trait QueryBuilder
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
         $query_arr[$key] = $value;
-        if ($this->child->softdeletes) {
+        if ($this->softdeletes) {
             $query_arr['deleted_at'] = "IS NULL";
             is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
         }
         if ($this->order !== "")
             $query_arr['order_by'] = $this->order;
     
+        $this->useHashForEncryptedColumnComparisonQueries($query_arr);
+
         if (count($select)) {
             $fields = $select;
         } else {
@@ -272,7 +290,18 @@ trait QueryBuilder
             $this->resetInstance();
             return false;
         }
-        return $this->fetchRelationship($model[0], true, $is_protected);
+        $model = $model[0];
+        $this->decryptValues($model);
+
+        $this->fill($model);
+    
+        // 🔹 Trigger "retrieved" event for the main model
+        $this->boot($this, 'retrieved');
+        $this->booted($this, 'retrieved');
+        $this->booting($this, 'retrieved');
+    
+        return $this->fetchRelationship($this, true, $is_protected);
+        // return $this->fetchRelationship($model[0], true, $is_protected);
     }
 
     public function findByArray($keys, $values, $or_and = "AND", $is_protected = true, $select = [])
@@ -287,21 +316,35 @@ trait QueryBuilder
             $query_arr[$key] = $values[$pos];
             is_string($this->or_ands) ? $this->or_ands = [$or_and] : array_push($this->or_ands, $or_and);
         }
-        if ($this->child->softdeletes) {
+        if ($this->softdeletes) {
             $query_arr['deleted_at'] = "IS NULL";
             array_push($this->or_ands, "AND");
         }
         
+        $this->useHashForEncryptedColumnComparisonQueries($query_arr);
+
         if (count($select)) {
             $fields = $select;
         } else {
             $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
         }
-        if (!$fields = mysqly::fetch($this->table, $query_arr, $fields)) {
+
+        if (!$model = mysqly::fetch($this->table, $query_arr, $fields)) {
             return false;
         }
 
-        return $this->fetchRelationship($fields[0], true, $is_protected);
+        $model = $model[0];
+        $this->decryptValues($model);
+
+        $this->fill($model);
+    
+        // 🔹 Trigger "retrieved" event for the main model
+        $this->boot($this, 'retrieved');
+        $this->booted($this, 'retrieved');
+        $this->booting($this, 'retrieved');
+    
+        return $this->fetchRelationship($this, true, $is_protected);
+        // return $this->fetchRelationship($fields[0], true, $is_protected);
     }
 
     public function all($is_protected = true, $select = [])
@@ -309,49 +352,35 @@ trait QueryBuilder
         $query_arr = [];
         if ($this->bind_or_filter)
             $query_arr = $this->bind_or_filter;
-
-        if ($this->child->softdeletes) {
+    
+        if ($this->softdeletes) {
             $query_arr['deleted_at'] = "IS NULL";
             is_array($this->or_ands) ? $this->or_ands[] = "AND" : $this->or_ands = ["AND"];
         }
         if ($this->order !== "")
             $query_arr['order_by'] = $this->order;
-
+    
+        $this->useHashForEncryptedColumnComparisonQueries($query_arr);
         if (count($select)) {
             $fields = $select;
         } else {
             $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
         }
-
-        if (!$fields = mysqly::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
+    
+        if (!$models = mysqly::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
             $this->resetInstance();
             return false;
         }
+    
+        foreach ($models as &$model) {
+            $this->decryptValues($model);
+            $model = $this->fill($model, true);
+            $this->boot($model, 'retrieved');
+            $this->booted($model, 'retrieved');
+            $this->booting($model, 'retrieved');
+        }
 
-        return $this->fetchRelationship($fields, is_protected: $is_protected);
-        // if (!empty($this->with_model_name)) {
-        //     $getRelationship = function ($relationship = 0) {
-        //         try {
-        //             $classname =  "App\Models\\".Str::pascal($this->with_model_name);
-        //             $column = $relationship == 0 ?
-        //                 Str::singular($this->table)."_".$this->primaryKey :
-        //                 Str::singular($this->with_model_name)."_".(new $classname)->primaryKey;
-
-                    
-        //             $item = DB::where($column, $value);
-        //         } catch (Exception $e) {
-
-        //         }
-        //     }
-        //     foreach ($fields as $key => $field) {
-        //         $column = Str::singular($this->table)."_".$this->primaryKey;
-        //         logger()->info('column is: '. $column);
-        //         $method = Str::isSingular($this->with_model_name) ? 'first' : 'get';
-        //         if ($item = DB::where($column, $field[$this->primaryKey])->{$method}(Str::plural($this->with_model_name))) {
-        //             $fields[$key][$this->with_model_name] = $item;
-        //         }
-        //     }
-        // }
+        return $this->fetchRelationship($models, is_protected: $is_protected);
     }
 
     public function with($models)
@@ -374,7 +403,7 @@ trait QueryBuilder
         $currentPage = $currentPage ?? 1;
         $recordsPerPage = $recordsPerPage ?? $this->recordsPerPage;
 
-        $totalRecords = $this->_aggregate($this->child->primaryKey, 'count', false);
+        $totalRecords = $this->_aggregate($this->primaryKey, 'count', false);
         // Calculate total pages
         $totalPages = ceil($totalRecords / $recordsPerPage);
         // Calculate the offset
@@ -490,7 +519,7 @@ trait QueryBuilder
     {
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
-        if ($this->child->softdeletes) {
+        if ($this->softdeletes) {
             $query_arr['deleted_at'] = "IS NULL";
             is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
         }
@@ -524,13 +553,20 @@ trait QueryBuilder
 
     public function delete($id = 0)
     {
-        $id = $id > 0 ? $id : $this->child->{$this->child->primaryKey};
+        $id = $id > 0 ? $id : $this->{$this->primaryKey};
         
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
+        $this->boot($this, 'deleting');
+        $this->booted($this, 'deleting');
+        $this->booting($this, 'deleting');
+
         if ($id !== 0 && count($query_arr) < 1)
             $query_arr['id'] = $id;
-        if ($this->child->softdeletes) {
+
+        $this->useHashForEncryptedColumnComparisonQueries($query_arr);
+
+        if ($this->softdeletes) {
             $query_arr['deleted_at'] = "IS NULL";
             is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
             mysqly::update($this->table, $query_arr, ['deleted_at' => "now"], $this->operators, $this->or_ands);
@@ -540,16 +576,20 @@ trait QueryBuilder
         }
 
         $val = mysqly::remove($this->table, $query_arr, $this->operators, $this->or_ands);
+
+        $this->boot($this, 'deleted');
+        $this->booted($this, 'deleted');
+        $this->booting($this, 'deleted');
         $this->resetInstance();
         return $val;
     }
 
     public function restore($id = 0)
     {
-        if (!$this->child->softdeletes) {
+        if (!$this->softdeletes) {
             throw new Exception("this model does not support soft deleting");
         }
-        $id = $id > 0 ? $id : $this->child->{$this->child->primaryKey};
+        $id = $id > 0 ? $id : $this->{$this->primaryKey};
 
         return $this->_update(['deleted_at', null], $id, true);
     }
@@ -733,32 +773,53 @@ trait QueryBuilder
      */
     private function _update(array $values, int $id=0, $internal = false, $is_protected = true, $should_fill = true, $create_if_not_exist = false)
     {
-        $id = $id > 0 ? $id : $this->child->{$this->child->primaryKey};
+        $id = $id > 0 ? $id : $this->{$this->primaryKey};
         
         if ($this->bind_or_filter === null)
             $this->bind_or_filter['id'] = $id;
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
-        if ($this->child->softdeletes && !$internal) {
+        if ($this->softdeletes && !$internal) {
             $query_arr['deleted_at'] = "IS NULL";
             is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
         }
         $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
 
+        $this->useHashForEncryptedColumnComparisonQueries($query_arr);
+        $this->createHashDuplicatesForCreateAndUpdateQueries($values);
+        $this->encryptValues($values);
+
         if ($create_if_not_exist && !mysqly::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
+            $this->boot($this, 'creating');
+            $this->booted($this, 'creating');
+            $this->booting($this, 'creating');
+
             mysqly::insert($this->table, $values);
+
+            $this->boot($this, 'created');
+            $this->booted($this, 'created');
+            $this->booting($this, 'created');
         } else {
+            $this->boot($this, 'saving');
+            $this->booted($this, 'saving');
+            $this->booting($this, 'saving');
+
             $count = mysqly::update($this->table, $query_arr, $values, $this->operators, $this->or_ands);
+
+            $this->boot($this, 'saved');
+            $this->booted($this, 'saved');
+            $this->booting($this, 'saved');
         }
 
         if (!$model = mysqly::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
             $this->resetInstance();
             return false;
         }
+        $this->decryptValues($model);
 
         $this->resetInstance();
         if ($should_fill)
-            return $this->fill($model[0]);
+            return $this->fill($model[0], true);
 
         return $model[0];
     }
@@ -792,34 +853,26 @@ trait QueryBuilder
     private function _save($is_protected = true, $select = []): bool|self
     {
         if ($this->isSaved()) {
-            $this->child->boot($this->child, 'saving');
-            $this->child->booted($this->child, 'saving');
-            $this->child->booting($this->child, 'saving');
-
-            $values = Arr::where($this->child->toArray(false, ignore: ['deleted_at', 'created_at']), function ($v, $k) {      // to be used to filter out empty values in future
+            $values = Arr::where($this->toArray(false, ignore: ['deleted_at', 'created_at']), function ($v, $k) {      // to be used to filter out empty values in future
                 return true;
             }, ARRAY_FILTER_USE_BOTH);
 
             if (array_key_exists('updated_at', $values) && empty($values['updated_at']))
                 $values['updated_at'] = Carbon::now();
 
-            $model = $this->_update($values, $this->child->{$this->child->primaryKey}, true, should_fill: false);
+            $model = $this->_update($values, $this->{$this->primaryKey}, true, should_fill: false);
             if (!$model)
                 return false;
 
-            $this->child->{$this->child::UPDATED_AT} = $model[0][$this->child->{$this->child::UPDATED_AT}] ?? null;
-            $this->child->{$this->child->primaryKey} = $model[0][$this->child->{$this->child->primaryKey}] ?? null;
+            $this->{$this::UPDATED_AT} = $model[0][$this->{$this::UPDATED_AT}] ?? null;
+            $this->{$this->primaryKey} = $model[0][$this->{$this->primaryKey}] ?? null;
 
-            $this->child->boot($this->child, 'saved');
-            $this->child->booted($this->child, 'saved');
-            $this->child->booting($this->child, 'saved');
-
-            return $this->child;
+            return $this;
         }
 
-        $this->child->boot($this->child, 'creating');
-        $this->child->booted($this->child, 'creating');
-        $this->child->booting($this->child, 'creating');
+        $this->boot($this, 'creating');
+        $this->booted($this, 'creating');
+        $this->booting($this, 'creating');
 
         $values = Arr::where($this->_toArray(false, ignore: ['deleted_at']), function ($v, $k) {      // to be used to filter out empty values in future
             return true;
@@ -831,6 +884,9 @@ trait QueryBuilder
             if (array_key_exists($timestamp, $values) && empty($values[$timestamp]))
                 $values[$timestamp] = Carbon::now();
         }
+
+        $this->createHashDuplicatesForCreateAndUpdateQueries($values);
+        $this->encryptValues($values);
 
         if (!$id = mysqly::insert($this->table, $values)) {
             return false;
@@ -845,13 +901,15 @@ trait QueryBuilder
         if (!$model = mysqly::fetch($this->table, ['id' => $id], $fields)) {
             return true;
         }
-        $this->child->fill($model[0]);
+        $model = $model[0];
+        $this->decryptValues($model);
+        $this->fill($model);
 
-        $this->child->boot($this->child, 'created');
-        $this->child->booted($this->child, 'created');
-        $this->child->booting($this->child, 'created');
+        $this->boot($this, 'created');
+        $this->booted($this, 'created');
+        $this->booting($this, 'created');
 
-        return $this->child;
+        return $this;
     }
 
     private function _toArray($guard = true, $select = [], $ignore = [], $includeDynamicProperties = false, $ignore_null = true)
@@ -863,23 +921,24 @@ trait QueryBuilder
             'connection', 'keyType', 'incrementing', 'perPage', 'wasRecentlyCreated', 'child'
         ]);
 
-        $obj_props = array_diff(array_keys(get_object_vars($this->child)), $ignore);
+        $obj_props = array_diff(array_keys(get_object_vars($this)), $ignore);
+        $select = array_intersect($obj_props, $select);
         if (count($select)) {
             foreach ($select as $item) {
-                if (Arr::exists($obj_props, $item)) {
-                    $result[$item] = $this->child->{$item};
-                }
+                // if (Arr::exists($obj_props, $item)) {
+                    $result[$item] = $this->{$item};
+                // }
             }
             return $result;
         }
 
-        $fillables = $includeDynamicProperties ? array_merge($this->child::fillable, array_keys($this->child->dynamicProperties)) : $this->child::fillable;
+        $fillables = $includeDynamicProperties ? array_merge($this::fillable, $this->relationshipItems, array_keys($this->dynamicProperties)) : array_merge($this::fillable, $this->relationshipItems);
 
-        $items = $guard ? array_diff($fillables, array_merge($this->child::guarded, $ignore)) : array_diff($fillables, $ignore);
+        $items = $guard ? array_diff($fillables, array_merge($this::guarded, $ignore)) : array_diff($fillables, $ignore);
 
         foreach ($items as $item) {
-            if (!$ignore_null || ($ignore_null && !is_null($this->child->{$item})))
-                $result[$item] = $this->child->{$item};
+            if (!$ignore_null || ($ignore_null && !is_null($this->{$item})))
+                $result[$item] = $this->{$item};
         }
 
         return $result;

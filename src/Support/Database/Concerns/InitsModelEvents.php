@@ -54,4 +54,10 @@ trait InitsModelEvents
         if ($event == 'deleted')
             $callback($model);
     }
+
+    public static function retrieved($model, string $event, callable $callback)
+    {
+        if ($event == 'retrieved')
+            $callback($model);
+    }
 }

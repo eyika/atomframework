@@ -248,10 +248,10 @@ class BaseResponse
             if (is_object($value)) {
                 $objectId = spl_object_hash($value);
     
-                if (isset($seen[$objectId])) {
-                    $data[$key] = 'Circular Reference Detected';
-                    continue;
-                }
+                // if (isset($seen[$objectId])) {
+                //     $data[$key] = 'Circular Reference Detected';
+                //     continue;
+                // }
     
                 $seen[$objectId] = true;
     

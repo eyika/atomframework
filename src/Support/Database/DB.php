@@ -589,7 +589,7 @@ class DB
     private function _where(string $column, string|null $operatorOrValue = null, $value = null, $boolean = "AND")
     {
         $bind_or_filter = static::$bind_or_filter;
-        if ($bind_or_filter != null) {
+        if (is_array($bind_or_filter)) {
             foreach ($bind_or_filter as $key => $_value) {
                 if (($key == 'LIMIT' || $key == 'OFFSET') && gettype($_value) == 'integer') {
                     throw new Exception("all where queries should come before $key queries");

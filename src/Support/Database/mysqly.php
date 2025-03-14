@@ -512,7 +512,7 @@ class mysqly {
     $values = static::values($data, $bind);
     $sql = 'INSERT ' . ($ignore ? ' IGNORE ' : '') . "INTO `{$table}` SET {$values}";
 
-    logger()->info($sql, $bind);
+    // logger()->info($sql, $bind);
     try {
       static::exec($sql, $bind);
     }

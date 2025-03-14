@@ -3,6 +3,7 @@
 namespace Eyika\Atom\Framework\Support;
 
 use ArrayAccess;
+use Eyika\Atom\Framework\Support\Collections\Collection;
 use Eyika\Atom\Framework\Support\Concerns\Macroable;
 use InvalidArgumentException;
 
@@ -161,6 +162,30 @@ final Class Arr
         }
 
         return array_key_exists($key, $array);
+    }
+
+    /**
+     * Replace a key with new key name in an array
+     * 
+     * @param array $array
+     * @param string|int $oldKey
+     * @param string|int $newKey
+     * 
+     * @return void
+     */
+    public static function replaceKey(array &$array, string|int $oldKey, string|int $newKey): void
+    {
+        if (!array_key_exists($oldKey, $array)) {
+            return; // leave array as is if key doesn't exist
+        }
+    
+        $keys = array_keys($array);
+        $values = array_values($array);
+        
+        $index = array_search($oldKey, $keys); // Find index of old key
+        $keys[$index] = $newKey; // Replace old key with new key
+    
+        $array = array_combine($keys, $values);
     }
 
     /**
@@ -735,12 +760,12 @@ final Class Arr
      */
     public static function sort($array, $callback = null)
     {
-        //return Collection::makeNew($array)->sort($callback)->toArray();
-        $callback && is_callable($callback)
-            ? uasort($array, $callback)
-            : asort($array, $callback);
+        return Collection::make($array)->sort($callback)->toArray();
+        // $callback && is_callable($callback)
+        //     ? uasort($array, $callback)
+        //     : asort($array, $callback);
 
-        return $array;
+        // return $array;
     }
 
     /**
@@ -751,7 +776,7 @@ final Class Arr
      */
     public static function collect($array)
     {
-        return Collection::makeNew($array);
+        return Collection::make($array);
     }
 
     /**

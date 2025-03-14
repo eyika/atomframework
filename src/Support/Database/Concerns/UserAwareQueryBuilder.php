@@ -11,12 +11,14 @@ trait UserAwareQueryBuilder
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
         $query_arr['username'] = $name;
-        if ($this->child->softdeletes) {
+        if ($this->softdeletes) {
             $query_arr['deleted_at'] = "IS NULL";
             is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
         }
+        $this->useHashForEncryptedColumnComparisonQueries($query_arr);
 
         $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
+        info('query array is', $query_arr);
         if (!$user = mysqly::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
             $this->resetInstance();
             return false;
@@ -27,7 +29,7 @@ trait UserAwareQueryBuilder
         }
 
         $this->resetInstance();
-        return $this->fill($user[0]);
+        return $this->fill($user[0], true);
     }
 
     public function findByEmail(string $email, $is_protected = true)
@@ -35,10 +37,11 @@ trait UserAwareQueryBuilder
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
         $query_arr['email'] = $email;
-        if ($this->child->softdeletes) {
+        if ($this->softdeletes) {
             $query_arr['deleted_at'] = "IS NULL";
             is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
         }
+        $this->useHashForEncryptedColumnComparisonQueries($query_arr);
 
         $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
         if (!$user = mysqly::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
@@ -51,6 +54,6 @@ trait UserAwareQueryBuilder
         }
 
         $this->resetInstance();
-        return $this->fill($user[0]);
+        return $this->fill($user[0], true);
     }
 }

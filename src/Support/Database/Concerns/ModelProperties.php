@@ -66,6 +66,20 @@ trait ModelProperties
     protected const defaultGuarded = ['incrementing', 'exists', 'wasRecentlyCreated'];
 
     /**
+     * Indicates values that should be encrypted when saving and decrypted when retrieving
+     * 
+     * @var array
+     */
+    protected const encrypted = [];
+
+    /**
+     * Indicates values that should be given a duplicate hashed column
+     * 
+     * @var array
+     */
+    protected const ignore_hash_replica = [];
+
+    /**
      * Indicates if the IDs are auto-incrementing.
      *
      * @var bool
@@ -133,7 +147,7 @@ trait ModelProperties
      * 
      * @var Model|Model&UserModelInterface
      */
-    protected $child;
+    // protected $child;
 
     /**
      * Name of relationship model to get with current query
@@ -148,6 +162,12 @@ trait ModelProperties
      * @property array $dynamicProperties;
      */
     protected $dynamicProperties = [];
+    /**
+     * The placeholder for model dynamic properties
+     * 
+     * @property array $relationshipItems;
+     */
+    protected $relationshipItems = [];
 
     /**
      * The name of the "created at" column.
@@ -162,4 +182,11 @@ trait ModelProperties
      * @var string|null
      */
     const UPDATED_AT = 'updated_at';
+
+    /**
+     * The name of the "suffix" for the hashed replica for encrypted columns.
+     * 
+     * @var array
+     */
+    protected const hashed_col_suffix = '_hash';
 }

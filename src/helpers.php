@@ -8,11 +8,13 @@ use Eyika\Atom\Framework\Http\Route;
 use Eyika\Atom\Framework\Support\Auth\Auth;
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
 use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
+use Eyika\Atom\Framework\Support\Collections\Collection;
 use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
 use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
 use Eyika\Atom\Framework\Support\Database\DB;
 use Eyika\Atom\Framework\Support\Database\PaginatedData;
 use Eyika\Atom\Framework\Support\Encrypter;
+use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\Facade\JsonResponse;
 use Eyika\Atom\Framework\Support\Facade\Request;
 use Eyika\Atom\Framework\Support\Facade\Response;
@@ -74,6 +76,18 @@ if (! function_exists("array_key_last")) {
         }
 
         return array_keys($array)[count($array)-1];
+    }
+}
+
+if (! function_exists("collect")) {
+    function collect($array) {
+        return Collection::make($array);
+    }
+}
+
+if (! function_exists("app")) {
+    function app() {
+        return Facade::getFacadeApplication();
     }
 }
 
@@ -142,16 +156,35 @@ if (! function_exists('db')) {
 }
 
 if (!function_exists('encrypt')) {
-    function encrypt($value, $serialize = true) {
-        $encrypter = new Encrypter();
+    function encrypt($value, $serialize = false) {
+        if (!$encrypter = app()->make('encrypter')) {
+            $encrypter = new Encrypter();
+        }
         return $encrypter->encrypt($value, $serialize);
     }
 }
 
 if (!function_exists('decrypt')) {
-    function decrypt($value, $serialize = true) {
-        $encrypter = new Encrypter();
+    function decrypt($value, $serialize = false) {
+        if (!$encrypter = app()->make('encrypter')) {
+            $encrypter = new Encrypter();
+        }
         return $encrypter->decrypt($value, $serialize);
+    }
+}
+
+if (!function_exists('getHash')) {
+    function getHash(string $data, string $algo = 'sha256', ?string $key = null, bool $binary = false) {
+        if (!$key)
+            $key = env('APP_KEY');
+
+        return hash_hmac($algo, $data, $key, $binary);
+    }
+}
+
+if (!function_exists('hashValid')) {
+    function hashValid(string $known_string, string $user_string) {
+        return hash_equals($known_string, $user_string);
     }
 }
 

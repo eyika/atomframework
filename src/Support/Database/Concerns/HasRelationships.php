@@ -4,8 +4,6 @@ namespace Eyika\Atom\Framework\Support\Database\Concerns;
 
 use Eyika\Atom\Framework\Support\Str;
 use Exception;
-use Eyika\Atom\Framework\Support\Arr;
-use Eyika\Atom\Framework\Support\Database\Contracts\ModelRelationshipInterface;
 
 trait HasRelationships
 {
@@ -41,7 +39,7 @@ trait HasRelationships
             $foreign_key = $foreign_key ?? Str::snake($class_name) . '_id';
             $local_key = $local_key ?? 'id';
 
-            $parent_model = $parent_model->where($local_key, $this->child->{$foreign_key})->first(false);
+            $parent_model = $parent_model->where($local_key, $this->{$foreign_key})->first(false);
 
             if (!$parent_model) {
                 return null;
@@ -68,12 +66,11 @@ trait HasRelationships
             if (!$foreign_models) {
                 return null;
             }
-            $models = [];
 
-            foreach ($foreign_models as $model) {
-                $models[] = $class_name::getBuilder()->fill($model);
-            }
-            return $models;
+            // foreach ($foreign_models as &$model) {
+            //     $model = $class_name::getBuilder()->fill($model, true);
+            // }
+            return $foreign_models;
         } catch (Exception $e) {
             logger()->error("got the following error: ".$e->getMessage(), $e->getTrace());
         }
