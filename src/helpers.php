@@ -27,7 +27,6 @@ use Eyika\Atom\Framework\Support\View\Twig;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\NoopHandler;
 use Monolog\Handler\StreamHandler;
-use Monolog\Handler\Conso;
 use Monolog\Level;
 use Monolog\Logger;
 

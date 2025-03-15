@@ -15,4 +15,6 @@ interface ConsoleKernel
     public function run(string $name, array $arguments = [], bool $requireConsoleRoute = false);
 
     public function terminate($inputs = []): int;
+
+    public function schedule(): void;
 }

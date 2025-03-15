@@ -161,4 +161,7 @@ class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
             ///TODO handle exception
         }
     }
+
+    public function schedule(): void
+    {}
 }

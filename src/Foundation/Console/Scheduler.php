@@ -4,6 +4,7 @@ namespace Eyika\Atom\Framework\Foundation\Console;
 
 use Cron\CronExpression;
 use Exception;
+use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
 use Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel;
 
 class Scheduler
@@ -11,14 +12,19 @@ class Scheduler
     protected $tasks = [];
     protected $current_name = '';
 
-    public function command(string $name, string|null $expression = null): self
+    public function command(string $signature, array $arguements = [], string|null $expression = null): self
     {
-        empty($expression) ?
-            $this->current_name = $name :
-            $this->tasks[] = [
-                'command' => $name,
-                'expression' => $expression
-            ];
+        $this->tasks[] = [
+            'command' => $signature,
+            'arguements' => $arguements,
+            'expression' => $expression
+        ];
+        // empty($expression) ?
+        //     $this->current_name = $name :
+        //     $this->tasks[] = [
+        //         'command' => $name,
+        //         'expression' => $expression
+        //     ];
 
         return $this;
     }
@@ -28,11 +34,48 @@ class Scheduler
         if (!CronExpression::isValidExpression($expression)) {
             throw new Exception('expression string is not a valid cron expression');
         }
-        $this->tasks[] = [
-            'command' => $this->current_name,
-            'expression' => $expression
-        ];
-        $this->current_name = '';
+        if (empty($this->tasks)) {
+            throw new BaseConsoleException('no command to attach the expression to');
+        }
+
+        $lastindex = count($this->tasks) - 1;
+        $this->tasks[$lastindex]['expression'] = $expression;
+
+        return $this;
+    }
+
+    /**
+     * $key is like "--key= or -key= or --key or -key"
+     * $value is any string
+     */
+    public function arguement(string $key, string $value): self
+    {
+        if (empty($this->tasks)) {
+            throw new BaseConsoleException('no command to attach the arguement to');
+        }
+
+        $lastindex = count($this->tasks) - 1;
+        $this->tasks[$lastindex]['arguements'][$key] = $value;
+
+        return $this;
+    }
+
+    /**
+     * arguements should be an associative array where
+     * $key is like "--key= or -key= or --key or -key"
+     * $value is any string
+     */
+    public function arguements(array $arguements): self
+    {
+        if (empty($this->tasks)) {
+            throw new BaseConsoleException('no command to attach the arguements to');
+        }
+
+        $lastindex = count($this->tasks) - 1;
+
+        foreach ($arguements as $key => $value) {
+            $this->tasks[$lastindex]['arguements'][$key] = $value;
+        }
 
         return $this;
     }
@@ -105,13 +148,14 @@ class Scheduler
     public function run(ConsoleKernel $registry): void
     {
         $now = new \DateTime();
+        $registry->schedule();
         
         foreach ($this->tasks as $task) {
             if (!$task['expression'] ?? null)
                 continue;
             $expression = new CronExpression($task['expression']);
             if ($expression->isDue($now)) {
-                $registry->run($task['command']);
+                $registry->run($task['command'], $task['arguements']);
             }
         }
     }
