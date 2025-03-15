@@ -14,7 +14,6 @@ use Eyika\Atom\Framework\Foundation\Console\Contracts\ShouldLogMessages;
 use Eyika\Atom\Framework\Foundation\Console\Scheduler;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Support\Encrypter;
-use Eyika\Atom\Framework\Support\Facade\App;
 use Eyika\Atom\Framework\Support\Storage\File;
 use Eyika\Atom\Framework\Support\Storage\Storage;
 
@@ -49,9 +48,9 @@ class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
 
     protected $status = false;
 
-    public function register(string $name, Command|callable $command, array $options = [], $purpose = '')
+    public function register(string $signature, Command|callable $command, array $options = [], $purpose = '')
     {
-        $this->commands[$name] = [ 'command' => $command, 'options' => $options, 'purpose' => $purpose ];
+        $this->commands[$signature] = [ 'command' => $command, 'options' => $options, 'purpose' => $purpose ];
     }
 
     public function purpose(string $purpose)
@@ -66,23 +65,23 @@ class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
         $this->info($comment);
     }
 
-    public function run(string $name, array $arguments = [], bool $requireConsoleRoute = true)
+    public function run(string $signature, array $arguments = [], bool $requireConsoleRoute = true)
     {
         //Load console route command definitions into $commands array
         if ($requireConsoleRoute)
             require base_path('routes/console.php');
 
-        if (isset($this->commands[$name])) {
-            $command = $this->commands[$name]['command'];
+        if (isset($this->commands[$signature])) {
+            $command = $this->commands[$signature]['command'];
 
             if ($command instanceof Command) {
-                $this->status = $command->setAllowedOptions($this->commands[$name]['options'])
+                $this->status = $command->setAllowedOptions($this->commands[$signature]['options'])
                     ->setArguments($arguments)
                     ->handle();
             } else if (is_callable($command))
                 $this->status = $command($arguments);
         } else {
-            $this->error("Command '$name' not found.");
+            $this->error("Command '$signature' not found.");
         }
     }
 

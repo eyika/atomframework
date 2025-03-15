@@ -17,10 +17,6 @@ class JobRunner {
         $dbpass = config('database.connections.mysql.password'); //env('DB_PASS');
         $dbport = config('database.connections.mysql.port'); //env('DB_PORT');
         $dbcharset = config('database.connections.mysql.charset'); //env('DB_CHARSET');
-        $chron_interval = (int)env('CHRON_INTERVAL', 60);
-
-        $start_time = time();
-        $end_time = $start_time + $chron_interval;
 
         $job_Queue = new Job_Queue(Job_Queue::QUEUE_TYPE_MYSQL, [
             $dbtype => [
@@ -33,11 +29,9 @@ class JobRunner {
         $job_Queue->addQueueConnection($pdo);
         $job_Queue->watchPipeline('default');
 
-        while ($end_time > time()) {
+        while (true) {
             // Process Pending Jobs
-            $job = $job_Queue->getNextJobAndReserve();
-            
-            if(!empty($job)) {
+            if(!empty($job = $job_Queue->getNextJobAndReserve())) {
                 $payload = $job['payload'];
     
                 try {
@@ -66,8 +60,7 @@ class JobRunner {
                     $job_Queue->buryJob($job, $job_obj->getDelay());
                 }
             } else {
-                sleep(1);
-                continue;
+                break;
             }
         }
     }

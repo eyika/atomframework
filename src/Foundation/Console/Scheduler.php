@@ -19,12 +19,6 @@ class Scheduler
             'arguements' => $arguements,
             'expression' => $expression
         ];
-        // empty($expression) ?
-        //     $this->current_name = $name :
-        //     $this->tasks[] = [
-        //         'command' => $name,
-        //         'expression' => $expression
-        //     ];
 
         return $this;
     }
@@ -88,6 +82,11 @@ class Scheduler
     public function everyTwoMinutes(): self
     {
         return $this->expression('*/2 * * * *');
+    }
+
+    public function everyThreeMinutes(): self
+    {
+        return $this->expression('*/3 * * * *');
     }
 
     public function everyFiveMinutes(): self

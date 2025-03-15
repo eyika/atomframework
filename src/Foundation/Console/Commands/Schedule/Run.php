@@ -14,9 +14,10 @@ class Run extends Command
 
     public function handle(): bool
     {
-        $app = Facade::getFacadeApplication();
-        $kernel = $app->make(ConsoleKernel::class);
         try {
+            $app = Facade::getFacadeApplication();
+            $kernel = $app->make(ConsoleKernel::class);
+
             Scheduler::run($kernel);
             return true;
         } catch (Exception $e) {
