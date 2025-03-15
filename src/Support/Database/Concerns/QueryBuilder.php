@@ -789,39 +789,42 @@ trait QueryBuilder
         $this->createHashDuplicatesForCreateAndUpdateQueries($values);
         $this->encryptValues($values);
 
-        if ($create_if_not_exist && !mysqly::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
+        $create = $create_if_not_exist && !mysqly::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands);
+        if ($create) {
             $this->boot($this, 'creating');
             $this->booted($this, 'creating');
             $this->booting($this, 'creating');
 
             mysqly::insert($this->table, $values);
-
-            $this->boot($this, 'created');
-            $this->booted($this, 'created');
-            $this->booting($this, 'created');
         } else {
             $this->boot($this, 'saving');
             $this->booted($this, 'saving');
             $this->booting($this, 'saving');
 
             $count = mysqly::update($this->table, $query_arr, $values, $this->operators, $this->or_ands);
-
-            $this->boot($this, 'saved');
-            $this->booted($this, 'saved');
-            $this->booting($this, 'saved');
         }
 
         if (!$model = mysqly::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
             $this->resetInstance();
             return false;
         }
+        $model = $model[0];
         $this->decryptValues($model);
-
         $this->resetInstance();
-        if ($should_fill)
-            return $this->fill($model[0], true);
 
-        return $model[0];
+        $model = $this->fill($model, true);
+
+        if ($create) {
+            $this->boot($model, 'created');
+            $this->booted($model, 'created');
+            $this->booting($model, 'created');
+        } else {
+            $this->boot($model, 'saved');
+            $this->booted($model, 'saved');
+            $this->booting($model, 'saved');
+        }
+
+        return $should_fill ? $model : $model->toArray($is_protected);
     }
 
     private function _where(string $column, string|null $operatorOrValue = null, $value = null, $boolean = "AND")
