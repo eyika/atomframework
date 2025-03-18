@@ -305,7 +305,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return int
      */
-    public function sum($column);
+    public function sum(string $column);
 
     /**
      * Given a column, return the string result of concatinating all values of that
@@ -314,7 +314,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return string
      */
-    public function group_concat($column);
+    public function group_concat(string $column);
     
     /**
      * Given a column, return the statistical variance population evaluation of all values of that
@@ -323,7 +323,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return int
      */
-    public function var_pop($column);
+    public function var_pop(string $column);
 
     /**
      * Given a column, return the standard deviation evaluation of all values of that
@@ -332,7 +332,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return int
      */
-    public function stddev($column);
+    public function stddev(string $column);
     
     /**
      * Given a column, return the bit_and evaluation of all values of that
@@ -341,7 +341,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return int
      */
-    public function bit_and($column);
+    public function bit_and(string $column);
 
     /**
      * Given a column, return the bit_or evaluation of all values of that
@@ -350,7 +350,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return int
      */
-    public function bit_or($column);
+    public function bit_or(string $column);
 
     /**
      * Given a column, return the bit_xor evaluation of all values of that
@@ -359,7 +359,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return int
      */
-    public function bit_xor($column);
+    public function bit_xor(string $column);
 
     /**
      * update a model
@@ -677,7 +677,7 @@ interface ModelInterface extends ModelEventsInterface
     public function rollback();
 
     /**
-     * rollback all changes made in the transaction chain
+     * specify that the query should return distinct results based on specified column
      * @param string $column
      * 
      * @return self

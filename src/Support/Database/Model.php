@@ -3,15 +3,89 @@
 namespace Eyika\Atom\Framework\Support\Database;
 // require_once __DIR__."/../libs/helpers.php"; May need to uncomment this
 
+use Exception;
+use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Concerns\DeepClonesSelf;
 use Eyika\Atom\Framework\Support\Database\Concerns\InitsModelEvents;
 use Eyika\Atom\Framework\Support\Database\Concerns\QueryBuilder;
 use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
 use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
 
+/**
+ * @method static self|bool create(array $values, bool $is_protected = true, array $select = [])
+ * @method static self|false find(int $id = 0, bool $is_protected = true)
+ * @method static self|false first($is_protected = true)
+ * @method static self|false findOr(int $id = 0, bool $is_protected = true, callable $callable = null)
+ * @method static self|false firstWhere(string $column, string|null $operatorOrValue = null, mixed $value = null, bool $is_protected = true)
+ * @method static self|false firstOrCreate(array $search, array $keyvalues, bool $is_protected = true, array $select = [])
+ * @method static self|false findBy(string $key, string $value, bool $is_protected = true, array $select = [])
+ * @method static self|false findByArray(array $keys, array $values, string $or_and = "AND", bool $is_protected = true, array $select = [])
+ * @method static array|false all(bool $is_protected = true, array $select = [])
+ * @method static array|false get(bool $is_protected = true, array $select = [])
+ * @method static self|false paginate(int $currentPage = null, int $recordsPerPage = null, bool $is_protected = true, array $select = [])
+ * @method static self|false random()
+ * @method static int count(string $column = '')
+ * @method static int avg(string $column)
+ * @method static int max(string $column)
+ * @method static int min(string $column)
+ * @method static int sum(string $column)
+ * @method static int var_pop(string $column)
+ * @method static int stddev(string $column)
+ * @method static int bit_and(string $column)
+ * @method static int first($is_protected = true)
+ * @method static int bit_xor(string $column)
+ * @method static string group_concat(string $column)
+ * @method static self|bool update($values, $id=0, $is_protected = true)
+ * @method static self|bool updateOrCreate($values, $id=0, $is_protected = true)
+ * @method static bool delete($id = 0)
+ * @method static self|bool restore($id = 0)
+ * @method static self limit($amount)
+ * @method static self offset($postion)
+ * @method static self where($column, $operatorOrValue = null, $value = null)
+ * @method static self whereIn($column, array $values)
+ * @method static self whereNotIn($column, array $values)
+ * @method static self whereLike($column, $value)
+ * @method static self whereNotLike($column, $value)
+ * @method static self whereLessThan($column, $value)
+ * @method static self whereGreaterThan($column, $value)
+ * @method static self whereLessThanOrEqual($column, $value)
+ * @method static self whereGreaterThanOrEqual($column, $value)
+ * @method static self whereNull($column)
+ * @method static self whereNotNull($column)
+ * @method static self whereEqual($column, $value)
+ * @method static self whereNotEqual($column, $value)
+ * @method static self orWhere($column, $operatorOrValue = null, $value = null)
+ * @method static self orWhereLike($column, $value)
+ * @method static self orWhereNotLike($column, $value)
+ * @method static self orWhereLessThan($column, $value)
+ * @method static self orWhereGreaterThan($column, $value)
+ * @method static self orWhereGreaterThanOrEqual($column, $value)
+ * @method static self orWhereEqual($column, $value)
+ * @method static self orWhereNotEqual($column, $value)
+ * @method static self orWhereNull($column)
+ * @method static self orWhereNotNull($column)
+ * @method static void beginTransaction()
+ * @method static void commit()
+ * @method static void rollback()
+ * @method static self distinct(string $column)
+ */
+
 abstract class Model implements ModelInterface
 {
     use QueryBuilder, InitsModelEvents, DeepClonesSelf;
+
+    protected const DYNAMIC_STATIC_METHODS = [
+        'create', 'find', 'first', 'firstOr', 'firstWhere', 'firstOrCreate', 'findBy',
+        'findByArray', 'all', 'get', 'paginate', 'random', 'count', 'avg', 'max', 'min',
+        'sum', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'first', 'group_concact', 'update',
+        'updateOrCreate', 'delete', 'restore', 'limit', 'offset', 'where', 'whereIn',
+        'whereNotIn', 'whereNotIn', 'whereLike', 'whereNotLike', 'whereLessThan',
+        'whereLessThanOrEqual', 'whereGreaterThanOrEqual', 'whereNull', 'whereNotNull',
+        'whereEqual', 'whereNotEqual', 'orWhere', 'orWhereLike', 'orWhereNotLike',
+        'orWhereLessThan', 'orWhereGreaterThan', 'orWhereGreaterThan', 'orWhereGreaterThanOrEqual',
+        'orWhereEqual', 'orWhereNotEqual', 'orWhereNull', 'orWhereNotNull', 'beginTransaction',
+        'commit', 'rollback', 'distinct'
+    ];
 
     /**
      * Create a new model instance.
@@ -22,5 +96,18 @@ abstract class Model implements ModelInterface
     public function __construct(array $values = [])
     {
         $this->prepareModel($values);
+    }
+
+    public static function __callStatic($name, $arguments): self
+    {
+        if (!method_exists(static, $name)) {
+            throw new Exception('method does not exist or not implemented');
+        }
+
+        if (Arr::exists(self::DYNAMIC_STATIC_METHODS, $name)) {
+            throw new Exception('method not supported by dynamic static calls');
+        }
+
+        return static::getBuilder()->{$name}($arguments);
     }
 }

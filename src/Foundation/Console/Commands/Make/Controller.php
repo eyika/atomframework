@@ -40,7 +40,7 @@ class Controller extends Command
 "<?php
 namespace App\Http\Controllers\\$api;
 
-use Eyika\Atom\Framework\Http\JsonResponse;
+use Eyika\Atom\Framework\Support\Facade\JsonResponse;
 use Eyika\Atom\Framework\Support\Validator;
 use Eyika\Atom\Framework\Http\Request;
 use App\Models\\$name;
