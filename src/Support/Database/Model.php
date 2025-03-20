@@ -32,7 +32,6 @@ use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
  * @method static int var_pop(string $column)
  * @method static int stddev(string $column)
  * @method static int bit_and(string $column)
- * @method static int first($is_protected = true)
  * @method static int bit_xor(string $column)
  * @method static string group_concat(string $column)
  * @method static self|bool update($values, $id=0, $is_protected = true)
@@ -77,7 +76,7 @@ abstract class Model implements ModelInterface
     protected const DYNAMIC_STATIC_METHODS = [
         'create', 'find', 'first', 'firstOr', 'firstWhere', 'firstOrCreate', 'findBy',
         'findByArray', 'all', 'get', 'paginate', 'random', 'count', 'avg', 'max', 'min',
-        'sum', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'first', 'group_concact', 'update',
+        'sum', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'group_concact', 'update',
         'updateOrCreate', 'delete', 'restore', 'limit', 'offset', 'where', 'whereIn',
         'whereNotIn', 'whereNotIn', 'whereLike', 'whereNotLike', 'whereLessThan',
         'whereLessThanOrEqual', 'whereGreaterThanOrEqual', 'whereNull', 'whereNotNull',
