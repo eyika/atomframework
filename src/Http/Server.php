@@ -21,7 +21,7 @@ class Server
     public static Application $app;
     protected const ignore_facades = ['console', 'app', 'application'];
     protected const facadables = [
-        'cache' => Cache::class,
+        // 'cache' => Cache::class,  // Already registered in Service Provider`
         'encrypter' => Encrypter::class,
         'file' => File::class,
         'request' => Request::class,
@@ -30,7 +30,7 @@ class Server
         'storage' => Storage::class,
         'response' => Response::class,
         'json_response' => JsonResponse::class,
-        'blade' => Blade::class
+        // 'blade' => Blade::class  // Already registered in Service Provider
     ];
 
     public function __construct(Application $app)

@@ -49,9 +49,9 @@ class Facade
      * 
      * @return Arrayable
      */
-    public static function pushDefaultAliases(array|null $aliases = null)
+    public static function pushDefaultAliases(array $aliases = [])
     {
-        static::$defaultAliases = is_null($aliases) ? new Arrayable([]) : static::$defaultAliases->merge($aliases);
+        static::$defaultAliases = isset(static::$defaultAliases) ? new Arrayable($aliases) : static::$defaultAliases->merge($aliases);
     }
 
     /**

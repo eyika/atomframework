@@ -60,9 +60,9 @@ abstract class Command implements ShouldLogMessages
     }
 
     // Method to get command line option
-    public function option($name): null|string
+    public function option($name, $default = null): null|string
     {
-        return $this->options[$name] ?? null;
+        return $this->options[$name] ?? $default;
     }
 
     // Method to get command line options

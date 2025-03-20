@@ -40,10 +40,10 @@ class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
 
     public function __construct()
     {
-        $this->loadCommands();
-        $this->loadProjectCommands();
-        // $this->loadLibrariesCommands();
-        $this->loadFacades();
+        // $this->loadCommands();
+        // $this->loadProjectCommands();
+        // // $this->loadLibrariesCommands();
+        // $this->loadFacades();
     }
 
     protected $status = false;
@@ -93,7 +93,7 @@ class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
     /**
      * Load all the defined commands into console kernel registry
      */
-    protected function loadCommands(string|null $fullPath = null, string|null $namespace = null, $base_folder = 'src')
+    public function loadCommands(string|null $fullPath = null, string|null $namespace = null, $base_folder = 'src')
     {
         try {
             $fullPath = $fullPath ?? base_path("vendor/eyika/atom-framework/src/Foundation/Console/Commands");
@@ -128,7 +128,7 @@ class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
     /**
      * Load all the defined project commands into console kernel registry
      */
-    protected function loadProjectCommands()
+    public function loadProjectCommands()
     {
         $this->loadCommands(base_path('app/Console/Commands'), project_namespace(), 'app');
     }
@@ -136,16 +136,16 @@ class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
     /**
      * Load all the defined third party commands into console kernel registry
      */
-    protected function loadLibrariesCommands()
-    {
-        throw new NotImplementedException('this method is not yet implemented');
-        $this->loadCommands(base_path('app/Console/Commands'), project_namespace(), 'app');
-    }
+    // protected function loadLibrariesCommands()
+    // {
+    //     throw new NotImplementedException('this method is not yet implemented');
+    //     $this->loadCommands(base_path('app/Console/Commands'), project_namespace(), 'app');
+    // }
 
     /**
      * Load all the needed facades into memory
      */
-    protected function loadFacades()
+    public function loadFacades()
     {
         try {
             $app = Facade::getFacadeApplication();

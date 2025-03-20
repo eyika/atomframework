@@ -15,6 +15,6 @@ class Console extends Facade
 {
     protected static function getFacadeAccessor()
     {
-        return ConsoleKernel::class;
+        return 'console.kernel';
     }
 }

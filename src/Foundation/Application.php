@@ -11,6 +11,9 @@ use Eyika\Atom\Framework\Support\NamespaceHelper;
 class Application implements ApplicationInterface
 {
     use ServiceContainer;
+
+    protected array $loadedProviders = [];
+
     public const GLOBAL_VARS = [ 
         'base_path' => 'base_path',
         'framework_namespace' => 'framework_namespace',
@@ -27,10 +30,47 @@ class Application implements ApplicationInterface
         $GLOBALS[self::GLOBAL_VARS['database_namespace']] = NamespaceHelper::getBaseNamespace("$basepath/composer.json", "database");
         $GLOBALS[self::GLOBAL_VARS['test_namespace']] = NamespaceHelper::getBaseNamespace("$basepath/composer.json", "test");
 
-        $dotenv = strtolower(PHP_OS_FAMILY) === 'windows' ? Dotenv::createImmutable(base_path()."\\") : Dotenv::createImmutable(base_path()."/");
+        // $dotenv = strtolower(PHP_OS_FAMILY) === 'windows' ? Dotenv::createImmutable(base_path()."\\") : Dotenv::createImmutable(base_path()."/");
+        $dotenv = Dotenv::createImmutable(base_path());
         $dotenv->load();
-        Facade::pushDefaultAliases();
+        $this->pushDefaultAliases();
         // $dotenv->required(['DB_USERNAME'])->notEmpty(); ///TODO: get required env keys from config if set
         // print_r($_ENV);
+
+        // Register all providers
+        $this->registerProviders();
+        $this->bootProviders();
+    }
+
+    private function pushDefaultAliases()
+    {
+        Facade::pushDefaultAliases([
+            
+        ]);
+    }
+
+    protected function registerProviders(): void
+    {
+        $providers = config('app.providers', []);
+
+        foreach ($providers as $provider) {
+            if (!isset($this->loadedProviders[$provider])) {
+                $instance = new $provider($this);
+                $instance->register();
+                $this->loadedProviders[$provider] = $instance;
+
+                // Automatically register facades
+                foreach ($instance->getFacades() as $alias => $class) {
+                    $this->instance($alias, new $class);
+                }
+            }
+        }
+    }
+
+    protected function bootProviders(): void
+    {
+        foreach ($this->loadedProviders as $provider) {
+            $provider->boot();
+        }
     }
 }

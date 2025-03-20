@@ -28,6 +28,11 @@ class Cache implements CacheInterface
         $this->initAdapter();
     }
 
+    public function instance(): self
+    {
+        return $this;
+    }
+
     public function getItem(string $key): CacheItem
     {
         return $this->cache_store->getItem($key);

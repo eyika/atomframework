@@ -14,6 +14,7 @@ use Eyika\Atom\Framework\Support\Cache\CacheItem;
  * @method static save($item)
  * @method static bool saveDeferred($item)
  * @method static bool commit()
+ * @method static self instance()
  */
 class Cache extends Facade
 {
