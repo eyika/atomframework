@@ -5,6 +5,7 @@ namespace Eyika\Atom\Framework\Foundation;
 use Dotenv\Dotenv;
 use Eyika\Atom\Framework\Foundation\Concerns\ServiceContainer;
 use Eyika\Atom\Framework\Foundation\Contracts\ApplicationInterface;
+use Eyika\Atom\Framework\Support\Arrayable;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\NamespaceHelper;
 
@@ -12,7 +13,7 @@ class Application implements ApplicationInterface
 {
     use ServiceContainer;
 
-    protected array $loadedProviders = [];
+    protected Arrayable $loadedProviders;
 
     public const GLOBAL_VARS = [ 
         'base_path' => 'base_path',
@@ -34,12 +35,9 @@ class Application implements ApplicationInterface
         $dotenv = Dotenv::createImmutable(base_path());
         $dotenv->load();
         $this->pushDefaultAliases();
+        $this->loadedProviders = new Arrayable();
         // $dotenv->required(['DB_USERNAME'])->notEmpty(); ///TODO: get required env keys from config if set
         // print_r($_ENV);
-
-        // Register all providers
-        $this->registerProviders();
-        $this->bootProviders();
     }
 
     private function pushDefaultAliases()
@@ -49,15 +47,27 @@ class Application implements ApplicationInterface
         ]);
     }
 
-    protected function registerProviders(): void
+    public function loadedProviders(): Arrayable
+    {
+        return $this->loadedProviders;
+    }
+
+    public function loadProvider(string $alias, ServiceProvider $provider){
+        $this->loadedProviders->push([$alias => $provider]);
+    }
+
+    public function registerProviders(): void
     {
         $providers = config('app.providers', []);
+        // print_r($providers);
 
         foreach ($providers as $provider) {
-            if (!isset($this->loadedProviders[$provider])) {
+            // echo "1".PHP_EOL;
+            if (!$this->loadedProviders()->keyExists($provider)) {
+                // echo $provider.PHP_EOL;
                 $instance = new $provider($this);
                 $instance->register();
-                $this->loadedProviders[$provider] = $instance;
+                $this->loadProvider($provider, $instance);
 
                 // Automatically register facades
                 foreach ($instance->getFacades() as $alias => $class) {
@@ -65,12 +75,17 @@ class Application implements ApplicationInterface
                 }
             }
         }
+
+        $this->bootProviders();
     }
 
     protected function bootProviders(): void
     {
-        foreach ($this->loadedProviders as $provider) {
-            $provider->boot();
-        }
+        $this->loadedProviders()->each(function (&$alias, &$instance) {
+            $instance->boot();
+        });
+        // foreach ($app->loadedProviders() as $provider) {
+        //     $provider->boot();
+        // }
     }
 }

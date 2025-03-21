@@ -12,6 +12,6 @@ class DbConnection extends Facade
 {
     protected static function getFacadeAccessor()
     {
-        return 'blade';
+        return 'db.connection';
     }
 }

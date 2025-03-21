@@ -64,7 +64,12 @@ abstract class Authenticator
     /**
      * Attempt to refresh the user's jwt token, should only be implemented by JwtBased Guards
      */
-    abstract public function refreshJwt(): ?AuthenticatableInterface;
+    abstract public function refreshJwt(): ?string;
+
+    /**
+     * Set remember me token cookie
+     */
+    abstract public function remember(AuthenticatableInterface $user): void;
 
     /**
      * Resolve the appropriate driver and validate credentials.

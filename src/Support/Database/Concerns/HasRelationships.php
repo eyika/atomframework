@@ -26,6 +26,7 @@ trait HasRelationships
             return $foreign_model;
         } catch (Exception $e) {
             logger()->error("got the following error: ".$e->getMessage(), $e->getTrace());
+            return null;
         }
     }
 
@@ -47,6 +48,7 @@ trait HasRelationships
             return $parent_model;
         } catch (Exception $e) {
             logger()->error("got the following error: ".$e->getMessage(), $e->getTrace());
+            return null;
         }
     }
 
@@ -73,6 +75,7 @@ trait HasRelationships
             return $foreign_models;
         } catch (Exception $e) {
             logger()->error("got the following error: ".$e->getMessage(), $e->getTrace());
+            return null;
         }
     }
 
@@ -94,6 +97,7 @@ trait HasRelationships
             return $parent_model;
         } catch (Exception $e) {
             logger()->error("got the following error: ".$e->getMessage(), $e->getTrace());
+            return null;
         }
     }
 

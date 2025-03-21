@@ -72,7 +72,7 @@ trait QueryBuilder
         return mysqly::exec($sql, $bind);
     }
 
-    public function create($values, $is_protected = true, $select = [])
+    public function _create($values, $is_protected = true, $select = [])
     {
         $this->fill($values);
 
@@ -87,7 +87,7 @@ trait QueryBuilder
         return true;
     }
 
-    public function find($id = 0, $is_protected = true)
+    public function _find($id = 0, $is_protected = true)
     {
         $query_arr = [];
         if ($id === 0 && isset($this->{$this->primaryKey})) {
@@ -231,7 +231,7 @@ trait QueryBuilder
         return $model;
     }
 
-    public function findOr($id = 0, $is_protected = true, $callable = null)
+    public function _findOr($id = 0, $is_protected = true, $callable = null)
     {
         if (!$model = $this->find($id, $is_protected)) {
             $model = $callable($id, $is_protected);
@@ -240,17 +240,17 @@ trait QueryBuilder
         return $model;
     }
 
-    public function first($is_protected = true)
+    public function _first($is_protected = true)
     {
         return $this->find(is_protected: $is_protected);
     }
 
-    public function firstWhere($column, $operatorOrValue = null, $value = null, $is_protected = true)
+    public function _firstWhere($column, $operatorOrValue = null, $value = null, $is_protected = true)
     {
         return $this->where($column, $operatorOrValue, $value)->first($is_protected);
     }
 
-    public function firstOrCreate($search, $keyvalues, $is_protected = true, $select = [])
+    public function _firstOrCreate($search, $keyvalues, $is_protected = true, $select = [])
     {
         if (!$model = $this->findByArray(array_keys($search), array_values($search), 'AND', $is_protected, $select)) {
             $model = $this->create($keyvalues, $is_protected, $select);
@@ -258,7 +258,7 @@ trait QueryBuilder
         return $model;
     }
 
-    public function firstOrNew()
+    public function _firstOrNew()
     {
         if ($this->isSaved()) {
             return $this;
@@ -266,7 +266,7 @@ trait QueryBuilder
         return $this->save();
     }
 
-    public function findBy($key, $value, $is_protected = true, $select = [])
+    public function _findBy($key, $value, $is_protected = true, $select = [])
     {
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
@@ -304,7 +304,7 @@ trait QueryBuilder
         // return $this->fetchRelationship($model[0], true, $is_protected);
     }
 
-    public function findByArray($keys, $values, $or_and = "AND", $is_protected = true, $select = [])
+    public function _findByArray($keys, $values, $or_and = "AND", $is_protected = true, $select = [])
     {
         if (count($keys) !== count($values)) {
             return false;
@@ -347,7 +347,7 @@ trait QueryBuilder
         // return $this->fetchRelationship($fields[0], true, $is_protected);
     }
 
-    public function all($is_protected = true, $select = [])
+    public function _all($is_protected = true, $select = [])
     {
         $query_arr = [];
         if ($this->bind_or_filter)
@@ -393,12 +393,12 @@ trait QueryBuilder
         return $this;
     }
 
-    public function get($is_protected = true, $select = [])
+    public function _get($is_protected = true, $select = [])
     {
         return $this->all($is_protected, $select);
     }
 
-    public function paginate($currentPage = null, $recordsPerPage = null, $is_protected = true, $select = [])
+    public function _paginate($currentPage = null, $recordsPerPage = null, $is_protected = true, $select = [])
     {
         $currentPage = $currentPage ?? 1;
         $recordsPerPage = $recordsPerPage ?? $this->recordsPerPage;
@@ -420,102 +420,102 @@ trait QueryBuilder
         return PaginatedData::init($data, $totalRecords, $recordsPerPage, $totalPages, $currentPage);
     }
 
-    public function random()
+    public function _random()
     {
-        $data = $this->_aggregate(method: 'random', reset_instance: false);
+        $data = $this->__aggregate(method: 'random', reset_instance: false);
 
         return $this->fetchRelationship($data);
     }
 
-    public function count($column = "*")
+    public function _count($column = "*")
     {
-        if (!$dat = $this->_aggregate($column)) {
+        if (!$dat = $this->__aggregate($column)) {
             return 0;
         }
         return $dat;
     }
 
-    public function avg($column)
+    public function _avg($column)
     {
-        if (!$dat = $this->_aggregate($column, 'avg')) {
+        if (!$dat = $this->__aggregate($column, 'avg')) {
             return 0;
         }
         return $dat;
     }
 
-    public function max($column)
+    public function _max($column)
     {
-        if (!$dat = $this->_aggregate($column, 'max')) {
+        if (!$dat = $this->__aggregate($column, 'max')) {
             return 0;
         }
         return $dat;
     }
     
-    public function min($column)
+    public function _min($column)
     {
-        if (!$dat = $this->_aggregate($column, 'min')) {
+        if (!$dat = $this->__aggregate($column, 'min')) {
             return 0;
         }
         return $dat;
     }
 
-    public function sum($column)
+    public function _sum($column)
     {
-        if (!$dat = $this->_aggregate($column, 'sum')) {
+        if (!$dat = $this->__aggregate($column, 'sum')) {
             return 0;
         }
         return $dat;
     }
 
-    public function group_concat($column)
+    public function _group_concat($column)
     {
-        if (!$dat = $this->_aggregate($column, 'group_concat')) {
+        if (!$dat = $this->__aggregate($column, 'group_concat')) {
             return '';
         }
         return $dat;
     }
     
-    public function var_pop($column)
+    public function _var_pop($column)
     {
-        if (!$dat = $this->_aggregate($column, 'var_pop')) {
+        if (!$dat = $this->__aggregate($column, 'var_pop')) {
             return 0;
         }
         return $dat;
     }
 
-    public function stddev($column)
+    public function _stddev($column)
     {
-        if (!$dat = $this->_aggregate($column, 'stddev')) {
+        if (!$dat = $this->__aggregate($column, 'stddev')) {
             return 0;
         }
         return $dat;
     }
     
-    public function bit_and($column)
+    public function _bit_and($column)
     {
-        if (!$dat = $this->_aggregate($column, 'bit_and')) {
+        if (!$dat = $this->__aggregate($column, 'bit_and')) {
             return 0;
         }
         return $dat;
     }
 
-    public function bit_or($column)
+    public function _bit_or($column)
     {
-        if (!$dat = $this->_aggregate($column, 'bit_or')) {
+        if (!$dat = $this->__aggregate($column, 'bit_or')) {
             return 0;
         }
         return $dat;
     }
 
-    public function bit_xor($column)
+    public function _bit_xor($column)
     {
-        if (!$dat = $this->_aggregate($column, 'bit_xor')) {
+        if (!$dat = $this->__aggregate($column, 'bit_xor')) {
             return 0;
         }
         return $dat;
     }
 
-    public function _aggregate($column = "*", $method = 'count', $reset_instance = true)
+    public function __aggregate($column = "*", $method = 'count', $reset_instance = true)
     {
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
@@ -541,17 +541,17 @@ trait QueryBuilder
         return $aggregate;
     }
 
-    public function update($values, $id=0, $is_protected = true)
+    public function _update($values, $id=0, $is_protected = true)
     {
-        return $this->_update($values, $id, is_protected: $is_protected);
+        return $this->__update($values, $id, is_protected: $is_protected);
     }
 
-    public function updateOrCreate($values, $id=0, $is_protected = true)
+    public function _updateOrCreate($values, $id=0, $is_protected = true)
     {
-        return $this->_update($values, $id, is_protected: $is_protected, create_if_not_exist: true);
+        return $this->__update($values, $id, is_protected: $is_protected, create_if_not_exist: true);
     }
 
-    public function delete($id = 0)
+    public function _delete($id = 0)
     {
         $id = $id > 0 ? $id : $this->{$this->primaryKey};
         
@@ -584,177 +584,177 @@ trait QueryBuilder
         return $val;
     }
 
-    public function restore($id = 0)
+    public function _restore($id = 0)
     {
         if (!$this->softdeletes) {
             throw new Exception("this model does not support soft deleting");
         }
         $id = $id > 0 ? $id : $this->{$this->primaryKey};
 
-        return $this->_update(['deleted_at', null], $id, true);
+        return $this->__update(['deleted_at', null], $id, true);
     }
 
-    public function limit($amount)
+    public function _limit($amount)
     {
         $this->bind_or_filter['LIMIT'] = $amount;
         return $this;
     }
 
-    public function offset($postion)
+    public function _offset($postion)
     {
         $this->bind_or_filter['OFFSET'] = $postion;
         return $this;
     }
 
-    public function where($column, $operatorOrValueOrMethod = null, $value = null)
+    public function _where($column, $operatorOrValueOrMethod = null, $value = null)
     {
-        return $this->_where($column, $operatorOrValueOrMethod, $value, 'AND');
+        return $this->__where($column, $operatorOrValueOrMethod, $value, 'AND');
     }
     
-    public function whereLike($column, $value)
+    public function _whereLike($column, $value)
     {
-        return $this->_where($column, 'LIKE', $value, 'AND');
+        return $this->__where($column, 'LIKE', $value, 'AND');
     }
     
-    public function whereIn($column, $values)
+    public function _whereIn($column, $values)
     {
-        return $this->_where($column, 'IN', $values, 'AND');
+        return $this->__where($column, 'IN', $values, 'AND');
     }
     
-    public function whereNotIn($column, $values)
+    public function _whereNotIn($column, $values)
     {
-        return $this->_where($column, 'NOT IN', $values, 'AND');
+        return $this->__where($column, 'NOT IN', $values, 'AND');
     }
 
-    public function whereNotLike($column, $value)
+    public function _whereNotLike($column, $value)
     {
-        return $this->_where($column, 'NOT LIKE', $value, 'AND');
+        return $this->__where($column, 'NOT LIKE', $value, 'AND');
     }
 
-    public function whereLessThan($column, $value)
+    public function _whereLessThan($column, $value)
     {
-        return $this->_where($column, '<', $value, 'AND');
+        return $this->__where($column, '<', $value, 'AND');
     }
 
-    public function whereGreaterThan($column, $value)
+    public function _whereGreaterThan($column, $value)
     {
-        return $this->_where($column, '>', $value, 'AND');
+        return $this->__where($column, '>', $value, 'AND');
     }
 
-    public function whereLessThanOrEqual($column, $value)
+    public function _whereLessThanOrEqual($column, $value)
     {
-        return $this->_where($column, '<=', $value, 'AND');
+        return $this->__where($column, '<=', $value, 'AND');
     }
 
-    public function whereGreaterThanOrEqual($column, $value)
+    public function _whereGreaterThanOrEqual($column, $value)
     {
-        return $this->_where($column, '>=', $value, 'AND');
+        return $this->__where($column, '>=', $value, 'AND');
     }
 
-    public function whereEqual($column, $value)
+    public function _whereEqual($column, $value)
     {
-        return $this->_where($column, '=', $value, 'AND');
+        return $this->__where($column, '=', $value, 'AND');
     }
 
-    public function whereNotEqual($column, $value)
+    public function _whereNotEqual($column, $value)
     {
-        return $this->_where($column, '!=', $value, 'AND');
+        return $this->__where($column, '!=', $value, 'AND');
     }
 
-    public function whereNull($column)
+    public function _whereNull($column)
     {
-        return $this->_where($column, 'IS NULL');
+        return $this->__where($column, 'IS NULL');
     }
 
-    public function whereNotNull($column)
+    public function _whereNotNull($column)
     {
-        return $this->_where($column, 'NOT NULL');
+        return $this->__where($column, 'NOT NULL');
     }
 
-    public function orWhere($column, $operatorOrValue = null, $value = null)
+    public function _orWhere($column, $operatorOrValue = null, $value = null)
     {
-        return $this->_where($column, $operatorOrValue, $value, 'OR');
+        return $this->__where($column, $operatorOrValue, $value, 'OR');
     }
     
-    public function orWhereIn($column, $values)
+    public function _orWhereIn($column, $values)
     {
-        return $this->_where($column, 'IN', $values, 'OR');
+        return $this->__where($column, 'IN', $values, 'OR');
     }
     
-    public function orWhereNotIn($column, $values)
+    public function _orWhereNotIn($column, $values)
     {
-        return $this->_where($column, 'NOT IN', $values, 'OR');
+        return $this->__where($column, 'NOT IN', $values, 'OR');
     }
 
-    public function orWhereLike($column, $value)
+    public function _orWhereLike($column, $value)
     {
-        return $this->_where($column, 'LIKE', $value, 'OR');
+        return $this->__where($column, 'LIKE', $value, 'OR');
     }
 
-    public function orWhereNotLike($column, $value)
+    public function _orWhereNotLike($column, $value)
     {
-        return $this->_where($column, 'NOT LIKE', $value, 'OR');
+        return $this->__where($column, 'NOT LIKE', $value, 'OR');
     }
     
-    public function orWhereLessThan($column, $value)
+    public function _orWhereLessThan($column, $value)
     {
-        return $this->_where($column, '<', $value, 'OR');
+        return $this->__where($column, '<', $value, 'OR');
     }
 
-    public function orWhereGreaterThan($column, $value)
+    public function _orWhereGreaterThan($column, $value)
     {
-        return $this->_where($column, '>', $value, 'OR');
+        return $this->__where($column, '>', $value, 'OR');
     }
 
-    public function orWhereLessThanOrEqual($column, $value)
+    public function _orWhereLessThanOrEqual($column, $value)
     {
-        return $this->_where($column, '<=', $value, 'OR');
+        return $this->__where($column, '<=', $value, 'OR');
     }
 
-    public function orWhereGreaterThanOrEqual($column, $value)
+    public function _orWhereGreaterThanOrEqual($column, $value)
     {
-        return $this->_where($column, '>=', $value, 'OR');
+        return $this->__where($column, '>=', $value, 'OR');
     }
 
-    public function orWhereEqual($column, $value)
+    public function _orWhereEqual($column, $value)
     {
-        return $this->_where($column, '=', $value, 'OR');
+        return $this->__where($column, '=', $value, 'OR');
     }
 
-    public function orWhereNotEqual($column, $value)
+    public function _orWhereNotEqual($column, $value)
     {
-        return $this->_where($column, '!=', $value, 'OR');
+        return $this->__where($column, '!=', $value, 'OR');
     }
 
-    public function orWhereNull($column)
+    public function _orWhereNull($column)
     {
-        return $this->_where($column, ' IS NULL', boolean: 'OR');
+        return $this->__where($column, ' IS NULL', boolean: 'OR');
     }
 
-    public function orWhereNotNull($column)
+    public function _orWhereNotNull($column)
     {
-        return $this->_where($column, 'NOT NULL', boolean: 'OR');
+        return $this->__where($column, 'NOT NULL', boolean: 'OR');
     }
 
-    public function beginTransaction()
+    public function _beginTransaction()
     {
         mysqly::beginTransaction();
         $this->transaction_mode = true;
     }
 
-    public function commit()
+    public function _commit()
     {
         mysqly::commit();
         $this->transaction_mode = false;
     }
 
-    public function rollback()
+    public function _rollback()
     {
         mysqly::rollback();
         $this->transaction_mode = false;
     }
 
-    public function distinct($column)
+    public function _distinct($column)
     {
         is_string($this->operators) ? $this->operators = ["DISTINCT `$column`"] : array_push($this->operators, "DISTINCT `$column`");
     }
@@ -771,7 +771,7 @@ trait QueryBuilder
      * 
      * @return self|bool|array
      */
-    private function _update(array $values, int $id=0, $internal = false, $is_protected = true, $should_fill = true, $create_if_not_exist = false)
+    private function __update(array $values, int $id=0, $internal = false, $is_protected = true, $should_fill = true, $create_if_not_exist = false)
     {
         $id = $id > 0 ? $id : $this->{$this->primaryKey};
         
@@ -827,7 +827,7 @@ trait QueryBuilder
         return $should_fill ? $model : $model->toArray($is_protected);
     }
 
-    private function _where(string $column, string|null $operatorOrValue = null, $value = null, $boolean = "AND")
+    private function __where(string $column, string|null $operatorOrValue = null, $value = null, $boolean = "AND")
     {
         $bind_or_filter = $this->bind_or_filter;
         if ($bind_or_filter != null) {
@@ -863,7 +863,7 @@ trait QueryBuilder
             if (array_key_exists('updated_at', $values) && empty($values['updated_at']))
                 $values['updated_at'] = Carbon::now();
 
-            $model = $this->_update($values, $this->{$this->primaryKey}, true, should_fill: false);
+            $model = $this->__update($values, $this->{$this->primaryKey}, true, should_fill: false);
             if (!$model)
                 return false;
 

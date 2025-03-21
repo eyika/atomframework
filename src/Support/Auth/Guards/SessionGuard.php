@@ -59,7 +59,7 @@ class SessionGuard extends Authenticator
         Response::setCookie('auth_remember', json_encode(['id' => $user->id]), time() + (86400 * 30), "/");
     }
 
-    public function refreshJwt(): ?AuthenticatableInterface
+    public function refreshJwt(): ?string
     {
         throw new NotImplementedException('Session guard does not implement the refresh token method');
     }

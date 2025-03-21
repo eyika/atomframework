@@ -29,7 +29,8 @@
         "aws/aws-sdk-php": "^3.323",
         "wildbit/postmark-php": "^6.0",
         "maximebf/debugbar": "^1.23",
-        "filp/whoops": "^2.16"
+        "filp/whoops": "^2.16",
+        "pusher/pusher-php-server": "^7.2"
     },
     "license": "MIT",
     "autoload": {

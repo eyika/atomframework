@@ -2,6 +2,8 @@
 
 namespace Eyika\Atom\Framework\Support\Database\Contracts;
 
+use Eyika\Atom\Framework\Support\Auth\User;
+use Eyika\Atom\Framework\Support\Database\Model;
 use Eyika\Atom\Framework\Support\Database\PaginatedData;
 
 interface ModelInterface extends ModelEventsInterface
@@ -69,7 +71,7 @@ interface ModelInterface extends ModelEventsInterface
     /**
      * Get a new querybuilder instance of the called class
      * 
-     * @return ModelInterface|ModelInterface&UserModelInterface
+     * @return Model|User
      */
     public static function getBuilder();
     /**
@@ -119,7 +121,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self|bool
      */
-    public function create($values, $is_protected = true, $select = []);
+    public function _create($values, $is_protected = true, $select = []);
 
     /**
      * save a model object to DB
@@ -135,7 +137,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self|false
      */
-    public function find($id = 0, $is_protected = true);
+    public function _find($id = 0, $is_protected = true);
 
     /**
      * Find a model by its id, execute the closure if not found
@@ -145,7 +147,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self|false
      */
-    public function findOr($id = 0, $is_protected = true, $callable = null);
+    public function _findOr($id = 0, $is_protected = true, $callable = null);
 
     /**
      * Alias of Find with no id provided
@@ -154,7 +156,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self|false
      */
-    public function first($is_protected = true);
+    public function _first($is_protected = true);
 
     /**
      * Retrieves the first of all results of a query
@@ -166,7 +168,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self|false
      */
-    public function firstWhere($column, $operatorOrValue = null, $value = null, $is_protected = true);
+    public function _firstWhere($column, $operatorOrValue = null, $value = null, $is_protected = true);
 
     /**
      * Retrieve model by key value or create it if it doesn't exist from array values
@@ -178,7 +180,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self|bool
      */
-    public function firstOrCreate($search, $keyvalues, $is_protected = true, $select = []);
+    public function _firstOrCreate($search, $keyvalues, $is_protected = true, $select = []);
 
     /**
      * Retrieve model its current values or instantiate it if it doesn't exist from array values
@@ -186,7 +188,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self|bool
      */
-    public function firstOrNew();
+    public function _firstOrNew();
 
     /**
      * Find a model by key and value
@@ -198,7 +200,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self|false
      */
-    public function findBy($key, $value, $is_protected = true, $select = []);
+    public function _findBy($key, $value, $is_protected = true, $select = []);
     
     /**
      * Find a model by a set of keys and values
@@ -211,7 +213,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self|false
      */
-    public function findByArray($keys, $values, $or_and = "AND", $is_protected = true, $select = []);
+    public function _findByArray($keys, $values, $or_and = "AND", $is_protected = true, $select = []);
 
     /**
      * Find all elements of a model
@@ -221,14 +223,14 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return array|false
      */
-    public function all($is_protected = true, $select = []);
+    public function _all($is_protected = true, $select = []);
 
     /**
      * Attach the related model to a model's query result
      * 
      * @param array<string>|string $models
      * 
-     * @return self
+     * @return Model|User
      */
 
     public function with($models);
@@ -242,7 +244,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return array|false
      */
-    public function get($is_protected = true, $select = []);
+    public function _get($is_protected = true, $select = []);
 
     /**
      * Return a paginated results for the current query
@@ -254,14 +256,14 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return PaginatedData|false
      */
-    public function paginate($currentPage = null, $recordsPerPage = null, $is_protected = true, $select = []);
+    public function _paginate($currentPage = null, $recordsPerPage = null, $is_protected = true, $select = []);
 
     /**
      * Return a random result from the current query
      * 
      * @return self|false;
      */
-    public function random();
+    public function _random();
 
     /**
      * Count total number of elements in a model from results of a query
@@ -269,7 +271,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return int
      */
-    public function count(string $column = '');
+    public function _count(string $column = '');
     
     /**
      * Given a column, return the avearage of all values of that
@@ -278,7 +280,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return int
      */
-    public function avg(string $column);
+    public function _avg(string $column);
     
     /**
      * Given a column, return the element in a model with greatest value of that
@@ -287,7 +289,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return int
      */
-    public function max(string $column);
+    public function _max(string $column);
         
     /**
      * Given a column, return the element in a model with smallest value of that
@@ -296,7 +298,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return int
      */
-    public function min(string $column);
+    public function _min(string $column);
 
     /**
      * Given a column, return the mathematical sum of all values of that
@@ -305,7 +307,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return int
      */
-    public function sum(string $column);
+    public function _sum(string $column);
 
     /**
      * Given a column, return the string result of concatinating all values of that
@@ -314,7 +316,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return string
      */
-    public function group_concat(string $column);
+    public function _group_concat(string $column);
     
     /**
      * Given a column, return the statistical variance population evaluation of all values of that
@@ -323,7 +325,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return int
      */
-    public function var_pop(string $column);
+    public function _var_pop(string $column);
 
     /**
      * Given a column, return the standard deviation evaluation of all values of that
@@ -332,7 +334,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return int
      */
-    public function stddev(string $column);
+    public function _stddev(string $column);
     
     /**
      * Given a column, return the bit_and evaluation of all values of that
@@ -341,7 +343,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return int
      */
-    public function bit_and(string $column);
+    public function _bit_and(string $column);
 
     /**
      * Given a column, return the bit_or evaluation of all values of that
@@ -350,7 +352,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return int
      */
-    public function bit_or(string $column);
+    public function _bit_or(string $column);
 
     /**
      * Given a column, return the bit_xor evaluation of all values of that
@@ -359,7 +361,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return int
      */
-    public function bit_xor(string $column);
+    public function _bit_xor(string $column);
 
     /**
      * update a model
@@ -370,7 +372,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self|bool
      */
-    public function update($values, $id=0, $is_protected = true);
+    public function _update($values, $id=0, $is_protected = true);
 
     /**
      * update a model
@@ -381,7 +383,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self|bool
      */
-    public function updateOrCreate($values, $id=0, $is_protected = true);
+    public function _updateOrCreate($values, $id=0, $is_protected = true);
 
     /**
      * update a model
@@ -389,7 +391,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return bool
      */
-    public function delete($id = 0);
+    public function _delete($id = 0);
 
     /**
      * restore a soft deleted model
@@ -399,7 +401,7 @@ interface ModelInterface extends ModelEventsInterface
      * @return self|bool
      * @throws Exception
      */
-    public function restore($id = 0);
+    public function _restore($id = 0);
 
     /**
      * limit the number results from a query
@@ -408,7 +410,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function limit($amount);
+    public function _limit($amount);
 
     /**
      * set the position of the first query result
@@ -417,7 +419,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function offset($postion);
+    public function _offset($postion);
 
     /**
      * Add a where clause to the query instance
@@ -428,7 +430,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function where($column, $operatorOrValue = null, $value = null);
+    public function _where($column, $operatorOrValue = null, $value = null);
     
     /**
      * Add a where clause to the query instance
@@ -438,7 +440,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function whereIn($column, array $values);
+    public function _whereIn($column, array $values);
     
     /**
      * Add a where clause to the query instance
@@ -448,7 +450,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function whereNotIn($column, array $values);
+    public function _whereNotIn($column, array $values);
     
     /**
      * Add a where clause to the query instance
@@ -458,7 +460,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function whereLike($column, $value);
+    public function _whereLike($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -468,7 +470,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function whereNotLike($column, $value);
+    public function _whereNotLike($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -478,7 +480,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function whereLessThan($column, $value);
+    public function _whereLessThan($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -488,7 +490,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function whereGreaterThan($column, $value);
+    public function _whereGreaterThan($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -498,7 +500,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function whereLessThanOrEqual($column, $value);
+    public function _whereLessThanOrEqual($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -508,7 +510,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function whereGreaterThanOrEqual($column, $value);
+    public function _whereGreaterThanOrEqual($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -517,7 +519,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function whereNull($column);
+    public function _whereNull($column);
 
     /**
      * Add a where clause to the query instance
@@ -526,17 +528,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function whereNotNull($column);
-
-    /**
-     * Add a where clause to the query instance
-     * 
-     * @param string $column
-     * @param mixed $value
-     * 
-     * @return self
-     */
-    public function whereEqual($column, $value);
+    public function _whereNotNull($column);
 
     /**
      * Add a where clause to the query instance
@@ -546,7 +538,17 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function whereNotEqual($column, $value);
+    public function _whereEqual($column, $value);
+
+    /**
+     * Add a where clause to the query instance
+     * 
+     * @param string $column
+     * @param mixed $value
+     * 
+     * @return self
+     */
+    public function _whereNotEqual($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -557,7 +559,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhere($column, $operatorOrValue = null, $value = null);
+    public function _orWhere($column, $operatorOrValue = null, $value = null);
 
     /**
      * Add a where clause to the query instance
@@ -567,7 +569,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhereLike($column, $value);
+    public function _orWhereLike($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -577,7 +579,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhereNotLike($column, $value);
+    public function _orWhereNotLike($column, $value);
     
     /**
      * Add a where clause to the query instance
@@ -587,7 +589,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhereLessThan($column, $value);
+    public function _orWhereLessThan($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -597,7 +599,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhereGreaterThan($column, $value);
+    public function _orWhereGreaterThan($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -607,7 +609,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhereLessThanOrEqual($column, $value);
+    public function _orWhereLessThanOrEqual($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -617,7 +619,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhereGreaterThanOrEqual($column, $value);
+    public function _orWhereGreaterThanOrEqual($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -627,7 +629,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhereEqual($column, $value);
+    public function _orWhereEqual($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -637,7 +639,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhereNotEqual($column, $value);
+    public function _orWhereNotEqual($column, $value);
 
     /**
      * Add an orWhereNull clause to the query instance
@@ -646,7 +648,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhereNull($column);
+    public function _orWhereNull($column);
 
     /**
      * Add an orWhereNotNull clause to the query instance
@@ -655,26 +657,26 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function orWhereNotNull($column);
+    public function _orWhereNotNull($column);
 
     /**
      * Begin a Transaction (all subsequent statements will be executed in that transaction)
      */
-    public function beginTransaction();
+    public function _beginTransaction();
 
     /**
      * commit all changes made in the transaction chain
      * 
      * @return void
      */
-    public function commit();
+    public function _commit();
 
     /**
      * rollback all changes made in the transaction chain
      * 
      * @return void
      */
-    public function rollback();
+    public function _rollback();
 
     /**
      * specify that the query should return distinct results based on specified column
@@ -682,5 +684,5 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return self
      */
-    public function distinct(string $column);
+    public function _distinct(string $column);
 }

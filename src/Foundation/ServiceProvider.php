@@ -60,7 +60,7 @@ abstract class ServiceProvider
     /**
      * Retrieve all publishable paths by tag.
      */
-    public function getPublishables(string $tag = null): array
+    public function getPublishables(string|null $tag = null): array
     {
         return $tag ? ($this->publishables[$tag] ?? []) : $this->publishables;
     }
@@ -68,7 +68,7 @@ abstract class ServiceProvider
     /**
      * Publish all registered assets.
      */
-    public static function publishAll(string|null $tag = null, string|null $providerClass, $force = false): bool
+    public static function publishAll(string|null $tag = null, string|null $providerClass = null, $force = false): bool
     {
         if (!empty($providerClass)) {
             return static::publishAssets($providerClass, $tag, $force);
@@ -77,9 +77,10 @@ abstract class ServiceProvider
         foreach (config('app.providers', []) as $providerClass) {
             static::publishAssets($providerClass, $tag, $force);
         }
+        return true;
     }
 
-    private function publishAssets(string $providerClass, $tag, $force): bool
+    public static function publishAssets(string $providerClass, $tag, $force): bool
     {
         $app = app();
         /** @var ServiceProvider $provider */

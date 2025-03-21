@@ -6,7 +6,7 @@ use Eyika\Atom\Framework\Support\Database\mysqly;
 
 trait UserAwareQueryBuilder
 {
-    public function findByUsername($name, $is_protected = true)
+    public function _findByUsername($name, $is_protected = true)
     {
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
@@ -32,7 +32,7 @@ trait UserAwareQueryBuilder
         return $this->fill($user[0], true);
     }
 
-    public function findByEmail(string $email, $is_protected = true)
+    public function _findByEmail(string $email, $is_protected = true)
     {
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 

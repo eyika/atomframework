@@ -11,7 +11,7 @@ interface UserModelInterface extends ModelInterface
      * 
      * @return false|UserModelInterface
      */
-    public function findByUsername($name, $is_protected = true);
+    public function _findByUsername($name, $is_protected = true);
 
     /**
      * Find a user by the email
@@ -20,5 +20,5 @@ interface UserModelInterface extends ModelInterface
      * 
      * @return false|UserModelInterface
      */
-    public function findByEmail(string $email, $is_protected = true);
+    public function _findByEmail(string $email, $is_protected = true);
 }

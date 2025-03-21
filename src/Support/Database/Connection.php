@@ -10,6 +10,7 @@ class Connection
 {
     protected PDO $pdo;
     protected array $config;
+    protected string $driver;
 
     public function __construct(array $config)
     {
@@ -23,11 +24,12 @@ class Connection
     public function connect(): self
     {
         try {
+            $this->driver = $this->config['default'];
             $dsn = $this->getDsn();
             $this->pdo = new PDO(
                 $dsn,
-                $this->config['username'] ?? null,
-                $this->config['password'] ?? null,
+                $this->config['connections'][$this->driver]['username'] ?? null,
+                $this->config['connections'][$this->driver]['password'] ?? null,
                 $this->getOptions()
             );
         } catch (PDOException $e) {
@@ -47,12 +49,16 @@ class Connection
      */
     protected function getDsn(): string
     {
-        return match ($this->config['driver']) {
-            'mysql' => "mysql:host={$this->config['host']};dbname={$this->config['database']};charset={$this->config['charset']}",
-            'sqlite' => "sqlite:{$this->config['database']}",
-            'pgsql' => "pgsql:host={$this->config['host']};dbname={$this->config['database']};",
-            'sqlsrv' => "sqlsrv:Server={$this->config['host']};Database={$this->config['database']}",
-            default => throw new Exception("Unsupported database driver: {$this->config['driver']}"),
+        $host = $this->config['connections'][$this->driver]['host'];
+        $database = $this->config['connections'][$this->driver]['database'];
+        $charset = $this->config['connections'][$this->driver]['charset'];
+
+        return match ($this->driver) {
+            'mysql' => "mysql:host={$host};dbname={$database};charset={$charset}",
+            'sqlite' => "sqlite:{$database}",
+            'pgsql' => "pgsql:host={$host};dbname={$database};",
+            'sqlsrv' => "sqlsrv:Server={$host};Database={$database}",
+            default => throw new Exception("Unsupported database driver: {$this->config['connections'][$this->driver]['driver']}"),
         };
     }
 

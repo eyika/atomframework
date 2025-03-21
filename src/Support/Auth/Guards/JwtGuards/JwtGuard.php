@@ -59,13 +59,18 @@ class JwtGuard extends Authenticator
         return $user;
     }
 
-    public function refreshJwt(): ?AuthenticatableInterface
+    public function refreshJwt(): ?string
     {
         if (!$user = $this->user()) {
             return null;
         }
         $jwt = $this->generateJwt($user);
         return $jwt;
+    }
+
+    public function remember(AuthenticatableInterface $user): void
+    {
+        throw new NotImplementedException('Jwt guard does not implement the remember method');
     }
 
     /**

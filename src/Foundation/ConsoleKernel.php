@@ -44,6 +44,10 @@ class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
         // $this->loadProjectCommands();
         // // $this->loadLibrariesCommands();
         // $this->loadFacades();
+
+        // Register all providers
+        // $this->registerProviders();
+        // $this->bootProviders();
     }
 
     protected $status = false;
@@ -67,6 +71,7 @@ class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
 
     public function run(string $signature, array $arguments = [], bool $requireConsoleRoute = true)
     {
+        app()->registerProviders();
         //Load console route command definitions into $commands array
         if ($requireConsoleRoute)
             require base_path('routes/console.php');

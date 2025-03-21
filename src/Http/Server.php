@@ -3,17 +3,14 @@
 namespace Eyika\Atom\Framework\Http;
 
 use Exception;
-use Eyika\Atom\Framework\Exceptions\ErrorHandler;
 use Eyika\Atom\Framework\Foundation\Application;
 use Eyika\Atom\Framework\Foundation\Console\Scheduler;
 use Eyika\Atom\Framework\Foundation\Contracts\ExceptionHandler;
 use Eyika\Atom\Framework\Foundation\Contracts\Kernel;
-use Eyika\Atom\Framework\Support\Cache\Cache;
 use Eyika\Atom\Framework\Support\Encrypter;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\Storage\File;
 use Eyika\Atom\Framework\Support\Storage\Storage;
-use Eyika\Atom\Framework\Support\View\Blade;
 use Throwable;
 
 class Server
@@ -45,6 +42,7 @@ class Server
     public static function handle(): bool
     {
         try {
+            static::$app->registerProviders();
             // ErrorHandler::register();
             $request = static::$app->make('request');
             static::$app->instance('request', $request);

@@ -1,6 +1,9 @@
 <?php
 
-namespace Eyika\Atom\Framework\Foundation\Events;
+namespace Eyika\Atom\Framework\Foundation\Event;
+
+use Eyika\Atom\Framework\Broadcasting\Contracts\ShouldBroadcast;
+use Eyika\Atom\Framework\Support\Facade\Broadcast;
 
 class Dispatcher
 {
@@ -36,7 +39,9 @@ class Dispatcher
         }
 
         foreach ($this->listeners[$eventName] as $listener) {
-            if (is_callable($listener)) {
+            if ($event instanceof ShouldBroadcast) {
+                Broadcast::driver()->broadcast($event->broadcastOn(), get_class($event), get_object_vars($event));
+            } elseif (is_callable($listener)) {
                 $listener($event);
             } elseif (class_exists($listener)) {
                 (new $listener())->handle($event);

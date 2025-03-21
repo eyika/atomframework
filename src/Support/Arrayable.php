@@ -169,12 +169,22 @@ class Arrayable implements ArrayAccess
      * Determine if the given key exists in the Arrayble instance.
      *
      * @param  string|int  $key
-     * @param  bool $use_values
      * @return bool
      */
     public function keyExists($key)
     {
         return Arr::keyExists($this->data, $key);
+    }
+
+    /**
+     * Determine if the given key exists in the Arrayble instance.
+     *
+     * @param  string|int  $key
+     * @return bool
+     */
+    public function keyNotExists($key)
+    {
+        return !$this->keyExists($key);
     }
 
     /**
@@ -557,4 +567,3 @@ class Arrayable implements ArrayAccess
         return $this->data;
     }
 }
-    

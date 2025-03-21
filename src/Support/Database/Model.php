@@ -5,15 +5,17 @@ namespace Eyika\Atom\Framework\Support\Database;
 
 use Exception;
 use Eyika\Atom\Framework\Support\Arr;
+use Eyika\Atom\Framework\Support\Auth\User;
 use Eyika\Atom\Framework\Support\Concerns\DeepClonesSelf;
 use Eyika\Atom\Framework\Support\Database\Concerns\InitsModelEvents;
 use Eyika\Atom\Framework\Support\Database\Concerns\QueryBuilder;
 use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
-use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
 
 /**
  * @method static self|bool create(array $values, bool $is_protected = true, array $select = [])
  * @method static self|false find(int $id = 0, bool $is_protected = true)
+ * @method static User|false findByUsername($name, $is_protected = true)
+ * @method static User|false findByEmail(string $email, $is_protected = true)
  * @method static self|false first($is_protected = true)
  * @method static self|false findOr(int $id = 0, bool $is_protected = true, callable $callable = null)
  * @method static self|false firstWhere(string $column, string|null $operatorOrValue = null, mixed $value = null, bool $is_protected = true)
@@ -74,7 +76,7 @@ abstract class Model implements ModelInterface
     use QueryBuilder, InitsModelEvents, DeepClonesSelf;
 
     protected const DYNAMIC_STATIC_METHODS = [
-        'create', 'find', 'first', 'firstOr', 'firstWhere', 'firstOrCreate', 'findBy',
+        'create', 'find', '_findByEmail', '_findByUsername', 'findOr', 'first', 'firstOr', 'firstWhere', 'firstOrCreate', 'findBy',
         'findByArray', 'all', 'get', 'paginate', 'random', 'count', 'avg', 'max', 'min',
         'sum', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'group_concact', 'update',
         'updateOrCreate', 'delete', 'restore', 'limit', 'offset', 'where', 'whereIn',
@@ -97,16 +99,35 @@ abstract class Model implements ModelInterface
         $this->prepareModel($values);
     }
 
-    public static function __callStatic($name, $arguments): self
+    public function __call($name, $arguments)
     {
-        if (!method_exists(static, $name)) {
-            throw new Exception('method does not exist or not implemented');
+        // Map instance calls from where() to _where()
+        $realMethod = method_exists($this, "_{$name}") ? "_{$name}" : $name;
+
+        if (!method_exists($this, $realMethod)) {
+            throw new Exception("Method '{$name}' does not exist on instance.");
         }
 
-        if (Arr::exists(self::DYNAMIC_STATIC_METHODS, $name)) {
-            throw new Exception('method not supported by dynamic static calls');
-        }
-
-        return static::getBuilder()->{$name}($arguments);
+        return $this->$realMethod(...$arguments);
     }
+
+    public static function __callStatic($name, $arguments)
+    {
+        if (!in_array($name, self::DYNAMIC_STATIC_METHODS, true)) {
+            throw new Exception("Method '{$name}' does not exist or is not supported by dynamic static calls.");
+        }
+
+        // Create a new instance of the model
+        $instance = new static();
+    
+        // Map static calls to the renamed method
+        $realMethod = method_exists($instance, "_{$name}") ? "_{$name}" : $name;
+
+        // Ensure the method exists in the QueryBuilder trait
+        if (method_exists($instance, $realMethod)) {
+            return $instance->$realMethod(...$arguments);
+        }
+    
+        throw new Exception("Method '{$name}' does not exist.");
+    }    
 }

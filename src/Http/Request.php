@@ -7,6 +7,7 @@ use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Arrayable;
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
+use Eyika\Atom\Framework\Support\Auth\User;
 use Eyika\Atom\Framework\Support\Facade\Session as FacadeSession;
 use Eyika\Atom\Framework\Support\Storage\File;
 use Eyika\Atom\Framework\Support\Storage\FileUploadProperties;
@@ -36,7 +37,7 @@ class Request
     protected Session $session;
     protected bool $isAssetRequest;
 
-    public AuthenticatableInterface $auth_user;
+    public AuthenticatableInterface|User $auth_user;
 
     public function __construct()
     {

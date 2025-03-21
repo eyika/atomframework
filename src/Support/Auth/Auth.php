@@ -82,7 +82,7 @@ final class Auth
     /**
      * Get the authenticated user.
      */
-    public static function user(): ?AuthenticatableInterface
+    public static function user(): null|AuthenticatableInterface|User
     {
         if (!isset(static::$user)) {
             $guard = static::guard();

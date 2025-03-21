@@ -51,7 +51,7 @@ class TokenGuard extends Authenticator
         throw new NotImplementedException('Remember functionality not applicable to token-based guards');
     }
 
-    public function refreshJwt(): ?AuthenticatableInterface
+    public function refreshJwt(): ?string
     {
         throw new NotImplementedException('Static token guard does not implement the refresh token method');
     }
