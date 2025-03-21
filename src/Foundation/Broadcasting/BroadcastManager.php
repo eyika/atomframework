@@ -8,11 +8,13 @@ use Eyika\Atom\Framework\Broadcasting\Drivers\PusherBroadcaster;
 use Eyika\Atom\Framework\Foundation\Broadcasting\Contracts\BroadcastInterface;
 use InvalidArgumentException;
 
-class BroadcastManager
+class BroadcastManager implements BroadcastInterface
 {
     protected $app;
     /** @property BroadcastInterface[] $drivers */
     protected $drivers = [];
+
+    protected static ?BroadcastInterface $driver = null;
 
     protected static array $channels = [];
 
@@ -30,6 +32,15 @@ class BroadcastManager
         }
 
         return $this->drivers[$name];
+    }
+
+    public function broadcast(array $channels, $event, array $payload = [])
+    {
+        if (!$this->driver) {
+            $this->driver();
+            // throw new \Exception("Broadcast driver not set.");
+        }
+        $this->driver->broadcast($channels, $event, $payload);
     }
 
     protected function resolve($name)
