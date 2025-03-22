@@ -1,7 +1,7 @@
 <?php
 namespace Eyika\Atom\Framework\Support\Storage;
 
-use Eyika\Atom\Framework\Support\Database\mysqly;
+use Eyika\Atom\Framework\Support\Database\Connection;
 use Eyika\Atom\Framework\Support\Storage\Contracts\StorageInterface;
 use Hybridauth\Exception\RuntimeException;
 
@@ -41,7 +41,7 @@ class DbStorage implements StorageInterface
     {
         $key = $this->keyPrefix . strtolower($key);
 
-        $value = mysqly::get($key, $this->storeNamespace);
+        $value = Connection::get($key, $this->storeNamespace);
 
         if (isset($value)) {
             if (is_array($value) && array_key_exists('lateObject', $value)) {
@@ -66,7 +66,7 @@ class DbStorage implements StorageInterface
             $value = ['lateObject' => serialize($value)];
         }
 
-        mysqly::set($key, $value, $this->storeNamespace);
+        Connection::set($key, $value, $this->storeNamespace);
         // $_SESSION[$this->storeNamespace][$key] = $value;
     }
 
@@ -75,7 +75,7 @@ class DbStorage implements StorageInterface
      */
     public function clear()
     {
-        mysqly::clear($this->storeNamespace);
+        Connection::clear($this->storeNamespace);
     }
 
     /**
@@ -85,7 +85,7 @@ class DbStorage implements StorageInterface
     {
         $key = $this->keyPrefix . strtolower($key);
 
-        mysqly::unset($key, $this->storeNamespace);
+        Connection::unset($key, $this->storeNamespace);
         // if (isset($_SESSION[$this->storeNamespace], $_SESSION[$this->storeNamespace][$key])) {
         //     $tmp = $_SESSION[$this->storeNamespace];
 
@@ -102,7 +102,7 @@ class DbStorage implements StorageInterface
     {
         $key = $this->keyPrefix . strtolower($key);
 
-        mysqly::unset($key, $this->storeNamespace);
+        Connection::unset($key, $this->storeNamespace);
         // if (isset($_SESSION[$this->storeNamespace]) && count($_SESSION[$this->storeNamespace])) {
         //     $tmp = $_SESSION[$this->storeNamespace];
 

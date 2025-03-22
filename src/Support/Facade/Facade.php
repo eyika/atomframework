@@ -30,6 +30,13 @@ class Facade
     protected static $cached = true;
 
     /**
+     * Indicates if the base class should be called statically if a service method could not be resolved.
+     *
+     * @var bool
+     */
+    protected static $callStaticIfServiceMethodNotFound = false;
+
+    /**
      * Keeps track of the default aliases for resolving classes.
      */
     protected static Arrayable $defaultAliases;
@@ -153,7 +160,12 @@ class Facade
             $instance = static::$app->make($accessor);
 
         if (!method_exists($instance, $method)) {
-            throw new BaseException("Method $method does not exist on the underlying service $accessor.");
+            if (static::$callStaticIfServiceMethodNotFound) {
+                $baseclass = $instance->get_class();
+                return $baseclass::__callStatic($method, $arguments);
+            } else {
+                throw new BaseException("Method $method does not exist on the underlying service $accessor.");
+            }
         }
 
         return $instance->$method(...$arguments);

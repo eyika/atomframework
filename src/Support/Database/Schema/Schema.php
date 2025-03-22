@@ -1,7 +1,7 @@
 <?php
 namespace Eyika\Atom\Framework\Support\Database\Schema;
 
-use Eyika\Atom\Framework\Support\Database\mysqly;
+use Eyika\Atom\Framework\Support\Database\Connection;
 
 class Schema
 {
@@ -17,7 +17,7 @@ class Schema
         $blueprint = new Blueprint($table);
         $callback($blueprint);
         $sql = $blueprint->toSql();
-        mysqly::exec($sql);
+        Connection::exec($sql);
     }
 
     /**
@@ -28,7 +28,7 @@ class Schema
      */
     public static function dropIfExists(string $table): void
     {
-        mysqly::exec((new Blueprint($table))->rollback());
+        Connection::exec((new Blueprint($table))->rollback());
     }
 
     /**
@@ -40,7 +40,7 @@ class Schema
     public static function hasTable(string $table): bool
     {
         $sql = "SHOW TABLES LIKE :table";
-        $statement = mysqly::exec($sql, [':table' => $table]);
+        $statement = Connection::exec($sql, [':table' => $table]);
         return $statement->rowCount() > 0;
     }
 
@@ -56,6 +56,6 @@ class Schema
         $blueprint = new Blueprint($table, true);
         $callback($blueprint);
         $sql = $blueprint->toSql();
-        mysqly::exec($sql);
+        Connection::exec($sql);
     }
 }

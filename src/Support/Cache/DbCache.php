@@ -3,7 +3,7 @@
 namespace Eyika\Atom\Framework\Support\Cache;
 
 use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
-use Eyika\Atom\Framework\Support\Database\mysqly;
+use Eyika\Atom\Framework\Support\Database\Connection;
 use Psr\Cache\CacheItemInterface;
 use Psr\Cache\InvalidArgumentException;
 
@@ -26,7 +26,7 @@ class DbCache implements CacheInterface
      */
     public function getItem($key): CacheItem
     {
-        $value = mysqly::cache($key, table: $this->table);
+        $value = Connection::cache($key, table: $this->table);
         return new CacheItem($key, $value, $value !== null);
     }
 
@@ -51,7 +51,7 @@ class DbCache implements CacheInterface
      */
     public function hasItem(string $key): bool
     {
-        return mysqly::cache($key, table: $this->table) ? true : false;
+        return Connection::cache($key, table: $this->table) ? true : false;
     }
 
     /**
@@ -59,7 +59,7 @@ class DbCache implements CacheInterface
      */
     public function clear(): bool
     {
-        return mysqly::clear_cache($this->table);
+        return Connection::clear_cache($this->table);
     }
 
     /**
@@ -67,7 +67,7 @@ class DbCache implements CacheInterface
      */
     public function deleteItem(string $key): bool
     {
-        return mysqly::uncache($key, $this->table);
+        return Connection::uncache($key, $this->table);
     }
 
     /**
@@ -87,7 +87,7 @@ class DbCache implements CacheInterface
      */
     public function save($item): bool
     {
-        return mysqly::cache($item->getKey(), $item->get(), $item->getExpiration(), $this->table) ? true : false;
+        return Connection::cache($item->getKey(), $item->get(), $item->getExpiration(), $this->table) ? true : false;
     }
 
     /**

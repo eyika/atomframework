@@ -3,17 +3,19 @@
 use DebugBar\JavascriptRenderer;
 use DebugBar\StandardDebugBar;
 use Eyika\Atom\Framework\Foundation\Console\ConsoleColorizer;
+use Eyika\Atom\Framework\Foundation\Event\Dispatcher;
 use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\Route;
 use Eyika\Atom\Framework\Support\Auth\Auth;
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
+use Eyika\Atom\Framework\Support\Auth\User;
 use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
 use Eyika\Atom\Framework\Support\Collections\Collection;
-use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
-use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
 use Eyika\Atom\Framework\Support\Database\DB;
+use Eyika\Atom\Framework\Support\Database\Model;
 use Eyika\Atom\Framework\Support\Database\PaginatedData;
 use Eyika\Atom\Framework\Support\Encrypter;
+use Eyika\Atom\Framework\Support\Facade\Broadcast;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\Facade\JsonResponse;
 use Eyika\Atom\Framework\Support\Facade\Request;
@@ -91,7 +93,7 @@ if (! function_exists("app")) {
 }
 
 if (! function_exists('paginate')) {
-    function paginate(array $data, ModelInterface|UserModelInterface $model, $currentPage = PaginatedData::currentPage, $recordsPerPage = PaginatedData::recordsPerPage)
+    function paginate(array $data, Model|User $model, $currentPage = PaginatedData::currentPage, $recordsPerPage = PaginatedData::recordsPerPage)
     {
         $currentPage = $currentPage;
         $recordsPerPage = $recordsPerPage;
@@ -771,5 +773,21 @@ if (!function_exists('getCallableName')) {
         }
     
         throw new InvalidArgumentException('Unsupported callable type.');
+    }
+}
+
+if (!function_exists('event')) {
+    function event($event)
+    {
+        $dispatcher = app('events');
+        /** @var Dispatcher $dispatcher */
+        $dispatcher->dispatch($event);
+    }
+}
+
+if (!function_exists('broadcast')) {
+    function broadcast(array $channels, $event, array $payload = [])
+    {
+        Broadcast::broadcast($channels, $event, $payload);
     }
 }

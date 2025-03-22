@@ -39,12 +39,14 @@ class Dispatcher
         }
 
         foreach ($this->listeners[$eventName] as $listener) {
-            if ($event instanceof ShouldBroadcast) {
-                Broadcast::driver()->broadcast($event->broadcastOn(), get_class($event), get_object_vars($event));
-            } elseif (is_callable($listener)) {
+            if (is_callable($listener)) {
                 $listener($event);
             } elseif (class_exists($listener)) {
                 (new $listener())->handle($event);
+            }
+
+            if ($event instanceof ShouldBroadcast) {
+                Broadcast::broadcast($event->broadcastOn(), get_class($event), get_object_vars($event));
             }
         }
     }

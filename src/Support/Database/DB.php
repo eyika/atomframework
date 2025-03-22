@@ -39,7 +39,7 @@ class DB
 
     public static function beginTransaction()
     {
-        mysqly::beginTransaction();
+        Connection::beginTransaction();
         $_SESSION['transaction_mode'] = true;
 
         if (! self::$instantiated)
@@ -48,7 +48,7 @@ class DB
 
     public static function commit()
     {
-        mysqly::commit();
+        Connection::commit();
         $_SESSION['transaction_mode'] = false;
 
         if (! self::$instantiated)
@@ -57,7 +57,7 @@ class DB
 
     public static function rollback()
     {
-        mysqly::rollback();
+        Connection::rollback();
         $_SESSION['transaction_mode'] = false;
 
         if (! self::$instantiated)
@@ -66,14 +66,14 @@ class DB
 
     public static function statement(string $stmt)
     {
-        $stat = mysqly::exec($stmt);
+        $stat = Connection::exec($stmt);
 
         return $stat !== false;
     }
 
     public static function select(string $select_stmt)
     {
-        $statement = mysqly::exec($select_stmt);
+        $statement = Connection::exec($select_stmt);
 
         return $statement->fetchAll();
     }
@@ -95,7 +95,7 @@ class DB
 
     public function raw(string $sql, $bind)
     {
-        return mysqly::exec($sql, $bind);
+        return Connection::exec($sql, $bind);
     }
 
     public function create(array $values, array|string $select = '*')
@@ -106,7 +106,7 @@ class DB
         
         $fields = $select;
 
-        if (!$model = mysqly::fetch(static::$table, ['id' => $id], $fields)) {
+        if (!$model = Connection::fetch(static::$table, ['id' => $id], $fields)) {
             return true;
         };
 
@@ -115,7 +115,7 @@ class DB
 
     public function insert(array $values)
     {
-        if (!$id = mysqly::insert(static::$table, $values)) {
+        if (!$id = Connection::insert(static::$table, $values)) {
             return false;
         }
         return $id;
@@ -151,7 +151,7 @@ class DB
         if ($id && $id > 0)
             $query_arr['id'] = $id;
 
-        if (!$model = mysqly::fetch(static::$table, $query_arr, $fields, static::$operators, static::$or_ands)) {
+        if (!$model = Connection::fetch(static::$table, $query_arr, $fields, static::$operators, static::$or_ands)) {
             static::resetInstance();
             return false;
         }
@@ -184,7 +184,7 @@ class DB
     
         $fields = $select;
 
-        if (!$model = mysqly::fetch(static::$table, $query_arr, $fields, static::$operators, static::$or_ands)) {
+        if (!$model = Connection::fetch(static::$table, $query_arr, $fields, static::$operators, static::$or_ands)) {
             static::resetInstance();
             return false;
         }
@@ -205,7 +205,7 @@ class DB
             is_string(static::$or_ands) ? static::$or_ands = [$or_and] : array_push(static::$or_ands, $or_and);
         }
         
-        if (!$fields = mysqly::fetch(static::$table, $query_arr, $select)) {
+        if (!$fields = Connection::fetch(static::$table, $query_arr, $select)) {
             return false;
         }
         return $fields;
@@ -220,7 +220,7 @@ class DB
         if (static::$order !== "")
             $query_arr['order_by'] = static::$order;
 
-        if (!$fields = mysqly::fetch(static::$table, $query_arr, $select, static::$operators, static::$or_ands)) {
+        if (!$fields = Connection::fetch(static::$table, $query_arr, $select, static::$operators, static::$or_ands)) {
             static::resetInstance();
             return false;
         }
@@ -275,7 +275,7 @@ class DB
     //     //     $i++;
     //     // }
 
-    //     if (!$count = mysqly::count(static::$table, $query_arr, static::$operators, static::$or_ands)) {
+    //     if (!$count = Connection::count(static::$table, $query_arr, static::$operators, static::$or_ands)) {
     //         if ($reset_instance)
     //             static::resetInstance();
     //         return false;
@@ -392,7 +392,7 @@ class DB
 
         $method = $method == 'count' ? $method : $method."_".$column;
 
-        if (!$aggregate = mysqly::{$method}(static::$table, $query_arr, static::$operators, static::$or_ands)) {
+        if (!$aggregate = Connection::{$method}(static::$table, $query_arr, static::$operators, static::$or_ands)) {
             if ($reset_instance)
                 static::resetInstance();
             return false;
@@ -413,7 +413,7 @@ class DB
         $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
         $operators = static::$operators;
 
-        return mysqly::increment($column, static::$table, $query_arr, $operators, static::$or_ands, $step);
+        return Connection::increment($column, static::$table, $query_arr, $operators, static::$or_ands, $step);
     }
 
     public function delete(int|null $id = null)
@@ -423,7 +423,7 @@ class DB
         if ($id !== 0 && count($query_arr) < 1)
             $query_arr['id'] = $id;
 
-        $val = mysqly::remove(static::$table, $query_arr, static::$operators, static::$or_ands);
+        $val = Connection::remove(static::$table, $query_arr, static::$operators, static::$or_ands);
         static::resetInstance();
         return $val;
     }
@@ -574,9 +574,9 @@ class DB
         if ($id)
             $query_arr['id'] = $id;
 
-        $count = mysqly::update(static::$table, $query_arr, $values, static::$operators, static::$or_ands);
+        $count = Connection::update(static::$table, $query_arr, $values, static::$operators, static::$or_ands);
 
-        if (!$model = mysqly::fetch(static::$table, $query_arr, $fields, static::$operators, static::$or_ands)) {
+        if (!$model = Connection::fetch(static::$table, $query_arr, $fields, static::$operators, static::$or_ands)) {
             static::resetInstance();
             return false;
         }
