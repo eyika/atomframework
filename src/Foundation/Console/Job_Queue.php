@@ -474,6 +474,7 @@ class Job_Queue
 				return $job->getData();
 			break;
 		}
+		return '';
 	}
 
 	/**

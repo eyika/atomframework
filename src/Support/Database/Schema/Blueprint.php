@@ -88,6 +88,11 @@ class Blueprint
         return $this->addColumn('BLOB', $name);
     }
 
+    public function blob(string $name): ColumnDefinition
+    {
+        return $this->binary($name);
+    }
+
     public function enum(string $name, array $values): ColumnDefinition
     {
         return $this->addColumn("ENUM", $name, $values);

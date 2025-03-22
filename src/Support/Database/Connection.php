@@ -207,6 +207,9 @@ class Connection {
         $sql = str_replace(':' . $k, implode(', ', $in), $sql);
       }
       else {
+        if (!str_contains($k, ':')) {
+          $k = ':'.$k;
+        }
         $params[$k] = $v;
       }
     }
@@ -727,11 +730,13 @@ class Connection {
    **/
   
   public static function __callStatic($name, $args) {
+    $instance = new static(config('database')); // Create an instance of the class
+
     # get row or column from table
     if ( $args[0] && (count($args) == 1) && strpos($name, '_') ) {
       list($table, $col) = explode('_', $name);
-      list($where, $bind) = static::filter($args[0]);
-      $rows = static::fetch('SELECT ' . ($col ? "`{$col}`" : '*') . ' FROM `' . $table . '` ' . $where, $bind);
+      list($where, $bind) = $instance->filter($args[0]);
+      $rows = $instance->fetch('SELECT ' . ($col ? "`{$col}`" : '*') . ' FROM `' . $table . '` ' . $where, $bind);
       if ( $rows ) {
         return $col ? $rows[0][$col] : $rows[0];
       }
@@ -741,23 +746,23 @@ class Connection {
     else if ( $args[0] && (count($args) == 2 || count($args) == 3) && strpos($name, '_') && in_array(strtolower(explode('_', $name)[0] ?? ''), ['min', 'max', 'avg', 'sum', 'group_concat', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor']) ) {
       list($agr, $col) = explode('_', $name);
       $table = $args[0];
-      list($where, $bind) = static::filter($args[1]);
+      list($where, $bind) = $instance->filter($args[1]);
       $distinct = isset($args[2]) ? 'DISTINCT ' : '';
-      $row = static::fetch('SELECT ' . $agr . "($distinct" . $col . ') FROM `' . $table . '` ' . $where, $bind)[0];
+      $row = $instance->fetch('SELECT ' . $agr . "($distinct" . $col . ') FROM `' . $table . '` ' . $where, $bind)[0];
       return array_shift($row);
     }
     else if ( $args[0] && (count($args) > 1 || count($args) < 6) && strpos($name, '_') && in_array(strtolower(explode('_', $name)[0] ?? ''), ['min', 'max', 'avg', 'sum', 'group_concat', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor']) ) {
       list($agr, $col) = explode('_', $name);
       $table = $args[0];
-      list($where, $bind) = static::filter($args[1], $args[3], $args[2]);
+      list($where, $bind) = $instance->filter($args[1], $args[3], $args[2]);
       $distinct = isset($args[4]) ? 'DISTINCT ' : '';
-      $row = static::fetch('SELECT ' . $agr . "($distinct" . $col . ') FROM `' . $table . '` ' . $where, $bind)[0];
+      $row = $instance->fetch('SELECT ' . $agr . "($distinct" . $col . ') FROM `' . $table . '` ' . $where, $bind)[0];
       return array_shift($row);
     }
     
     # get list of rows from table
     else if ( count($args) == 0 || count($args) == 1 ) {
-      return static::fetch($name, $args[0] ?: []);
+      return $instance->fetch($name, $args[0] ?: []);
     }
     
     

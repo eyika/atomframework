@@ -66,6 +66,30 @@ class ColumnDefinition
         return $this;
     }
 
+    public function on(string $action, mixed $value): self
+    {
+        $default = $value;
+    
+        // If ON already exists, replace it
+        if (preg_match('/ON\s+\'?.+?\'?/', implode(" ", $this->modifiers))) {
+            $this->modifiers = preg_replace('/DEFAULT\s+\'?.+?\'?/', "ON $action '$default'", $this->modifiers);
+        } else {
+            $this->modifiers[] = "ON $action '$default'";
+        }
+    
+        return $this;
+    }
+
+    public function useCurrent()
+    {
+        return $this->default('CURRENT_TIMESTAMP');
+    }
+
+    public function useCurrentOnUpdate()
+    {
+        return $this->on('UPDATE', 'CURRENT_TIMESTAMP');
+    }
+
     public function autoIncrement(): self
     {
         $this->addModifier("AUTO_INCREMENT");

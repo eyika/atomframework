@@ -94,7 +94,7 @@ class DB
         return $this;
     }
 
-    public function raw(string $sql, $bind)
+    public function raw(string $sql, $bind = [])
     {
         return DatabaseConnection::exec($sql, $bind);
     }
@@ -129,7 +129,7 @@ class DB
 
     public function exists()
     {
-        return (bool)static::count();
+        return static::count() > 0;
     }
 
     public function findOr($id = 0, $callable = null)
