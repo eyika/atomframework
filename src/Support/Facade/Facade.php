@@ -161,7 +161,7 @@ class Facade
 
         if (!method_exists($instance, $method)) {
             if (static::$callStaticIfServiceMethodNotFound) {
-                $baseclass = $instance->get_class();
+                $baseclass = get_class($instance);
                 return $baseclass::__callStatic($method, $arguments);
             } else {
                 throw new BaseException("Method $method does not exist on the underlying service $accessor.");

@@ -2,7 +2,6 @@
 
 namespace Eyika\Atom\Framework\Support\Facade;
 
-use Eyika\Atom\Framework\Exceptions\BaseException;
 use Eyika\Atom\Framework\Support\Database\Connection;
 use PDO;
 use PDOStatement;
