@@ -3,7 +3,7 @@
 namespace Eyika\Atom\Framework\Support;
 
 use Eyika\Atom\Framework\Http\Request;
-use Eyika\Atom\Framework\Support\Database\Connection;
+use Eyika\Atom\Framework\Support\Facade\DatabaseConnection;
 use Eyika\Atom\Framework\Support\Storage\File;
 use Eyika\Atom\Framework\Support\Str;
 
@@ -231,11 +231,11 @@ class Validator {
                     break;
                 case 'exist':
                     $_items = explode(',', $items[1]);
-                    $resp = Connection::count($_items[0], [$_items[1] => $paramval]) > 0 ? "" : "{$param} should exist in {$_items[1]} column of table {$_items[0]}";
+                    $resp = DatabaseConnection::count($_items[0], [$_items[1] => $paramval]) > 0 ? "" : "{$param} should exist in {$_items[1]} column of table {$_items[0]}";
                     break;
                 case 'not_exist':
                     $_items = explode(',', $items[1]);
-                    $resp = Connection::count($_items[0], [$_items[1] => $paramval]) < 1 ? "" : "{$param} should not exist in {$_items[1]} column of table {$_items[0]}";
+                    $resp = DatabaseConnection::count($_items[0], [$_items[1] => $paramval]) < 1 ? "" : "{$param} should not exist in {$_items[1]} column of table {$_items[0]}";
                     break;
                 case 'contains':
                     $stat = Str::contains($items[0], $items[1]);

@@ -3,22 +3,22 @@
 namespace Eyika\Atom\Framework\Support\Facade;
 
 use Eyika\Atom\Framework\Exceptions\BaseException;
-use Eyika\Atom\Framework\Support\Database\Connection as BaseConnection;
+use Eyika\Atom\Framework\Support\Database\Connection;
 use PDO;
 use PDOStatement;
 
 /**
- * @method static BaseConnection connect() Establish a database connection.
- * @method static BaseConnection instance() Get the underlying PDO instance.
+ * @method static Connection connect() Establish a database connection.
+ * @method static Connection instance() Get the underlying PDO instance.
  * @method static PDO getPdo()
  * @method static \PDOStatement|false exec($sql, $bind = []) exec() General SQL query execution
  * @method static array now()
- * @method static BaseConnection transaction($callback)transaction() wrap a query in a callback and run inside a transaction
- * @method static BaseConnection beginTransaction()
+ * @method static Connection transaction($callback)transaction() wrap a query in a callback and run inside a transaction
+ * @method static Connection beginTransaction()
  *                start a transaction chain.  
  *                subsequent queries will be executed in a transaction
- * @method static BaseConnection commit() commit all changes made in the transaction chain
- * @method static BaseConnection rollback() rollback all changes made in the transaction chain
+ * @method static Connection commit() commit all changes made in the transaction chain
+ * @method static Connection rollback() rollback all changes made in the transaction chain
  * @method static \PDOStatement|false fetch_cursor($sql_or_table, $bind_or_filter = [], $select_what = '*', string|array $operators = "=", string|array $or_ands = "AND")
  * @method static array fetch($sql_or_table, $bind_or_filter = [], $select_what = '*', array|string $operators = '=', array|string $or_ands = "AND")
  * @method static array array($sql_or_table, $bind_or_filter = [], $select_what = '*', array|string $operators = '=', array|string $or_ands = "AND")
@@ -48,7 +48,7 @@ use PDOStatement;
  * @method static void on($event, $cb) Run the job worker indefinately
  * @method static void auto_create($flag = true) Auto fields creation mode
  */
-class Connection extends Facade
+class DatabaseConnection extends Facade
 {
     protected static function getFacadeAccessor()
     {

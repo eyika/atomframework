@@ -2,7 +2,7 @@
 
 namespace Eyika\Atom\Framework\Support\Database\Concerns;
 
-use Eyika\Atom\Framework\Support\Database\Connection;
+use Eyika\Atom\Framework\Support\Facade\DatabaseConnection;
 
 trait UserAwareQueryBuilder
 {
@@ -19,7 +19,7 @@ trait UserAwareQueryBuilder
 
         $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
         info('query array is', $query_arr);
-        if (!$user = Connection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
+        if (!$user = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
             $this->resetInstance();
             return false;
         }
@@ -44,7 +44,7 @@ trait UserAwareQueryBuilder
         $this->useHashForEncryptedColumnComparisonQueries($query_arr);
 
         $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
-        if (!$user = Connection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
+        if (!$user = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
             $this->resetInstance();
             return false;
         }

@@ -7,8 +7,8 @@ use Exception;
 use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Database\Model;
 use Eyika\Atom\Framework\Support\Str;
-use Eyika\Atom\Framework\Support\Database\Connection;
 use Eyika\Atom\Framework\Support\Database\PaginatedData;
+use Eyika\Atom\Framework\Support\Facade\DatabaseConnection;
 
 trait QueryBuilder
 {
@@ -69,7 +69,7 @@ trait QueryBuilder
 
     public function raw($sql, $bind)
     {
-        return Connection::exec($sql, $bind);
+        return DatabaseConnection::exec($sql, $bind);
     }
 
     public function _create($values, $is_protected = true, $select = [])
@@ -106,7 +106,7 @@ trait QueryBuilder
     
         $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
     
-        if (!$model = Connection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
+        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
             $this->resetInstance();
             return false;
         }
@@ -286,7 +286,7 @@ trait QueryBuilder
             $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
         }
 
-        if (!$model = Connection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
+        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
             $this->resetInstance();
             return false;
         }
@@ -329,7 +329,7 @@ trait QueryBuilder
             $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
         }
 
-        if (!$model = Connection::fetch($this->table, $query_arr, $fields)) {
+        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields)) {
             return false;
         }
 
@@ -367,7 +367,7 @@ trait QueryBuilder
             $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
         }
     
-        if (!$models = Connection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
+        if (!$models = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
             $this->resetInstance();
             return false;
         }
@@ -530,7 +530,7 @@ trait QueryBuilder
 
         $method = $method == 'count' ? $method : $method."_".$column;
 
-        if (!$aggregate = Connection::{$method}($this->table, $query_arr, $this->operators, $this->or_ands)) {
+        if (!$aggregate = DatabaseConnection::{$method}($this->table, $query_arr, $this->operators, $this->or_ands)) {
             if ($reset_instance)
                 $this->resetInstance();
             return false;
@@ -569,13 +569,13 @@ trait QueryBuilder
         if ($this->softdeletes) {
             $query_arr['deleted_at'] = "IS NULL";
             is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
-            Connection::update($this->table, $query_arr, ['deleted_at' => "now"], $this->operators, $this->or_ands);
+            DatabaseConnection::update($this->table, $query_arr, ['deleted_at' => "now"], $this->operators, $this->or_ands);
             
             $this->resetInstance();
             return true;
         }
 
-        $val = Connection::remove($this->table, $query_arr, $this->operators, $this->or_ands);
+        $val = DatabaseConnection::remove($this->table, $query_arr, $this->operators, $this->or_ands);
 
         $this->boot($this, 'deleted');
         $this->booted($this, 'deleted');
@@ -738,19 +738,19 @@ trait QueryBuilder
 
     public function _beginTransaction()
     {
-        Connection::beginTransaction();
+        DatabaseConnection::beginTransaction();
         $this->transaction_mode = true;
     }
 
     public function _commit()
     {
-        Connection::commit();
+        DatabaseConnection::commit();
         $this->transaction_mode = false;
     }
 
     public function _rollback()
     {
-        Connection::rollback();
+        DatabaseConnection::rollback();
         $this->transaction_mode = false;
     }
 
@@ -789,22 +789,22 @@ trait QueryBuilder
         $this->createHashDuplicatesForCreateAndUpdateQueries($values);
         $this->encryptValues($values);
 
-        $create = $create_if_not_exist && !Connection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands);
+        $create = $create_if_not_exist && !DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands);
         if ($create) {
             $this->boot($this, 'creating');
             $this->booted($this, 'creating');
             $this->booting($this, 'creating');
 
-            Connection::insert($this->table, $values);
+            DatabaseConnection::insert($this->table, $values);
         } else {
             $this->boot($this, 'saving');
             $this->booted($this, 'saving');
             $this->booting($this, 'saving');
 
-            $count = Connection::update($this->table, $query_arr, $values, $this->operators, $this->or_ands);
+            $count = DatabaseConnection::update($this->table, $query_arr, $values, $this->operators, $this->or_ands);
         }
 
-        if (!$model = Connection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
+        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
             $this->resetInstance();
             return false;
         }
@@ -891,7 +891,7 @@ trait QueryBuilder
         $this->createHashDuplicatesForCreateAndUpdateQueries($values);
         $this->encryptValues($values);
 
-        if (!$id = Connection::insert($this->table, $values)) {
+        if (!$id = DatabaseConnection::insert($this->table, $values)) {
             return false;
         }
 
@@ -901,7 +901,7 @@ trait QueryBuilder
             $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
         }
 
-        if (!$model = Connection::fetch($this->table, ['id' => $id], $fields)) {
+        if (!$model = DatabaseConnection::fetch($this->table, ['id' => $id], $fields)) {
             return true;
         }
         $model = $model[0];
@@ -921,7 +921,7 @@ trait QueryBuilder
 
         $ignore = array_merge($ignore, [
             'fillable', 'guarded', 'table', 'primaryKey', 'exists', 'db', 'builder', 'dynamicProperties',
-            'connection', 'keyType', 'incrementing', 'perPage', 'wasRecentlyCreated', 'child'
+            'DatabaseConnection', 'keyType', 'incrementing', 'perPage', 'wasRecentlyCreated', 'child'
         ]);
 
         $obj_props = array_diff(array_keys(get_object_vars($this)), $ignore);

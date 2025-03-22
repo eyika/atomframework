@@ -1,7 +1,7 @@
 <?php
 namespace Eyika\Atom\Framework\Support\Storage;
 
-use Eyika\Atom\Framework\Support\Database\Connection;
+use Eyika\Atom\Framework\Support\Facade\DatabaseConnection;
 use Eyika\Atom\Framework\Support\Storage\Contracts\StorageInterface;
 use Hybridauth\Exception\RuntimeException;
 
@@ -41,7 +41,7 @@ class DbStorage implements StorageInterface
     {
         $key = $this->keyPrefix . strtolower($key);
 
-        $value = Connection::get($key, $this->storeNamespace);
+        $value = DatabaseConnection::get($key, $this->storeNamespace);
 
         if (isset($value)) {
             if (is_array($value) && array_key_exists('lateObject', $value)) {
@@ -66,8 +66,7 @@ class DbStorage implements StorageInterface
             $value = ['lateObject' => serialize($value)];
         }
 
-        Connection::set($key, $value, $this->storeNamespace);
-        // $_SESSION[$this->storeNamespace][$key] = $value;
+        DatabaseConnection::set($key, $value, $this->storeNamespace);
     }
 
     /**
@@ -75,7 +74,7 @@ class DbStorage implements StorageInterface
      */
     public function clear()
     {
-        Connection::clear($this->storeNamespace);
+        DatabaseConnection::clear($this->storeNamespace);
     }
 
     /**
@@ -85,14 +84,7 @@ class DbStorage implements StorageInterface
     {
         $key = $this->keyPrefix . strtolower($key);
 
-        Connection::unset($key, $this->storeNamespace);
-        // if (isset($_SESSION[$this->storeNamespace], $_SESSION[$this->storeNamespace][$key])) {
-        //     $tmp = $_SESSION[$this->storeNamespace];
-
-        //     unset($tmp[$key]);
-
-        //     $_SESSION[$this->storeNamespace] = $tmp;
-        // }
+        DatabaseConnection::unset($key, $this->storeNamespace);
     }
 
     /**
@@ -102,17 +94,6 @@ class DbStorage implements StorageInterface
     {
         $key = $this->keyPrefix . strtolower($key);
 
-        Connection::unset($key, $this->storeNamespace);
-        // if (isset($_SESSION[$this->storeNamespace]) && count($_SESSION[$this->storeNamespace])) {
-        //     $tmp = $_SESSION[$this->storeNamespace];
-
-        //     foreach ($tmp as $k => $v) {
-        //         if (strstr($k, $key)) {
-        //             unset($tmp[$k]);
-        //         }
-        //     }
-
-        //     $_SESSION[$this->storeNamespace] = $tmp;
-        // }
+        DatabaseConnection::unset($key, $this->storeNamespace);
     }
 }
