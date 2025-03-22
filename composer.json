@@ -4,7 +4,8 @@
     "type": "library",
     "require": {
         "php": "^7.4 || ^8.0",
-        "doctrine/inflector": "^2.0"
+        "doctrine/inflector": "^2.0",
+        "laravel/serializable-closure": "^2.0"
     },
     "require-dev": {
         "nesbot/carbon": "^3.7",
