@@ -5,10 +5,8 @@ namespace Eyika\Atom\Framework\Http\Client;
 use ArrayAccess;
 use Eyika\Atom\Framework\Support\Collections\Collection;
 use Eyika\Atom\Framework\Support\Concerns\Macroable;
+use Eyika\Atom\Framework\Support\Fluent;
 use GuzzleHttp\Psr7\StreamWrapper;
-// use Illuminate\Support\Collection;
-// use Illuminate\Support\Fluent;
-// use Illuminate\Support\Traits\Macroable;
 use LogicException;
 use Stringable;
 
@@ -115,7 +113,7 @@ class Response implements ArrayAccess, Stringable
      * Get the JSON decoded body of the response as a fluent object.
      *
      * @param  string|null  $key
-     * @return \Illuminate\Support\Fluent
+     * @return \Eyika\Atom\Framework\Support\Fluent
      */
     public function fluent($key = null)
     {

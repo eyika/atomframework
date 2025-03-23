@@ -4,7 +4,7 @@ namespace Eyika\Atom\Framework\Support\Traits;
 
 use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Collections\Collection;
-// use Eyika\Atom\Framework\Support\Facades\Date;
+use Eyika\Atom\Framework\Support\Facade\Date;
 use Eyika\Atom\Framework\Support\Str;
 use stdClass;
 

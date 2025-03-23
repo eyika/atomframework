@@ -2,7 +2,9 @@
 
 namespace Eyika\Atom\Framework\Foundation\Contracts;
 
-interface ApplicationInterface
+use ArrayAccess;
+
+interface ApplicationInterface extends ArrayAccess
 {
     // Bind a service to the container
     public function bind(string $key, $resolver): void;
