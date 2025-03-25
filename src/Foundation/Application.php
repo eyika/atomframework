@@ -31,7 +31,6 @@ class Application implements ApplicationInterface
         $GLOBALS[self::GLOBAL_VARS['database_namespace']] = NamespaceHelper::getBaseNamespace("$basepath/composer.json", "database");
         $GLOBALS[self::GLOBAL_VARS['test_namespace']] = NamespaceHelper::getBaseNamespace("$basepath/composer.json", "test");
 
-        // $dotenv = strtolower(PHP_OS_FAMILY) === 'windows' ? Dotenv::createImmutable(base_path()."\\") : Dotenv::createImmutable(base_path()."/");
         $dotenv = Dotenv::createImmutable(base_path());
         $dotenv->load();
         $this->pushDefaultAliases();
@@ -42,9 +41,9 @@ class Application implements ApplicationInterface
 
     private function pushDefaultAliases()
     {
-        Facade::pushDefaultAliases([
+        // Facade::pushDefaultAliases([
             
-        ]);
+        // ]);
     }
 
     public function loadedProviders(): Arrayable
@@ -59,12 +58,9 @@ class Application implements ApplicationInterface
     public function registerProviders(): void
     {
         $providers = config('app.providers', []);
-        // print_r($providers);
 
         foreach ($providers as $provider) {
-            // echo "1".PHP_EOL;
             if (!$this->loadedProviders()->keyExists($provider)) {
-                // echo $provider.PHP_EOL;
                 $instance = new $provider($this);
                 $instance->register();
                 $this->loadProvider($provider, $instance);
@@ -84,8 +80,5 @@ class Application implements ApplicationInterface
         $this->loadedProviders()->each(function (&$alias, &$instance) {
             $instance->boot();
         });
-        // foreach ($app->loadedProviders() as $provider) {
-        //     $provider->boot();
-        // }
     }
 }

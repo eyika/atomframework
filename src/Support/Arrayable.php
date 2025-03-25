@@ -4,8 +4,9 @@ namespace Eyika\Atom\Framework\Support;
 
 use ArrayAccess;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
+use Eyika\Atom\Framework\Support\Contracts\Arrayable as ContractsArrayable;
 
-class Arrayable implements ArrayAccess
+class Arrayable implements ContractsArrayable, ArrayAccess
 {
     
     /**

@@ -2,6 +2,7 @@
 
 namespace Eyika\Atom\Framework\Support\Facade;
 
+use Closure;
 use Eyika\Atom\Framework\Exceptions\BaseException;
 use Eyika\Atom\Framework\Exceptions\Console\RuntimeException;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
@@ -193,16 +194,16 @@ class Facade
      * 
      * @return Arrayable
      */
-    public static function pushDefaultAliases(array $aliases = [])
-    {
-        static::$defaultAliases = isset(static::$defaultAliases) ? static::$defaultAliases->push($aliases) : new Arrayable($aliases);
-    }
+    // public static function pushDefaultAliases(array $aliases = [])
+    // {
+    //     static::$defaultAliases = isset(static::$defaultAliases) ? static::$defaultAliases->push($aliases) : new Arrayable($aliases);
+    // }
 
     /**
      * Get the application instance behind the facade.
      * 
      */
-    public static function getFacadeApplication(): Application
+    public static function getFacadeApplication(): ?Application
     {
         return static::$app;
     }
@@ -362,7 +363,7 @@ class Facade
                 $baseclass = get_class($instance);
                 return $baseclass::__callStatic($method, $arguments);
             } else {
-                throw new BaseException("Method $method does not exist on the underlying service $accessor.");
+                throw new BaseException("Method $method does not exist on the underlying service ". static::getFacadeAccessor(). ".");
             }
         }
 

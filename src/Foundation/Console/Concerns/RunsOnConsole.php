@@ -16,7 +16,6 @@ trait RunsOnConsole
         }
 
         $command = $this->{"{$type}Commander"}($options);
-        echo $command;
         $env = Arr::only($GLOBALS, Arr::values(Application::GLOBAL_VARS));
         $env = array_merge($_ENV, $env, getenv());
 
@@ -88,6 +87,6 @@ trait RunsOnConsole
 
     function phpUnitCommander($options = [])
     {
-        return 'php ' . base_path("vendor/bin/atom_phpunit " . implode(' ', $options));
+        return 'php ' . base_path("vendor/bin/phpunit " . implode(' ', $options));
     }
 }
