@@ -15,6 +15,7 @@ use Eyika\Atom\Framework\Support\Database\DB;
 use Eyika\Atom\Framework\Support\Database\Model;
 use Eyika\Atom\Framework\Support\Database\PaginatedData;
 use Eyika\Atom\Framework\Support\Encrypter;
+use Eyika\Atom\Framework\Support\Facade\App;
 use Eyika\Atom\Framework\Support\Facade\Broadcast;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\Facade\JsonResponse;
@@ -510,14 +511,14 @@ if (! function_exists('logger')) {
         string|null $name = null,
         bool $isConsole = false
     ) {
-        if ($internal && config('app.debug') == false) {
+        if ($internal && config('app.debug', true) == false) {
             return (new Logger(''))->pushHandler(new NoopHandler());
         }
 
         $path = $path ?? storage_path("logs/custom.log");
 
         if (!$name) {
-            $name = config('app.name');
+            $name = config('app.name', 'Atom');
         }
 
         $log = new Logger($name);

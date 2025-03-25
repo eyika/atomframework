@@ -22,7 +22,7 @@ use Eyika\Atom\Framework\Foundation\Application;
 
 // Load Atom framework
 $app = new Application(
-    $_ENV['APP_BASE_PATH'] ?? strstr(dirname(__DIR__), '/vendor', true)
+    $_ENV['APP_BASE_PATH'] ?? strstr(dirname(__DIR__), '/vendor', true), true
 );
 /** @var Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel $kernel */
 

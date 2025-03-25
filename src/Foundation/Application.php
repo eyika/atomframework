@@ -2,7 +2,6 @@
 
 namespace Eyika\Atom\Framework\Foundation;
 
-use Dotenv\Dotenv;
 use Eyika\Atom\Framework\Foundation\Concerns\ServiceContainer;
 use Eyika\Atom\Framework\Foundation\Contracts\ApplicationInterface;
 use Eyika\Atom\Framework\Support\Arrayable;
@@ -14,6 +13,7 @@ class Application implements ApplicationInterface
     use ServiceContainer;
 
     protected Arrayable $loadedProviders;
+    protected bool $isRunningInTestEnv;
 
     public const GLOBAL_VARS = [ 
         'base_path' => 'base_path',
@@ -23,18 +23,22 @@ class Application implements ApplicationInterface
         'test_namespace' => 'test_namespace'
     ];
 
-    public function __construct(string $basepath)
+    public function __construct(string $basepath, bool $isRunningInTestEnv = false)
     {
+        // print "02 basepath is ". $basepath.PHP_EOL;
         $GLOBALS[self::GLOBAL_VARS['base_path']] = $basepath;
         $GLOBALS[self::GLOBAL_VARS['framework_namespace']] = NamespaceHelper::getBaseNamespace();
-        $GLOBALS[self::GLOBAL_VARS['project_namespace']] = NamespaceHelper::getBaseNamespace("$basepath/composer.json", "app");
-        $GLOBALS[self::GLOBAL_VARS['database_namespace']] = NamespaceHelper::getBaseNamespace("$basepath/composer.json", "database");
+        $GLOBALS[self::GLOBAL_VARS['project_namespace']] = NamespaceHelper::getBaseNamespace("$basepath/composer.json", $isRunningInTestEnv ? "src" : "app");
         $GLOBALS[self::GLOBAL_VARS['test_namespace']] = NamespaceHelper::getBaseNamespace("$basepath/composer.json", "test");
 
-        $dotenv = Dotenv::createImmutable(base_path());
-        $dotenv->load();
+        if (!$isRunningInTestEnv) {
+            $dotenv = \Dotenv\Dotenv::createImmutable(base_path());
+            $dotenv->load();
+        }
+
         $this->pushDefaultAliases();
         $this->loadedProviders = new Arrayable();
+        $this->isRunningInTestEnv = $isRunningInTestEnv;
         // $dotenv->required(['DB_USERNAME'])->notEmpty(); ///TODO: get required env keys from config if set
         // print_r($_ENV);
     }
@@ -44,6 +48,16 @@ class Application implements ApplicationInterface
         // Facade::pushDefaultAliases([
             
         // ]);
+    }
+
+    public function isRunningInTestEnvironment()
+    {
+        return $this->isRunningInTestEnv;
+    }
+
+    public function isRunningInFullAppEnvironment()
+    {
+        return !$this->isRunningInTestEnvironment();
     }
 
     public function loadedProviders(): Arrayable

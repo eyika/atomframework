@@ -6,8 +6,9 @@ class NamespaceHelper
 {
     public static function getBaseNamespace(?string $composerJsonPath = null, ?string $folderName = null): string
     {
-        if (!$composerJsonPath)
+        if (!$composerJsonPath) {
             $composerJsonPath = self::findComposerJsonPath();
+        }
 
         if ($composerJsonPath && file_exists($composerJsonPath)) {
             $composerJson = json_decode(file_get_contents($composerJsonPath), true);
@@ -17,12 +18,21 @@ class NamespaceHelper
                 $folders = array_values($composerJson['autoload']['psr-4']);
                 if ($folderName !== null) {
                     foreach ($namespaces as $index => $namespace) {
-                        if (str_contains($folders[$index], $folderName)) {
+                        if (str_contains($folders[$index], $folderName) || str_contains($folders[$index], Str::plural($folderName))) {
                             return rtrim($namespaces[$index], '\\');
                         }
                     }
                 } else {
                     return rtrim($namespaces[0], '\\');
+                }
+            }
+            if (isset($composerJson['autoload-dev']['psr-4'])) {
+                $namespaces = array_keys($composerJson['autoload-dev']['psr-4']);
+                $folders = array_values($composerJson['autoload-dev']['psr-4']);
+                foreach ($namespaces as $index => $namespace) {
+                    if (str_contains($folders[$index], $folderName) || str_contains($folders[$index], Str::plural($folderName))) {
+                        return rtrim($namespaces[$index], '\\');
+                    }
                 }
             }
         }
