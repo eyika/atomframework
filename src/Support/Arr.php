@@ -200,7 +200,7 @@ final Class Arr
     {
         if (is_null($callback)) {
             if (empty($array)) {
-                return self::value($default);
+                return value($default);
             }
 
             foreach ($array as $item) {
@@ -214,7 +214,7 @@ final Class Arr
             }
         }
 
-        return self::value($default);
+        return value($default);
     }
 
     /**
@@ -228,7 +228,7 @@ final Class Arr
     public static function last($array, callable|null $callback = null, $default = null)
     {
         if (is_null($callback)) {
-            return empty($array) ? self::value($default) : end($array);
+            return empty($array) ? value($default) : end($array);
         }
 
         return static::first(array_reverse($array, true), $callback, $default);
@@ -384,7 +384,7 @@ final Class Arr
     public static function get($array, $key, $default = null)
     {
         if (! static::accessible($array)) {
-            return self::value($default);
+            return value($default);
         }
 
         if (is_null($key)) {
@@ -396,14 +396,14 @@ final Class Arr
         }
 
         if (strpos($key, '.') === false) {
-            return $array[$key] ?? self::value($default);
+            return $array[$key] ?? value($default);
         }
 
         foreach (explode('.', $key) as $segment) {
             if (static::accessible($array) && static::keyExists($array, $segment)) {
                 $array = $array[$segment];
             } else {
-                return self::value($default);
+                return value($default);
             }
         }
 
