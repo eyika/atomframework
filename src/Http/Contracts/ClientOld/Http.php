@@ -1,9 +1,9 @@
 <?php
 
-namespace YourNamespace\Http;
+namespace Eyika\Atom\Framework\Http\Contracts\ClientOld;
 
 use Eyika\Atom\Framework\Http\Client\Exceptions\ConnectionException;
-use Eyika\Atom\Framework\Http\Client\HttpResponse;
+use Eyika\Atom\Framework\Http\Contracts\ClientOld\HttpResponse;
 use Eyika\Atom\Framework\Http\Client\PendingRequest;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
@@ -12,7 +12,7 @@ use GuzzleHttp\Exception\ServerException;
 use GuzzleHttp\Exception\ClientException;
 use Psr\Http\Message\ResponseInterface;
 
-class HttpClient
+class HttpClientOld
 {
     protected Client $client;
     protected array $options = [];

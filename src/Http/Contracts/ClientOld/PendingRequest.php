@@ -1,13 +1,13 @@
 <?php
 
-namespace Eyika\Atom\Framework\Http\Client;
+namespace Eyika\Atom\Framework\Http\Contracts\ClientOld;
 
 use Eyika\Atom\Framework\Http\Client\Exceptions\ConnectionException;
 use Eyika\Atom\Framework\Http\Client\Exceptions\RequestException;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ConnectException;
 
-class PendingRequest
+class PendingRequestOld
 {
     protected Client $client;
     protected array $options = [];

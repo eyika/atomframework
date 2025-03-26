@@ -363,8 +363,9 @@ class Facade
                 $baseclass = get_class($instance);
                 return $baseclass::__callStatic($method, $arguments);
             } else {
-                throw new BaseException("Method $method does not exist on the underlying service ". static::getFacadeAccessor(). ".");
+                return $instance->__call($method, $arguments);
             }
+            throw new BaseException("Method $method does not exist on the underlying service ". static::getFacadeAccessor(). ".");
         }
 
         return $instance->$method(...$arguments);

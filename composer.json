@@ -5,7 +5,9 @@
     "require": {
         "php": "^7.4 || ^8.0",
         "doctrine/inflector": "^2.0",
-        "laravel/serializable-closure": "^2.0"
+        "laravel/serializable-closure": "^2.0",
+        "guzzlehttp/guzzle": "^7.9",
+        "guzzlehttp/uri-template": "^1.0"
     },
     "require-dev": {
         "nesbot/carbon": "^3.7",

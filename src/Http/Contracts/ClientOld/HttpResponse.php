@@ -1,10 +1,10 @@
 <?php
 
-namespace Eyika\Atom\Framework\Http\Client;
+namespace Eyika\Atom\Framework\Http\Contracts\ClientOld;
 
 use Psr\Http\Message\ResponseInterface;
 
-class HttpResponse
+class HttpResponseOld
 {
     protected ?ResponseInterface $response;
 

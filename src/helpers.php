@@ -39,6 +39,8 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Level;
 use Monolog\Logger;
 
+require_once __DIR__."/Support/Collections/helpers.php";
+
 if (! function_exists('classFromFile')) {
         /**
      * Extract the class name from the given file path.
