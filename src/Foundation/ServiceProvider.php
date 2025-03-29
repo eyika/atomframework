@@ -4,17 +4,20 @@ namespace Eyika\Atom\Framework\Foundation;
 
 use Eyika\Atom\Framework\Foundation\Contracts\ApplicationInterface;
 use Eyika\Atom\Framework\Support\Arrayable;
+use Eyika\Atom\Framework\Support\Facade\Console;
+use Eyika\Atom\Framework\Support\Facade\Facade;
 
 abstract class ServiceProvider
 {
     protected ApplicationInterface $app;
 
-    protected array $publishables = [];
+    protected Arrayable $publishables;
     protected array $facades = [];
 
     public function __construct(ApplicationInterface $app)
     {
         $this->app = $app;
+        $this->publishables = new Arrayable();
     }
 
     /**
@@ -50,19 +53,15 @@ abstract class ServiceProvider
      */
     protected function publishes(array $paths, string $tag = 'default'): void
     {
-        if (!isset($this->publishables[$tag])) {
-            $this->publishables[$tag] = [];
-        }
-
-        $this->publishables[$tag] = array_merge($this->publishables[$tag], $paths);
+        $this->publishables->push([$tag => $paths]);
     }
 
     /**
      * Retrieve all publishable paths by tag.
      */
-    public function getPublishables(string|null $tag = null): array
+    public function getPublishables(string|null $tag = null): Arrayable
     {
-        return $tag ? ($this->publishables[$tag] ?? []) : $this->publishables;
+        return $tag ? new Arrayable($this->publishables[$tag] ? [$tag => $this->publishables[$tag]] : []) : $this->publishables;
     }
 
     /**
@@ -74,32 +73,40 @@ abstract class ServiceProvider
             return static::publishAssets($providerClass, $tag, $force);
         }
     
-        foreach (config()->get('app.providers', []) as $providerClass) {
-            static::publishAssets($providerClass, $tag, $force);
-        }
+        $providers = Facade::getFacadeApplication()->loadedProviders();
+
+        $providers->each(function ($index, ServiceProvider $provider) use ($tag, $force) {
+            static::publishAssets($provider, $tag, $force);
+        });
+
         return true;
     }
 
-    public static function publishAssets(string $providerClass, $tag, $force): bool
+    public static function publishAssets(string|ServiceProvider $provider, $tag, $force): bool
     {
         $app = app();
+        if (!$provider instanceof ServiceProvider)
+            $provider = new $provider($app);
         /** @var ServiceProvider $provider */
-        $provider = new $providerClass($app);
 
         $publishables = $tag ? $provider->getPublishables($tag) : $provider->getPublishables();
 
-        foreach ($publishables as $source => $destination) {
-            if (file_exists($destination) && !$force) {
-                // $this->warn("File already exists: $destination");
-                return true;
-            } else if (file_exists($destination) && $force) {
-                copy($source, $destination);
-                return true;
-            } else {
-                mkdir(dirname($destination), 0777, true);
-                copy($source, $destination);
+        $publishables->each(function ($tag, $locations) use ($force) {
+            foreach ($locations as $source => $destination) {
+                if (file_exists($destination) && !$force) {
+                    Console::comment("File already exists: $destination");
+                    return true;
+                } else if (file_exists($destination) && $force) {
+                    copy($source, $destination);
+                    return true;
+                } else {
+                    if (!file_exists(dirname($destination))) {
+                        mkdir(dirname($destination), 0777, true);
+                    }
+                    copy($source, $destination);
+                }
             }
-        }
+        });
 
         return true;
     }

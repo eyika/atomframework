@@ -9,8 +9,6 @@ use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Foundation\Application;
 use Eyika\Atom\Framework\Support\Arrayable;
 use Eyika\Atom\Framework\Support\Collections\Collection;
-use Mockery;
-use Mockery\LegacyMockInterface;
 
 class Facade
 {
@@ -50,8 +48,6 @@ class Facade
      */
     public static function resolved(Closure $callback)
     {
-        throw new NotImplementedException('this method is yet to be implemented');
-
         $accessor = static::getFacadeAccessor();
 
         if (static::$app->resolved($accessor) === true) {
@@ -363,10 +359,10 @@ class Facade
         }
 
         if (!method_exists($instance, $method)) {
-            if (static::$callStaticIfServiceMethodNotFound) {
+            if (static::$callStaticIfServiceMethodNotFound && method_exists($instance, "__callStatic")) {
                 $baseclass = get_class($instance);
                 return $baseclass::__callStatic($method, $arguments);
-            } else {
+            } elseif (method_exists($instance, "__call")) {
                 return $instance->__call($method, $arguments);
             }
             throw new BaseException("Method $method does not exist on the underlying service ". static::getFacadeAccessor(). ".");

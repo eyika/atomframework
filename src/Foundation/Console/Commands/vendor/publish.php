@@ -5,7 +5,6 @@ namespace Eyika\Atom\Framework\Foundation\Console\Commands\Vendor;
 use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
 use Eyika\Atom\Framework\Foundation\Console\Command;
 use Eyika\Atom\Framework\Foundation\ServiceProvider;
-use Eyika\Atom\Framework\Support\Facade\File;
 
 class Publish extends Command
 {
@@ -21,7 +20,7 @@ class Publish extends Command
             $force = $this->option('force');
     
             // $tag = $this->argument('tag');
-        
+
             ServiceProvider::publishAll($tag, $provider, $force);
             $this->info($tag ? "Published assets for tag: $tag" : "Published all assets.");
         } catch (BaseConsoleException $e) {

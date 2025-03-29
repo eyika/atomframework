@@ -623,15 +623,9 @@ final Class Arr
         return $array;
     }
 
-    public static function merge(array ...$values)
+    public static function merge(array ...$values): array
     {
-        $data = [];
-        foreach ($values as $_values) {
-            if (static::isAssoc($_values)) {
-                return array_merge_recursive($data, $_values);
-            }
-            return array_merge($data, $_values);
-        }
+        return array_reduce($values, fn ($carry, $item) => array_merge($carry, is_array($item) ? static::flatten($item) : $item), []);
     }
 
     /**

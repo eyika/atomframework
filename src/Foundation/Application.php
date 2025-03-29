@@ -5,13 +5,13 @@ namespace Eyika\Atom\Framework\Foundation;
 use Eyika\Atom\Framework\Foundation\Concerns\ServiceContainer;
 use Eyika\Atom\Framework\Foundation\Contracts\ApplicationInterface;
 use Eyika\Atom\Framework\Support\Arrayable;
-use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\NamespaceHelper;
 
 class Application implements ApplicationInterface
 {
     use ServiceContainer;
 
+    /** @var Arrayable<ServiceProvider> $loadedProviders */
     protected Arrayable $loadedProviders;
     protected bool $isRunningInTestEnv;
 
@@ -25,7 +25,6 @@ class Application implements ApplicationInterface
 
     public function __construct(string $basepath, bool $isRunningInTestEnv = false)
     {
-        // print "02 basepath is ". $basepath.PHP_EOL;
         $GLOBALS[self::GLOBAL_VARS['base_path']] = $basepath;
         $GLOBALS[self::GLOBAL_VARS['framework_namespace']] = NamespaceHelper::getBaseNamespace();
         $GLOBALS[self::GLOBAL_VARS['project_namespace']] = NamespaceHelper::getBaseNamespace("$basepath/composer.json", $isRunningInTestEnv ? "src" : "app");
@@ -39,8 +38,6 @@ class Application implements ApplicationInterface
         $this->pushDefaultAliases();
         $this->loadedProviders = new Arrayable();
         $this->isRunningInTestEnv = $isRunningInTestEnv;
-        // $dotenv->required(['DB_USERNAME'])->notEmpty(); ///TODO: get required env keys from config if set
-        // print_r($_ENV);
     }
 
     private function pushDefaultAliases()
@@ -60,6 +57,9 @@ class Application implements ApplicationInterface
         return !$this->isRunningInTestEnvironment();
     }
 
+    /**
+     * @return Arrayable<ServiceProvider>
+     */
     public function loadedProviders(): Arrayable
     {
         return $this->loadedProviders;
@@ -71,11 +71,12 @@ class Application implements ApplicationInterface
 
     public function registerProviders(): void
     {
-        $providers = config()->get('app.providers', []);
+        $providers = config('app.providers', []);
 
         foreach ($providers as $provider) {
             if (!$this->loadedProviders()->keyExists($provider)) {
                 $instance = new $provider($this);
+                /** @var ServiceProvider $instance */
                 $instance->register();
                 $this->loadProvider($provider, $instance);
 
@@ -91,7 +92,7 @@ class Application implements ApplicationInterface
 
     protected function bootProviders(): void
     {
-        $this->loadedProviders()->each(function (&$alias, &$instance) {
+        $this->loadedProviders()->each(function (&$index, ServiceProvider &$instance) {
             $instance->boot();
         });
     }
