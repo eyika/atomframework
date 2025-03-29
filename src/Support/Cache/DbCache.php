@@ -14,7 +14,7 @@ class DbCache implements CacheInterface
 
     public function __construct()
     {
-        $config = config('cache.stores.database');
+        $config = config()->get('cache.stores.database');
 
         $this->table = $config['table'] ?? '_cache';
     }
@@ -88,6 +88,14 @@ class DbCache implements CacheInterface
     public function save($item): bool
     {
         return DatabaseConnection::cache($item->getKey(), $item->get(), $item->getExpiration(), $this->table) ? true : false;
+    }
+
+    /**
+     * @param CacheItem $item
+     */
+    public function setItem($item): bool
+    {
+        return $this->save($item);
     }
 
     /**

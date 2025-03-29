@@ -16,8 +16,8 @@ class RedisSessionHandler implements SessionHandlerInterface, SessionIdInterface
     public function __construct()
     {
         $this->redis = new Redis();
-        $this->prefix = config('session.redis_prefix', 'sess:');
-        $this->ttl = config('session.ttl', 1440); // Default to 24 minutes if not set
+        $this->prefix = config()->get('session.redis_prefix', 'sess:');
+        $this->ttl = config()->get('session.ttl', 1440); // Default to 24 minutes if not set
 
         $redisHost = env('REDIS_HOST', '127.0.0.1');
         $redisPort = env('REDIS_PORT', 6379);

@@ -21,7 +21,7 @@ class MemcachedCache implements CacheInterface
      */
     public function __construct()
     {
-        $config = config('cache.stores.memcached');
+        $config = config()->get('cache.stores.memcached');
 
         $servers = $config['servers'];
 
@@ -109,6 +109,14 @@ class MemcachedCache implements CacheInterface
     public function save($item): bool
     {
         return $this->memcached->set($item->getKey(), $item->get(), $item->getExpiration());
+    }
+
+    /**
+     * @param CacheItem $item
+     */
+    public function setItem($item): bool
+    {
+        return $this->save($item);
     }
 
     /**

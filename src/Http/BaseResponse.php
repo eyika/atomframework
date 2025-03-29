@@ -107,23 +107,20 @@ class BaseResponse
         $this->_send(false);
     }
 
+    /**
+     * Method to send the response headers and content
+     * 
+     * @return bool
+     */
     public function send(): bool
     {
-        $resp = true;
-
         if (!$this->_responseSent) {
-            $resp = $this->_send();
+            return $this->_send();
         }
-        return $resp;
+        return true;
     }
 
-    // Method to send the response headers and content
-    /**
-     * @param bool $terminate
-     * 
-     * @return void|bool
-     */
-    public function _send($terminate = true)
+    protected function _send($terminate = true)
     {
         http_response_code($this->statusCode);
         $this->sendHeaders();
@@ -133,7 +130,7 @@ class BaseResponse
             if ($terminate)
                 return true;
 
-            return;
+            return false;
         }
 
         if ($this->isFileResponse) {
@@ -143,7 +140,7 @@ class BaseResponse
             if ($terminate)
                 return true;
 
-            return;
+            return false;
         }
 
         if ($this->isRedirect) {
@@ -156,7 +153,7 @@ class BaseResponse
             if ($terminate)
                 return true;
 
-            return;
+            return false;
         }
 
         if ($this->shouldCompileView) {
@@ -167,7 +164,7 @@ class BaseResponse
         if ($terminate)
             return true;
 
-        return;
+        return false;
     }
 
     public function getInstance()
@@ -220,7 +217,7 @@ class BaseResponse
     private function compileView()
     {
         try {
-            if (config('view.use_advance_engine')) {
+            if (config()->get('view.use_advance_engine')) {
                 $view = Blade::instance();
                 if (!empty($view->atomErrors()))
                     $this->viewData['errors'] = new Arrayable($view->atomErrors());

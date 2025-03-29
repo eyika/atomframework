@@ -37,7 +37,7 @@ class ServePublicAssets implements MiddlewareInterface
                     if (array_key_exists($ext, $customMappings)) {
                         $mime = $customMappings[$ext];
                     }
-                    $allowedOrigins = config('cors.allowed_origins', ['*']);
+                    $allowedOrigins = config()->get('cors.allowed_origins', ['*']);
                     $origin = $request->headers('Origin');
 
                     $response = Response::setHeader("Content-Type", $mime, BaseResponse::STATUS_OK);

@@ -32,7 +32,7 @@ class SmtpDriver implements MailerInterface
             $this->mailer->Username = $config['username'];
         }
         //Show debug output
-        $this->mailer->SMTPDebug = config('app.env') === 'local' ? SMTP::DEBUG_SERVER : SMTP::DEBUG_OFF;
+        $this->mailer->SMTPDebug = config()->get('app.env') === 'local' ? SMTP::DEBUG_SERVER : SMTP::DEBUG_OFF;
 
         //Inject a new debug output handler
         $this->mailer->Debugoutput = static function ($str, $level) {

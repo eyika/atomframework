@@ -9,6 +9,8 @@ use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Foundation\Application;
 use Eyika\Atom\Framework\Support\Arrayable;
 use Eyika\Atom\Framework\Support\Collections\Collection;
+use Mockery;
+use Mockery\LegacyMockInterface;
 
 class Facade
 {
@@ -48,6 +50,8 @@ class Facade
      */
     public static function resolved(Closure $callback)
     {
+        throw new NotImplementedException('this method is yet to be implemented');
+
         $accessor = static::getFacadeAccessor();
 
         if (static::$app->resolved($accessor) === true) {

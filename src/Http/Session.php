@@ -15,7 +15,7 @@ class Session
     public function __construct()
     {
         if (session_status() === PHP_SESSION_NONE) {
-            switch (config('session.driver')) {
+            switch (config()->get('session.driver')) {
                 case 'file':
                     session_set_save_handler(new FileSessionHandler, true);
                     break;

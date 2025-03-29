@@ -64,6 +64,10 @@ class ExceptionHandler implements ContractExceptionHandler
                     $model = preg_replace('/Table/i', '', $model);
                     $message = "{$model} not found.";
                 }
+                return response()->json(['message' => 'Not Found', [
+                    'success' => false,
+                    'message' => $message,
+                ]], BaseResponse::STATUS_NOT_FOUND);
             }
 
             if ($exception instanceof NotFoundHttpException) {
@@ -102,7 +106,7 @@ class ExceptionHandler implements ContractExceptionHandler
                 return Response::json(['message' => 'An error occured', [
                     'success' => false,
                     'message' => str_contains($message, 'SQLSTATE') || str_contains($message, 'Illuminate') ? 'something happened try again' : $message,
-                    'data' => config('app.debug', false) ? $exception->getTrace() : null,
+                    'data' => config()->get('app.debug', false) ? $exception->getTrace() : null,
                 ]], is_numeric($code) ? intval($code) : 500);
             }
 
@@ -128,6 +132,8 @@ class ExceptionHandler implements ContractExceptionHandler
                     $model = preg_replace('/Table/i', '', $model);
                     $message = "{$model} not found.";
                 }
+
+                return Response::back()->withErrors($exception->errors());
             }
 
             if ($exception instanceof ValidationException) {
@@ -139,16 +145,18 @@ class ExceptionHandler implements ContractExceptionHandler
             if ($exception instanceof UnauthorizedHttpException || $exception instanceof AccessDeniedHttpException) {
                 $code = BaseResponse::STATUS_UNPROCESSABLE_ENTITY;
 
-                return Response::redirect(config('auth.login_page', '/auth/login'));
+                return Response::redirect(config()->get('auth.login_page', '/auth/login'));
             }
 
             return $this->renderErrorPage($request, $exception);
         }
+        
+        return response()->html('An error occured, contact administrator', $exception->getCode() ?? BaseResponse::STATUS_INTERNAL_SERVER_ERROR);
     }
 
     protected function renderErrorPage(Request $request, Throwable $exception): BaseResponse
     {
-        if (config('app.debug', true)) {
+        if (config()->get('app.debug', true)) {
             $whoops = new \Whoops\Run;
             $whoops->allowQuit(false);
             $whoops->writeToOutput(false);
@@ -157,11 +165,13 @@ class ExceptionHandler implements ContractExceptionHandler
             return response()->html($whoops->handleException($exception));
         }
         
-        $serverErrorPage = config('view.server_error.path', '');
+        $serverErrorPage = config()->get('view.server_error.path', '');
 
         if (!empty($serverErrorPage)) {
             return response()->view($serverErrorPage)->withErrors(['message' => $exception->getMessage()]);
         }
+
+        return response()->html('An error occured, contact administrator', $exception->getCode() ?? BaseResponse::STATUS_INTERNAL_SERVER_ERROR);
     }
 
      /**

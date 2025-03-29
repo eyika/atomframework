@@ -17,8 +17,8 @@ class FileCache implements CacheInterface
 
     public function __construct()
     {
-        $cacheDirectory = config('cache.stores.file.path');
-        $this->prefix = config('cache.prefix');
+        $cacheDirectory = config()->get('cache.stores.file.path');
+        $this->prefix = config()->get('cache.prefix');
 
         if (!file_exists($cacheDirectory))
             mkdir($cacheDirectory, 0775, true);
@@ -172,6 +172,14 @@ class FileCache implements CacheInterface
 
         // Serialize and write to file
         return $this->file->put($filePath, serialize($cacheItem)) !== false;
+    }
+
+    /**
+     * @param CacheItem $item
+     */
+    public function setItem($item): bool
+    {
+        return $this->save($item);
     }
 
     /**

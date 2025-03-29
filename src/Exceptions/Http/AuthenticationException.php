@@ -11,7 +11,9 @@ class AuthenticationException extends BaseHttpException
 
     public function __construct(string $message = 'invalid auth information', array $guards = [], string $to = '/')
     {
-        parent::__construct($message, 301);
+        parent::__construct($message, 403);
+        $this->guards = $guards;
+        $this->to = $to;
     }
 
     public function guards()

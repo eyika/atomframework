@@ -23,12 +23,12 @@ class Storage
 
     public function __construct(string|null $disk = null, CacheInterface|null $cache = null)
     {
-        $this->disks = config('filesystems.disks');
+        $this->disks = config()->get('filesystems.disks');
         $disks = Arr::keys($this->disks);
         if (!empty($disk) && !Arr::keyExists($disks, $disk)) {
             throw new InvalidDiskException('the given disk deos not exist in filesystem config');
         }
-        $this->disk = $disk ? $disk : config('filesystems.default');
+        $this->disk = $disk ? $disk : config()->get('filesystems.default');
         $this->cache = $cache ?? new Cache();
         $this->file = new File(disk: $this->disk);
     }

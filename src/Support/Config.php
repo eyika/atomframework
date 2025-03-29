@@ -9,13 +9,21 @@ use InvalidArgumentException;
 
 class Config
 {
+    protected static $instance = null;
+
     protected static $config = [];
     protected static CacheInterface $cache;
     protected static $cacheEnabled = false;
     protected static $cache_prefix = 'config__';
 
-    public function __construct()
+    public function __construct(){}
+
+    public static function instance(): Config
     {
+        if (self::$instance === null) {
+            self::$instance = new self;
+        }
+        return self::$instance;
     }
 
     /**
@@ -55,7 +63,7 @@ class Config
      */
     public static function get($key, $default = null)
     {
-        if (self::$cacheEnabled && $value = self::$cache->get(self::$cache_prefix . $key)) {
+        if (self::$cacheEnabled && $value = self::$cache->getItem(self::$cache_prefix . $key)) {
             return $value;
         }
 
@@ -70,7 +78,7 @@ class Config
         }
 
         if (self::$cacheEnabled) {
-            self::$cache->set(self::$cache_prefix . $key, $config);
+            self::$cache->setItem(self::$cache_prefix . $key, $config);
         }
 
         return $config;
@@ -97,7 +105,7 @@ class Config
         $config = $value;
 
         if (self::$cacheEnabled) {
-            self::$cache->set(self::$cache_prefix . $key, $value);
+            self::$cache->setItem(self::$cache_prefix . $key, $value);
         }
     }
 

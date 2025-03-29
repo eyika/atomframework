@@ -2,6 +2,7 @@
 
 namespace Eyika\Atom\Framework\Support;
 
+use Eyika\Atom\Framework\Exceptions\ValidationException;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Support\Facade\DatabaseConnection;
 use Eyika\Atom\Framework\Support\Storage\File;
@@ -23,7 +24,7 @@ class Validator {
         self::$confirms = [];
     }
 
-    public static function validate(Request|array $req_obj, array $params, string $separator = '|'): bool|array
+    public static function validate(Request|array $req_obj, array $params, string $separator = '|', $throw = true): bool|array
     {
         $me = new self($req_obj);
 
@@ -49,6 +50,10 @@ class Validator {
                 static::$errors[$paramKey] = $resp;
                 continue;
             }
+        }
+
+        if (count(static::$errors) > 0 && $throw) {
+            throw new ValidationException(errors: static::$errors);
         }
 
         if (count(static::$errors) > 0) {

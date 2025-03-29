@@ -34,7 +34,8 @@
         "maximebf/debugbar": "^1.23",
         "filp/whoops": "^2.16",
         "pusher/pusher-php-server": "^7.2",
-        "ratchet/pawl": "^0.4.3"
+        "ratchet/pawl": "^0.4.3",
+        "mockery/mockery": "^1.6"
     },
     "license": "MIT",
     "autoload": {

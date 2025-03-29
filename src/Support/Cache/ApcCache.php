@@ -89,6 +89,14 @@ class ApcCache implements CacheInterface
     /**
      * @param CacheItem $item
      */
+    public function setItem($item): bool
+    {
+        return $this->save($item);
+    }
+
+    /**
+     * @param CacheItem $item
+     */
     public function saveDeferred($item): bool
     {
         if (!$item instanceof CacheItem) {

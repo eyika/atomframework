@@ -730,7 +730,7 @@ class Connection {
    **/
   
   public static function __callStatic($name, $args) {
-    $instance = new static(config('database')); // Create an instance of the class
+    $instance = new static(config()->get('database')); // Create an instance of the class
 
     # get row or column from table
     if ( $args[0] && (count($args) == 1) && strpos($name, '_') ) {

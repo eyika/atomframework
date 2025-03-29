@@ -5,7 +5,7 @@ use Throwable;
 
 class ResponseException extends BaseHttpException
 {
-    public function __construct(string $message = '', int $code = 0, Throwable|null $previous = null)
+    public function __construct(string $message = '', int $code = 500, Throwable|null $previous = null)
     {
         parent::__construct($message, $code, $previous);
     }

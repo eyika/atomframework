@@ -27,7 +27,7 @@ final class Auth
         if (isset(static::$guardName) && isset(static::$guards)) {
             return;
         }
-        static::$config = $config ?? config('auth', []);
+        static::$config = $config ?? config()->get('auth', []);
         static::$guardName = Request::wantsJson() ? 'api' : ($config['defaults']['guard'] ?? 'web');
         static::$jwt = '';
     }

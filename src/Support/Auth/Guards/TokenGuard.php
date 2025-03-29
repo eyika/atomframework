@@ -13,7 +13,7 @@ class TokenGuard extends Authenticator
     {
         $this->config = $config;
         $this->guard = $guard;
-        $this->tokenName = config('auth.token_name');
+        $this->tokenName = config()->get('auth.token_name');
     }
 
     public function attempt(array $credentials): ?AuthenticatableInterface

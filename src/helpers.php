@@ -11,6 +11,7 @@ use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
 use Eyika\Atom\Framework\Support\Auth\User;
 use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
 use Eyika\Atom\Framework\Support\Collections\Collection;
+use Eyika\Atom\Framework\Support\Config;
 use Eyika\Atom\Framework\Support\Database\DB;
 use Eyika\Atom\Framework\Support\Database\Model;
 use Eyika\Atom\Framework\Support\Database\PaginatedData;
@@ -139,7 +140,7 @@ if (! function_exists('storage')) {
      */
     function storage(string|null $disk = null, CacheInterface|null $cache = null) {
         if (is_null($disk))
-            $disk = config('filesystems.default');
+            $disk = config()->get('filesystems.default');
         $storage = Storage::disk($disk);
         if ($cache)
             $storage = $storage->cache($cache);
@@ -248,32 +249,31 @@ if (! function_exists('config')) {
     /**
      * Get a config data from configuration file
      */
-    function config(string $config_name, $default = null) {
-        $parts = explode('.', $config_name);
-        $file = array_shift($parts);
+    function config() {
+        // $parts = explode('.', $config_name);
+        // $file = array_shift($parts);
     
-        $config = [];
+        // $config = [];
     
-        // Load the config file
-        $file_path = config_path("{$file}.php");
+        // // Load the config file
+        // $file_path = config_path("{$file}.php");
         
-        if (file_exists($file_path)) {
-            $config = require $file_path;  // or require_once
-        } else {
-            return $default;
-        }
+        // if (file_exists($file_path)) {
+        //     $config = require $file_path;  // or require_once
+        // } else {
+        //     return $default;
+        // }
     
-        // Traverse the config array using the remaining parts
-        foreach ($parts as $part) {
-            if (!is_array($config) || !array_key_exists($part, $config)) {
-                return $default;
-            }
-            $config = $config[$part];
-        }
+        // // Traverse the config array using the remaining parts
+        // foreach ($parts as $part) {
+        //     if (!is_array($config) || !array_key_exists($part, $config)) {
+        //         return $default;
+        //     }
+        //     $config = $config[$part];
+        // }
     
-        return $config;
+        return Config::instance();
     }
-    
 }
 
 if (! function_exists('env')) {
@@ -448,7 +448,7 @@ if (! function_exists('asset')) {
     function asset(string $folder = ''): string
     {
         if (config("app.url"))
-            $server_url = config('app.url');
+            $server_url = config()->get('app.url');
         else
             $server_url = Request::schemeAndHttpHost();
         $folder = empty($folder) ? '' : "/$folder";
@@ -513,14 +513,14 @@ if (! function_exists('logger')) {
         string|null $name = null,
         bool $isConsole = false
     ) {
-        if ($internal && config('app.debug', true) == false) {
+        if ($internal && config()->get('app.debug', true) == false) {
             return (new Logger(''))->pushHandler(new NoopHandler());
         }
 
         $path = $path ?? storage_path("logs/custom.log");
 
         if (!$name) {
-            $name = config('app.name', 'Atom');
+            $name = config()->get('app.name', 'Atom');
         }
 
         $log = new Logger($name);
@@ -698,7 +698,7 @@ if (!function_exists('view')) {
     function view($file_name, $data = []) {
         $path = resource_path('views');
 
-        if (config('view.use_advance_engine')) {
+        if (config()->get('view.use_advance_engine')) {
             $view = new Blade($path);
             $code = $view->run("$file_name", $data);
         } else {

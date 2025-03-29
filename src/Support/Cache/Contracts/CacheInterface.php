@@ -6,4 +6,8 @@ use Psr\Cache\CacheItemPoolInterface;
 
 interface CacheInterface extends CacheItemPoolInterface
 {
+    /**
+     * @param CacheItem $item
+     */
+    public function setItem($item): bool;
 }

@@ -74,7 +74,7 @@ abstract class ServiceProvider
             return static::publishAssets($providerClass, $tag, $force);
         }
     
-        foreach (config('app.providers', []) as $providerClass) {
+        foreach (config()->get('app.providers', []) as $providerClass) {
             static::publishAssets($providerClass, $tag, $force);
         }
         return true;

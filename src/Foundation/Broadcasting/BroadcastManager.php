@@ -25,7 +25,7 @@ class BroadcastManager implements BroadcastInterface
 
     public function driver($name = null): BroadcastInterface
     {
-        $name = $name ?: config('broadcasting.default');
+        $name = $name ?: config()->get('broadcasting.default');
 
         if (!isset($this->drivers[$name])) {
             $this->drivers[$name] = $this->resolve($name);
@@ -49,7 +49,7 @@ class BroadcastManager implements BroadcastInterface
             case 'log':
                 return new LogBroadcaster();
             case 'pusher':
-                return new PusherBroadcaster(config('broadcasting.connections.pusher'));
+                return new PusherBroadcaster(config()->get('broadcasting.connections.pusher'));
             default:
                 throw new InvalidArgumentException("Unsupported broadcast driver [$name]");
         }

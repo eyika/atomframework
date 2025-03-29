@@ -27,11 +27,11 @@ class Blade extends BladeOne
      */
     public function __construct($templatePath = null, $compiledPath = null)
     {
-        if (!$mode = config('view.mode')) {
+        if (!$mode = config()->get('view.mode')) {
             $mode = env('APP_ENV') == 'local' ? BladeOne::MODE_DEBUG : BladeOne::MODE_FAST;
         }
-        $templatePath = $templatePath ?? config('view.paths');
-        $compiledPath = $compiledPath ?? config('view.compiled');
+        $templatePath = $templatePath ?? config()->get('view.paths');
+        $compiledPath = $compiledPath ?? config()->get('view.compiled');
 
         if (!file_exists($compiledPath)) {
             mkdir($compiledPath, 0744, true);
@@ -39,7 +39,7 @@ class Blade extends BladeOne
         
         $this->oldInputs = [];
         $this->errors = [];
-        $this->setBaseUrl(config('app.url'));
+        $this->setBaseUrl(config()->get('app.url'));
 
         parent::__construct($templatePath, $compiledPath, $mode);
     }

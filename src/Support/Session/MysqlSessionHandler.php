@@ -21,8 +21,8 @@ class MysqlSessionHandler implements SessionHandlerInterface, SessionIdInterface
         // $dbname = env('DB_DATABASE');
         // $dbhost = env('DB_HOST');
         // $dbadapter = env('DB_ADAPTER');
-        $this->table = config('session.table');
-        $this->dbConnection = new Connection(config('database'));
+        $this->table = config()->get('session.table');
+        $this->dbConnection = new Connection(config()->get('database'));
     }
 
     public function open($sessionSavePath, $sessionName): bool

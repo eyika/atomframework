@@ -71,7 +71,7 @@ class Application implements ApplicationInterface
 
     public function registerProviders(): void
     {
-        $providers = config('app.providers', []);
+        $providers = config()->get('app.providers', []);
 
         foreach ($providers as $provider) {
             if (!$this->loadedProviders()->keyExists($provider)) {

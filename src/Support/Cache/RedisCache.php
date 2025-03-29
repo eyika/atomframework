@@ -13,7 +13,7 @@ class RedisCache implements CacheInterface
 
     public function __construct()
     {
-        $config = config('cache.stores.redis');
+        $config = config()->get('cache.stores.redis');
 
         $this->redis = new Client();  //need to install phredis
         $this->redis->connect('127.0.0.1', 6379);
@@ -89,6 +89,14 @@ class RedisCache implements CacheInterface
             return true;
         }
         return false;
+    }
+
+    /**
+     * @param CacheItem $item
+     */
+    public function setItem($item): bool
+    {
+        return $this->save($item);
     }
 
     /**
