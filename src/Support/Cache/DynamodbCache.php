@@ -32,7 +32,7 @@ class DynamoDbCache implements CacheInterface
      */
     public function __construct()
     {
-        $config = config()->get('cache.stores.dynamodb');
+        $config = config('cache.stores.dynamodb');
 
         $this->dynamoDb = new DynamoDbClient([
             'version' => 'latest',

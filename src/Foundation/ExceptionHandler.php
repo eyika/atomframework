@@ -106,7 +106,7 @@ class ExceptionHandler implements ContractExceptionHandler
                 return Response::json(['message' => 'An error occured', [
                     'success' => false,
                     'message' => str_contains($message, 'SQLSTATE') || str_contains($message, 'Illuminate') ? 'something happened try again' : $message,
-                    'data' => config()->get('app.debug', false) ? $exception->getTrace() : null,
+                    'data' => config('app.debug', false) ? $exception->getTrace() : null,
                 ]], is_numeric($code) ? intval($code) : 500);
             }
 
@@ -145,7 +145,7 @@ class ExceptionHandler implements ContractExceptionHandler
             if ($exception instanceof UnauthorizedHttpException || $exception instanceof AccessDeniedHttpException) {
                 $code = BaseResponse::STATUS_UNPROCESSABLE_ENTITY;
 
-                return Response::redirect(config()->get('auth.login_page', '/auth/login'));
+                return Response::redirect(config('auth.login_page', '/auth/login'));
             }
 
             return $this->renderErrorPage($request, $exception);
@@ -156,7 +156,7 @@ class ExceptionHandler implements ContractExceptionHandler
 
     protected function renderErrorPage(Request $request, Throwable $exception): BaseResponse
     {
-        if (config()->get('app.debug', true)) {
+        if (config('app.debug', true)) {
             $whoops = new \Whoops\Run;
             $whoops->allowQuit(false);
             $whoops->writeToOutput(false);
@@ -165,7 +165,7 @@ class ExceptionHandler implements ContractExceptionHandler
             return response()->html($whoops->handleException($exception));
         }
         
-        $serverErrorPage = config()->get('view.server_error.path', '');
+        $serverErrorPage = config('view.server_error.path', '');
 
         if (!empty($serverErrorPage)) {
             return response()->view($serverErrorPage)->withErrors(['message' => $exception->getMessage()]);

@@ -78,7 +78,7 @@ class File
 
     protected function setDiskConfig(string|null $disk = null)
     {
-        $this->diskconfig = is_null($disk) ? config()->get('filesystems.disks')[config()->get('filesystems.default')] : config()->get('filesystems.disks')[$disk];
+        $this->diskconfig = is_null($disk) ? config('filesystems.disks')[config('filesystems.default')] : config('filesystems.disks')[$disk];
     }
 
     public function getDiskConfig()

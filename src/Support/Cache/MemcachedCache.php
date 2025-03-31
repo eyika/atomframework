@@ -21,7 +21,7 @@ class MemcachedCache implements CacheInterface
      */
     public function __construct()
     {
-        $config = config()->get('cache.stores.memcached');
+        $config = config('cache.stores.memcached');
 
         $servers = $config['servers'];
 

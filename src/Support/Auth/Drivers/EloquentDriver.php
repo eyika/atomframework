@@ -12,7 +12,7 @@ class EloquentDriver implements DriverInterface
     }
     public function validateCredentials(array $credentials): ?AuthenticatableInterface
     {
-        $modelClass = config()->get('auth.user.model');
+        $modelClass = config('auth.user.model');
         $user = $modelClass::getBuilder()->where('email', $credentials['email'])->first(false);
 
         if ($user && password_verify($credentials['password'], $user->password)) {
@@ -24,7 +24,7 @@ class EloquentDriver implements DriverInterface
 
     public function getUserById($userId): ?AuthenticatableInterface
     {
-        $modelClass = config()->get('auth.user.model');
+        $modelClass = config('auth.user.model');
         if (!$user = $modelClass::getBuilder()->where('id', $userId)->first(false)) {
             return null;
         }
@@ -33,7 +33,7 @@ class EloquentDriver implements DriverInterface
 
     public function getUserByColumn(string $columnName, $value): ?AuthenticatableInterface
     {
-        $modelClass = config()->get('auth.user.model');
+        $modelClass = config('auth.user.model');
         if (!$user = $modelClass::getBuilder()->where($columnName, $value)->first(false)) {
             return null;
         }

@@ -140,7 +140,7 @@ if (! function_exists('storage')) {
      */
     function storage(string|null $disk = null, CacheInterface|null $cache = null) {
         if (is_null($disk))
-            $disk = config()->get('filesystems.default');
+            $disk = config('filesystems.default');
         $storage = Storage::disk($disk);
         if ($cache)
             $storage = $storage->cache($cache);
@@ -249,7 +249,7 @@ if (! function_exists('config')) {
     /**
      * Get a config data from configuration file
      */
-    function config() {
+    function config(string $key, $default = null) {
         // $parts = explode('.', $config_name);
         // $file = array_shift($parts);
     
@@ -263,7 +263,7 @@ if (! function_exists('config')) {
         // } else {
         //     return $default;
         // }
-    
+
         // // Traverse the config array using the remaining parts
         // foreach ($parts as $part) {
         //     if (!is_array($config) || !array_key_exists($part, $config)) {
@@ -272,7 +272,7 @@ if (! function_exists('config')) {
         //     $config = $config[$part];
         // }
     
-        return Config::instance();
+        return Config::get($key, $default);
     }
 }
 
@@ -448,7 +448,7 @@ if (! function_exists('asset')) {
     function asset(string $folder = ''): string
     {
         if (config("app.url"))
-            $server_url = config()->get('app.url');
+            $server_url = config('app.url');
         else
             $server_url = Request::schemeAndHttpHost();
         $folder = empty($folder) ? '' : "/$folder";
@@ -513,14 +513,14 @@ if (! function_exists('logger')) {
         string|null $name = null,
         bool $isConsole = false
     ) {
-        if ($internal && config()->get('app.debug', true) == false) {
+        if ($internal && config('app.debug', true) == false) {
             return (new Logger(''))->pushHandler(new NoopHandler());
         }
 
         $path = $path ?? storage_path("logs/custom.log");
 
         if (!$name) {
-            $name = config()->get('app.name', 'Atom');
+            $name = config('app.name', 'Atom');
         }
 
         $log = new Logger($name);
@@ -698,7 +698,7 @@ if (!function_exists('view')) {
     function view($file_name, $data = []) {
         $path = resource_path('views');
 
-        if (config()->get('view.use_advance_engine')) {
+        if (config('view.use_advance_engine')) {
             $view = new Blade($path);
             $code = $view->run("$file_name", $data);
         } else {

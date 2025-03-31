@@ -12,7 +12,7 @@ class FileSessionHandler implements SessionHandlerInterface, SessionIdInterface,
 
     public function __construct()
     {
-        $this->savePath = config()->get('session.files', sys_get_temp_dir()); // Default to system temp dir if not set
+        $this->savePath = config('session.files', sys_get_temp_dir()); // Default to system temp dir if not set
         if (!is_dir($this->savePath)) {
             mkdir($this->savePath, 0777, true);
         }

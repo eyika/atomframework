@@ -42,7 +42,7 @@ class DriverFactory
 
     protected static function registerHandlers()
     {
-        foreach (config()->get('auth.auth_drivers', []) as $name => $class) {
+        foreach (config('auth.auth_drivers', []) as $name => $class) {
             self::registerHandler($name, $class);
         }
     }

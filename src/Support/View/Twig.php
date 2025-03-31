@@ -12,7 +12,7 @@ class Twig {
 
 	static function make($file, array|string $paths = "/", $data = array(), $get_output = false) {
         self::$paths = Arr::wrap($paths);
-		self::$cache_path = config()->get('view.compiled');
+		self::$cache_path = config('view.compiled');
 		$cached_file = self::cache($file);
 	    extract($data, EXTR_SKIP);
         if (!$get_output) {

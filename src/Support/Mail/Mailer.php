@@ -36,8 +36,8 @@ class Mailer
         if ($driver instanceof MailerInterface)
             return $this;
 
-        $driver = $driver ?? config()->get('mail.default');
-        self::$config = $config ?? config()->get('mail.mailers', [])[$driver];
+        $driver = $driver ?? config('mail.default');
+        self::$config = $config ?? config('mail.mailers', [])[$driver];
         self::$config['driver'] = $driver;
 
         self::setDriver(self::$config['transport']);
@@ -126,7 +126,7 @@ class Mailer
         if (!self::$instantiated) {
             new static;
         }
-        static::$html = Twig::make($templateName, $resourcePath ?? config()->get('mail.markdown.paths'), $data, true);
+        static::$html = Twig::make($templateName, $resourcePath ?? config('mail.markdown.paths'), $data, true);
         return new static(static::$config, static::$driver);
     }
 

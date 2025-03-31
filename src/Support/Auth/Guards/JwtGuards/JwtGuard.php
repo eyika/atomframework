@@ -24,7 +24,7 @@ class JwtGuard extends Authenticator
         $this->key = env('JWT_KEY');
         $this->iss = env('JWT_ISS');
         $this->aud = env('JWT_AUD');
-        $this->encoder = new JwtEncoder(config()->get('app.key'));
+        $this->encoder = new JwtEncoder(config('app.key'));
         $this->config = $config;
         $this->guard = $guard;
     }
@@ -122,7 +122,7 @@ class JwtGuard extends Authenticator
     public function generateJwt(User $user)
     {
         $issued_at = time();
-        $expiration_time = $issued_at + config()->get('auth.jwt_timeout', 60 * 60);      //valid for one hour by default
+        $expiration_time = $issued_at + config('auth.jwt_timeout', 60 * 60);      //valid for one hour by default
         $not_before = $issued_at - 5;
 
         $token = $this->encoder->encode([

@@ -217,7 +217,7 @@ class BaseResponse
     private function compileView()
     {
         try {
-            if (config()->get('view.use_advance_engine')) {
+            if (config('view.use_advance_engine')) {
                 $view = Blade::instance();
                 if (!empty($view->atomErrors()))
                     $this->viewData['errors'] = new Arrayable($view->atomErrors());

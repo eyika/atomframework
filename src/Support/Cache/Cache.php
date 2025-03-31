@@ -106,7 +106,7 @@ class Cache implements CacheInterface
 
     protected function setStoreConfig(string|null $store = null)
     {
-        $this->store_config = is_null($store) ? config()->get('cache.stores')[config()->get('cache.default')] : config()->get('cache.stores')[$store];
+        $this->store_config = is_null($store) ? config('cache.stores')[config('cache.default')] : config('cache.stores')[$store];
     }
 
     protected function initAdapter()

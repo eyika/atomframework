@@ -17,8 +17,8 @@ class FileCache implements CacheInterface
 
     public function __construct()
     {
-        $cacheDirectory = config()->get('cache.stores.file.path');
-        $this->prefix = config()->get('cache.prefix');
+        $cacheDirectory = config('cache.stores.file.path');
+        $this->prefix = config('cache.prefix');
 
         if (!file_exists($cacheDirectory))
             mkdir($cacheDirectory, 0775, true);

@@ -19,7 +19,7 @@ class Unlink extends Command
     public function handle(): bool
     {
         try {
-            $links = config()->get('filesystems.links');
+            $links = config('filesystems.links');
 
             foreach ($links as $link => $source) {
                 $link = File::realpath($link) ?: $link;

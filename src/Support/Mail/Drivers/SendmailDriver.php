@@ -17,7 +17,7 @@ class SendmailDriver implements MailerInterface
         }
         $this->mailer = new PHPMailer(true);
         $this->mailer->isSendmail();
-        $this->mailer->Sendmail = $config['path'] ?? config()->get('mail.sendmail');
+        $this->mailer->Sendmail = $config['path'] ?? config('mail.sendmail');
     }
 
     public function to(string $address, string|null $name = null): self

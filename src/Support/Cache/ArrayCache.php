@@ -19,7 +19,7 @@ class ArrayCache implements CacheInterface
 
     public function __construct()
     {
-        $this->serialize = config()->get('cache.stores.array.serialize', false);
+        $this->serialize = config('cache.stores.array.serialize', false);
     }
 
     /**

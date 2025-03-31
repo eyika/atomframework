@@ -14,7 +14,7 @@ class DbCache implements CacheInterface
 
     public function __construct()
     {
-        $config = config()->get('cache.stores.database');
+        $config = config('cache.stores.database');
 
         $this->table = $config['table'] ?? '_cache';
     }

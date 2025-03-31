@@ -25,7 +25,7 @@ class MailgunDriver implements MailerInterface
         $configurator = new HttpClientConfigurator();
         $configurator->setHttpClient(new Client());
         $configurator->setApiKey($config['key']);
-        $configurator->setDebug(config()->get('app.env') === 'local');
+        $configurator->setDebug(config('app.env') === 'local');
 
         $this->client = new Mailgun($configurator, new ArrayHydrator); // Assuming Guzzle as the HTTP client
     }

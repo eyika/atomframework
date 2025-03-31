@@ -18,9 +18,9 @@ class ViewRedis extends BladeOne
      */
     public function __construct($templatePath = null, $compiledPath = null)
     {
-        $mode = config()->get('view.mode', env('APP_ENV') == 'local' ? BladeOne::MODE_DEBUG : BladeOne::MODE_FAST);
-        $templatePath = $templatePath ?? config()->get('view.paths');
-        $compiledPath = $compiledPath ?? config()->get('view.compiled');
+        $mode = config('view.mode', env('APP_ENV') == 'local' ? BladeOne::MODE_DEBUG : BladeOne::MODE_FAST);
+        $templatePath = $templatePath ?? config('view.paths');
+        $compiledPath = $compiledPath ?? config('view.compiled');
 
         if (!file_exists($compiledPath)) {
             mkdir($compiledPath, 0744, true);
