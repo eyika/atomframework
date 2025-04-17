@@ -250,28 +250,6 @@ if (! function_exists('config')) {
      * Get a config data from configuration file
      */
     function config(string $key, $default = null) {
-        // $parts = explode('.', $config_name);
-        // $file = array_shift($parts);
-    
-        // $config = [];
-    
-        // // Load the config file
-        // $file_path = config_path("{$file}.php");
-        
-        // if (file_exists($file_path)) {
-        //     $config = require $file_path;  // or require_once
-        // } else {
-        //     return $default;
-        // }
-
-        // // Traverse the config array using the remaining parts
-        // foreach ($parts as $part) {
-        //     if (!is_array($config) || !array_key_exists($part, $config)) {
-        //         return $default;
-        //     }
-        //     $config = $config[$part];
-        // }
-    
         return Config::get($key, $default);
     }
 }

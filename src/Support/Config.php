@@ -16,7 +16,9 @@ class Config
     protected static $cacheEnabled = false;
     protected static $cache_prefix = 'config__';
 
-    public function __construct(){}
+    public function __construct(){
+        self::loadConfigFiles(config_path());
+    }
 
     public static function instance(): Config
     {
@@ -48,10 +50,11 @@ class Config
      */
     public static function setCache(CacheInterface|null $cache = null): self
     {
+        $instance = self::instance();
         self::$cacheEnabled = true;
         self::$cache = $cache ?? new DbCache();
 
-        return new static();
+        return $instance;
     }
 
     /**
@@ -63,6 +66,7 @@ class Config
      */
     public static function get($key, $default = null)
     {
+        self::instance();
         if (self::$cacheEnabled && $value = self::$cache->getItem(self::$cache_prefix . $key)) {
             return $value;
         }
@@ -92,6 +96,8 @@ class Config
      */
     public static function set($key, $value)
     {
+        self::instance();
+
         $segments = explode('.', $key);
         $config = &self::$config;
 
