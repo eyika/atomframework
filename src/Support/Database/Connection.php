@@ -220,6 +220,8 @@ class Connection {
     //   $sql = str_replace(':offset', (int)$params[':offset'], $sql);
     //   unset($params[':limit'], $params[':offset']);
     // }
+
+    // echo $sql.PHP_EOL.PHP_EOL;
     
     $statement = $this->db->prepare($sql);
     foreach ($params as $key => &$value) {
@@ -357,7 +359,7 @@ class Connection {
       if ( $bind_or_filter ) {
         if ( is_array($bind_or_filter) ) {
           $i = 0; $j = 0; $len = count($bind_or_filter);
-          foreach (['order_by', 'LIMIT', 'OFFSET'] as $_val) {
+          foreach (["ORDER BY", 'LIMIT', 'OFFSET'] as $_val) {
             if (array_key_exists($_val, $bind_or_filter)) {
               $len--;
             }
@@ -369,7 +371,7 @@ class Connection {
           }
 
           foreach ( $bind_or_filter as $k => $v ) {
-            if ( $k == 'order_by' ) {
+            if ( $k == 'ORDER BY' ) {
               $order_limit_or_offset .= " ORDER BY $v";
               // $j++;
               continue;
@@ -817,7 +819,7 @@ class Connection {
    * @return void
    */
   public function set($key, $value, $space = 'default') {
-    echo "called set";
+    // echo "called set";
     $table = $this->key_value_table($space);
     
     try {

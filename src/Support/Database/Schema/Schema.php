@@ -39,8 +39,8 @@ class Schema
      */
     public static function hasTable(string $table): bool
     {
-        $sql = "SHOW TABLES LIKE :table";
-        $statement = DatabaseConnection::exec($sql, [':table' => $table]);
+        $sql = "SHOW TABLES LIKE '$table'";
+        $statement = DatabaseConnection::exec($sql);
         return $statement->rowCount() > 0;
     }
 

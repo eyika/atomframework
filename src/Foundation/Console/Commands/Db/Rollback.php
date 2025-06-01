@@ -7,6 +7,7 @@ use Eyika\Atom\Framework\Foundation\Console\Concerns\RunsOnConsole;
 use Eyika\Atom\Framework\Foundation\Console\Command;
 use Eyika\Atom\Framework\Support\Database\DB;
 use Eyika\Atom\Framework\Support\Database\Schema\Migrations\CreateMigrationsTable;
+use Eyika\Atom\Framework\Support\Database\Schema\Migrations\Migration;
 
 class Rollback extends Command
 {
@@ -24,46 +25,58 @@ class Rollback extends Command
             (new CreateMigrationsTable())->up();
     
             // Get rollback step
-            $step = $this->option('step') ?? 1;
+            $step = $this->option('step') ?? 0;
+            $batch = $this->option('batch');
     
-            for ($i = 0; $i < $step; $i++) {
+            // for ($i = 0; $i < $step; $i++) {
                 // Get latest batch number
-                if (($batch = $this->option('batch')) && !DB::table('migrations')->where('batch', $batch)->first('batch')) {
-                    $this->info("Invalid batch value.");
-                    return false;
+                if ($batch && !DB::table('migrations')->where('batch', $batch)->first('batch')) {
+                    throw new BaseConsoleException('Invalid batch value.');
                 }
-                $batch = $batch ?? DB::table('migrations')->max('batch');
-                if (!$batch) {
-                    $this->info("Nothing to rollback.");
-                    return false;
-                }
-    
+                // $batch = $batch ?? DB::table('migrations')->max('batch');
+
                 // Get migrations from the latest batch
-                $migrations = DB::table('migrations')->where('batch', $batch)->get();
+                $migration_query = DB::table('migrations');
+                if ($batch)
+                    $migration_query->where('batch', $batch);
+                if ($step > 0) 
+                    $migration_query->orderBy('id', "DESC")->limit($step);
+                else
+                    $migration_query->orderBy('id', "DESC");
+
+                $migrations = $migration_query->get();
+
+                if (!$migrations || count($migrations) < 1) {
+                    throw new BaseConsoleException('Nothing to rollback.');
+                }
     
                 foreach ($migrations as $migration) {
-                    $className = $migration->migration;
+                    $className = $migration['migration'];
                     $file = base_path("database/migrations/{$className}.php");
     
                     if (file_exists($file)) {
-                        require_once $file;
-                        if (class_exists($className)) {
+                        $migrationObj = require_once $file;
+                        if ($migrationObj instanceof Migration || (is_object($migrationObj) && method_exists($migrationObj, 'down'))) {
                             $this->info("Rolling back: $className");
-                            (new $className)->down();
-    
+                            $migrationObj->down();
+
                             // Remove from migrations table
                             DB::table('migrations')->where('migration', $className)->delete();
                             $this->info("Rolled back: $className");
+                        } else {
+                            throw new BaseConsoleException("Migration $className must return an instance of Eyika\Atom\Framework\Support\Database\Schema\Migrations\Migration or an object that has the methods up and down");
                         }
+                    } else {
+                        throw new BaseConsoleException("Migration file $file not found");
                     }
                 }
-            }
+            // }
     
             $this->info("Rollback completed.");
         } catch (BaseConsoleException $e) {
             $this->error($e->getMessage());
             return !(bool)($e->getCode());
         }
-        return !(bool)$code;
+        return true;
     }
 }

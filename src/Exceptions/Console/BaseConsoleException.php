@@ -6,7 +6,7 @@ use Throwable;
 
 class BaseConsoleException extends BaseException
 {
-    public function __construct(string $message = '', int $code = 0, Throwable|null $previous = null)
+    public function __construct(string $message = '', int $code = 1, Throwable|null $previous = null)
     {
         parent::__construct($message, $code, $previous);
     }

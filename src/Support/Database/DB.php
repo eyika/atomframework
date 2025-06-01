@@ -90,7 +90,8 @@ class DB
 
     public function orderBy($column = "id", $direction = "ASC")
     {
-        static::$order = "$column $direction";
+        static::$bind_or_filter['ORDER BY'] = "$column $direction";
+        // static::$order = "$column $direction";
         return $this;
     }
 
@@ -180,8 +181,8 @@ class DB
         $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
 
         $query_arr[$key] = $value;
-        if (static::$order !== "")
-            $query_arr['order_by'] = static::$order;
+        // if (static::$order !== "")
+        //     $query_arr['order_by'] = static::$order;
     
         $fields = $select;
 
@@ -218,8 +219,8 @@ class DB
         if (static::$bind_or_filter)
             $query_arr = static::$bind_or_filter;
 
-        if (static::$order !== "")
-            $query_arr['order_by'] = static::$order;
+        // if (static::$order !== "")
+        //     $query_arr['order_by'] = static::$order;
 
         if (!$fields = DatabaseConnection::fetch(static::$table, $query_arr, $select, static::$operators, static::$or_ands)) {
             static::resetInstance();

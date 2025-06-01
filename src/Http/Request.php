@@ -3,7 +3,9 @@
 namespace Eyika\Atom\Framework\Http;
 
 use Eyika\Atom\Framework\Exceptions\BaseException;
+use Eyika\Atom\Framework\Exceptions\Http\RequestException;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
+use Eyika\Atom\Framework\Exceptions\ValidationException;
 use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Arrayable;
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
@@ -536,6 +538,14 @@ class Request
     public function validate(array $params, string $separator = '|'): bool|array
     {
         return Validator::validate($this->input(), $params, $separator);
+    }
+
+    public function validateOrFail(array $params, string $separator = '|', $message = 'errors in request', $code = 400)
+    {
+        if (!$validated = $this->validate($params, $separator)) {
+            throw new ValidationException($message, Validator::$errors, $code);
+        }
+        return $validated;
     }
 
     public function validationErrors()

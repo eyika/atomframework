@@ -40,7 +40,8 @@ trait QueryBuilder
 
     public function orderBy($column = "id", $direction = "ASC")
     {
-        $this->order = "$column $direction";
+        $this->bind_or_filter['ORDER BY'] = "$column $direction";
+        // static::$order = "$column $direction";
         return $this;
     }
 
@@ -275,8 +276,8 @@ trait QueryBuilder
             $query_arr['deleted_at'] = "IS NULL";
             is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
         }
-        if ($this->order !== "")
-            $query_arr['order_by'] = $this->order;
+        // if ($this->order !== "")
+        //     $query_arr['order_by'] = $this->order;
     
         $this->useHashForEncryptedColumnComparisonQueries($query_arr);
 
@@ -357,8 +358,8 @@ trait QueryBuilder
             $query_arr['deleted_at'] = "IS NULL";
             is_array($this->or_ands) ? $this->or_ands[] = "AND" : $this->or_ands = ["AND"];
         }
-        if ($this->order !== "")
-            $query_arr['order_by'] = $this->order;
+        // if ($this->order !== "")
+        //     $query_arr['order_by'] = $this->order;
     
         $this->useHashForEncryptedColumnComparisonQueries($query_arr);
         if (count($select)) {
@@ -795,6 +796,8 @@ trait QueryBuilder
             $this->booted($this, 'creating');
             $this->booting($this, 'creating');
 
+            $values = array_merge($values, Arr::except($query_arr, array_merge(array_keys($values), ['updated_at', 'created_at', 'deleted_at'])));
+
             DatabaseConnection::insert($this->table, $values);
         } else {
             $this->boot($this, 'saving');
@@ -808,6 +811,7 @@ trait QueryBuilder
             $this->resetInstance();
             return false;
         }
+
         $model = $model[0];
         $this->decryptValues($model);
         $this->resetInstance();

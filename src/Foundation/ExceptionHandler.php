@@ -5,6 +5,7 @@ namespace Eyika\Atom\Framework\Foundation;
 use Eyika\Atom\Framework\Exceptions\Db\ModelNotFoundException;
 use Eyika\Atom\Framework\Exceptions\Http\AccessDeniedHttpException;
 use Eyika\Atom\Framework\Exceptions\Http\NotFoundHttpException;
+use Eyika\Atom\Framework\Exceptions\Http\RequestException;
 use Eyika\Atom\Framework\Exceptions\Http\UnauthorizedHttpException;
 use Eyika\Atom\Framework\Exceptions\ValidationException;
 use Eyika\Atom\Framework\Foundation\Contracts\ExceptionHandler as ContractExceptionHandler;
@@ -53,6 +54,18 @@ class ExceptionHandler implements ContractExceptionHandler
             $message = $exception->getMessage();
             if ($code < 100 || $code >= 600) {
                 $code = BaseResponse::STATUS_INTERNAL_SERVER_ERROR;
+            }
+
+            if ($exception instanceof RequestException) {
+                $errors = $exception->errors();
+
+                return response()->json([
+                    'message' => 'Bad Request', [
+                        'success' => false,
+                        'message' => $message,
+                        'errors' => $errors
+                    ]
+                ]);
             }
 
             if ($exception instanceof ModelNotFoundException) {
@@ -121,6 +134,10 @@ class ExceptionHandler implements ContractExceptionHandler
             $message = $exception->getMessage();
             if ($code < 100 || $code >= 600) {
                 $code = BaseResponse::STATUS_INTERNAL_SERVER_ERROR;
+            }
+
+            if ($exception instanceof RequestException) {
+                return response()->back()->withErrors($exception->errors());
             }
 
             if ($exception instanceof ModelNotFoundException) {
