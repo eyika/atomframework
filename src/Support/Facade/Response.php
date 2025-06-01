@@ -11,6 +11,7 @@ use Eyika\Atom\Framework\Http\Response as HttpResponse;
  * @method static HttpResponse plain(string $message, int $statusCode = self::STATUS_OK)
  * @method static HttpResponse image(string $data, int $statusCode = self::STATUS_OK, string $type = "jpeg")
  * @method static HttpResponse html(string $message, int $statusCode = self::STATUS_OK)
+ * @method static HttpResponse custom(string $message, int $statusCode = self::STATUS_OK, $mime = 'text/plain')
  * @method static HttpResponse json(array $data, int $statusCode = self::STATUS_OK)
  * @method static HttpResponse view(string $file_name, array $data = [])
  * @method static HttpResponse redirect(string $to, int $code = self::STATUS_FOUND, int|null $delay = null)

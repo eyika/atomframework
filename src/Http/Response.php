@@ -22,6 +22,11 @@ class Response extends BaseResponse
         return $this->_plain($message, $statusCode, 'text/html');
     }
 
+    public function custom(string $message, int $statusCode = self::STATUS_OK, $mime = 'text/plain'): self
+    {
+        return $this->_plain($message, $statusCode, $mime);
+    }
+
     public function json(array $data, int $statusCode = self::STATUS_OK): self
     {
         if (!isset(self::METHOD_TO_FUNC[$statusCode])) {
