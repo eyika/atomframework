@@ -85,17 +85,37 @@ class Blueprint
 
     public function binary(string $name): ColumnDefinition
     {
-        return $this->addColumn('BLOB', $name);
+        return $this->blob($name);
+    }
+
+    public function tinyBlob(string $name): ColumnDefinition
+    {
+        return $this->addColumn('TINYBLOB', $name);
     }
 
     public function blob(string $name): ColumnDefinition
     {
-        return $this->binary($name);
+        return $this->addColumn('BLOB', $name);
+    }
+
+    public function mediumBlob(string $name): ColumnDefinition
+    {
+        return $this->addColumn('MEDIUMBLOB', $name);
+    }
+
+    public function longBlob(string $name): ColumnDefinition
+    {
+        return $this->addColumn('LONGBLOB', $name);
     }
 
     public function enum(string $name, array $values): ColumnDefinition
     {
         return $this->addColumn("ENUM", $name, $values);
+    }
+    
+    public function dateTime(string $column, int $precision = 0)
+    {
+        return $this->addColumn('datetime', $column, compact('precision'));
     }
 
     public function timestamp(string $column): ColumnDefinition

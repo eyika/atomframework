@@ -82,16 +82,15 @@ class Storage
     public function get(string $path): string
     {
         $cached = $this->cache->getItem($this->cacheKey($path));
-        if ($cached->isHit()) {
-            return $cached->get();
+        if ($cached->isHit() && $data = $cached->get()) {
+            return $data;
         }
 
         // $path = $isfullpath ? $path : $this->getFullPath($path);
-        $contents = false;
 
         $contents = $this->file->get($path);
 
-        if ($contents !== false) {
+        if ($contents) {
             $item = new CacheItem($this->cacheKey($path), $contents);
             $this->cache->save($item);
         }
@@ -188,8 +187,8 @@ class Storage
     public function size($path)
     {
         $cached = $this->cache->getItem($this->cacheKey($path));
-        if ($cached->isHit()) {
-            return strlen(serialize($cached->get()));
+        if ($cached->isHit() && $data = $cached->get()) {
+            return strlen(serialize($data));
         }
 
         $size = 0;

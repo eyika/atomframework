@@ -29,6 +29,7 @@ class Application implements ApplicationInterface
         $GLOBALS[self::GLOBAL_VARS['framework_namespace']] = NamespaceHelper::getBaseNamespace();
         $GLOBALS[self::GLOBAL_VARS['project_namespace']] = NamespaceHelper::getBaseNamespace("$basepath/composer.json", $isRunningInTestEnv ? "src" : "app");
         $GLOBALS[self::GLOBAL_VARS['test_namespace']] = NamespaceHelper::getBaseNamespace("$basepath/composer.json", "test");
+        $GLOBALS[self::GLOBAL_VARS['database_namespace']] = NamespaceHelper::getBaseNamespace("$basepath/composer.json", "database");
 
         if (!$isRunningInTestEnv) {
             $dotenv = \Dotenv\Dotenv::createImmutable(base_path());

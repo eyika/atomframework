@@ -17,7 +17,7 @@ class Seeder extends BaseMake
 
 namespace Database\Seeds;
 
-use Eyika\Atom\Framework\Database\Seeder\Seeder;
+use Eyika\Atom\Framework\Support\Database\Seeder\Seeder;
 
 class {{name}} extends Seeder
 {
