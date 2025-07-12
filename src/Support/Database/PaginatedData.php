@@ -21,7 +21,7 @@ class PaginatedData
     protected static int $current_page;
     protected static string|null $route_name;
 
-    public function __construct(array $data, int $total_records, int $records_per_page, int $total_pages, int $current_page, ?string $route_name)
+    public function __construct(array $data, int $total_records, int $records_per_page, int $total_pages, int $current_page, ?string $route_name = null)
     {
         static::$data = $data;
         static::$total_records = $total_records;
@@ -31,7 +31,7 @@ class PaginatedData
         static::$route_name = $route_name;
     }
 
-    public static function init(array $data, int $total_records, int $records_per_page, int $total_pages, int $current_page, ?string $route_name)
+    public static function init(array $data, int $total_records, int $records_per_page, int $total_pages, int $current_page, ?string $route_name = null)
     {
         return new static($data, $total_records, $records_per_page, $total_pages, $current_page, $route_name);
     }

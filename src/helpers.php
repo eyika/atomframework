@@ -103,7 +103,7 @@ if (! function_exists("app")) {
 }
 
 if (! function_exists('paginate')) {
-    function paginate(array $data, Model|User $model, $currentPage = PaginatedData::currentPage, $recordsPerPage = PaginatedData::recordsPerPage, ?string $routeName)
+    function paginate(array $data, Model|User $model, $currentPage = PaginatedData::currentPage, $recordsPerPage = PaginatedData::recordsPerPage, ?string $routeName = null)
     {
         $currentPage = $currentPage;
         $recordsPerPage = $recordsPerPage;

@@ -399,7 +399,7 @@ trait QueryBuilder
         return $this->all($is_protected, $select);
     }
 
-    public function _paginate($currentPage = null, $recordsPerPage = null, $isProtected = true, $select = [], ?string $routeName)
+    public function _paginate($currentPage = null, $recordsPerPage = null, $isProtected = true, $select = [], $routeName = null)
     {
         $currentPage = $currentPage ?? 1;
         $recordsPerPage = $recordsPerPage ?? $this->recordsPerPage;

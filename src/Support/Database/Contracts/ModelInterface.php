@@ -257,7 +257,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return PaginatedData|false
      */
-    public function _paginate($currentPage = null, $recordsPerPage = null, $isProtected = true, $select = [], ?string $routeName);
+    public function _paginate($currentPage = null, $recordsPerPage = null, $isProtected = true, $select = [], $routeName = null);
 
     /**
      * Return a random result from the current query
