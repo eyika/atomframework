@@ -12,6 +12,8 @@ class Validator {
     private static array $req_data;
     private static array $req_files;
     public static array $errors;
+    protected static string $errorMessage = '';
+    protected static int $errorCode = 422;
     private static array $validated;
     private static array $confirms;
 
@@ -24,7 +26,7 @@ class Validator {
         self::$confirms = [];
     }
 
-    public static function validate(Request|array $req_obj, array $params, string $separator = '|', $throw = true): bool|array
+    public static function validate(Request|array $req_obj, array $params, string $separator = '|', $throw = false): bool|array
     {
         $me = new self($req_obj);
 
@@ -53,7 +55,7 @@ class Validator {
         }
 
         if (count(static::$errors) > 0 && $throw) {
-            throw new ValidationException(errors: static::$errors);
+            throw new ValidationException(static::$errors, static::$errorMessage, static::$errorCode);
         }
 
         if (count(static::$errors) > 0) {
@@ -61,6 +63,16 @@ class Validator {
         }
 
         return static::$validated;
+    }
+
+    public static function setErrorMessage(string $errorMessage)
+    {
+        static::$errorMessage = $errorMessage;
+    }
+
+    public static function setErrorCode(string $errorCode)
+    {
+        static::$errorCode = $errorCode;
     }
 
     private function validateValue(string $param, array $validations): null|array

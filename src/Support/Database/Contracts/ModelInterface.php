@@ -251,12 +251,13 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @param int $currentPage indicate the current page
      * @param int $recordsPerPage indicate the number of records to display per page
-     * @param bool $is_protected 'wether to hide or show protected values'
+     * @param bool $isProtected 'wether to hide or show protected values'
      * @param array $select 'what parameters of model to fetch in results'
+     * @param ?string $routeName used to generate the base url for previous and nextPages
      * 
      * @return PaginatedData|false
      */
-    public function _paginate($currentPage = null, $recordsPerPage = null, $is_protected = true, $select = []);
+    public function _paginate($currentPage = null, $recordsPerPage = null, $isProtected = true, $select = [], ?string $routeName);
 
     /**
      * Return a random result from the current query

@@ -399,12 +399,12 @@ trait QueryBuilder
         return $this->all($is_protected, $select);
     }
 
-    public function _paginate($currentPage = null, $recordsPerPage = null, $is_protected = true, $select = [])
+    public function _paginate($currentPage = null, $recordsPerPage = null, $isProtected = true, $select = [], ?string $routeName)
     {
         $currentPage = $currentPage ?? 1;
         $recordsPerPage = $recordsPerPage ?? $this->recordsPerPage;
 
-        $totalRecords = $this->_aggregate($this->primaryKey, 'count', false);
+        $totalRecords = $this->__aggregate($this->primaryKey, 'count', false);
         // Calculate total pages
         $totalPages = ceil($totalRecords / $recordsPerPage);
         // Calculate the offset
@@ -413,12 +413,12 @@ trait QueryBuilder
         $this->limit($recordsPerPage);
         $this->offset($offset);
 
-        $data = $this->all($is_protected, $select);
+        $data = $this->all($isProtected, $select);
 
         if (!$data) {
             return false;
         }
-        return PaginatedData::init($data, $totalRecords, $recordsPerPage, $totalPages, $currentPage);
+        return PaginatedData::init($data, $totalRecords, $recordsPerPage, $totalPages, $currentPage, $routeName);
     }
 
     public function _random()
@@ -522,10 +522,16 @@ trait QueryBuilder
 
         if ($this->softdeletes) {
             $query_arr['deleted_at'] = "IS NULL";
-            is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
+            if (gettype($this->or_ands) === 'string' || empty($this->or_ands)) {
+                $this->or_ands = Arr::wrap($this->or_ands);
+            }
+            array_push($this->or_ands, "AND");
         }
 
         if ($method == 'count' && $column != '*') {
+            if (gettype($this->operators) === 'string' || empty($this->operators)) {
+                $this->operators = Arr::wrap($this->operators);
+            }
             $this->operators[] = "DISTINCT $column";
         }
 

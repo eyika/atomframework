@@ -9,7 +9,7 @@ class ValidationException extends BaseException
 {
     protected array $errors;
 
-    public function __construct(string $message = 'validation failed', array $errors, int $code = 422, Throwable|null $previous = null)
+    public function __construct(array $errors, string $message = 'validation failed', int $code = 422, Throwable|null $previous = null)
     {
         parent::__construct($message, $code, $previous);
         $this->errors = $errors;

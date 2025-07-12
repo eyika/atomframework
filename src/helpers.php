@@ -103,7 +103,7 @@ if (! function_exists("app")) {
 }
 
 if (! function_exists('paginate')) {
-    function paginate(array $data, Model|User $model, $currentPage = PaginatedData::currentPage, $recordsPerPage = PaginatedData::recordsPerPage)
+    function paginate(array $data, Model|User $model, $currentPage = PaginatedData::currentPage, $recordsPerPage = PaginatedData::recordsPerPage, ?string $routeName)
     {
         $currentPage = $currentPage;
         $recordsPerPage = $recordsPerPage;
@@ -111,7 +111,7 @@ if (! function_exists('paginate')) {
         // Calculate total pages
         $totalPages = ceil($totalRecords / $recordsPerPage);
 
-        return PaginatedData::init($data, $totalRecords, $recordsPerPage, $totalPages, $currentPage);
+        return PaginatedData::init($data, $totalRecords, $recordsPerPage, $totalPages, $currentPage, $routeName);
     }
 }
 

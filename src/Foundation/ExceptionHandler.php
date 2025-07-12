@@ -93,12 +93,13 @@ class ExceptionHandler implements ContractExceptionHandler
             }
 
             if ($exception instanceof ValidationException) {
-                $firstError = $exception->errors();
+                $errors = $exception->errors();
 
-                return response()->json(['message' => 'Validation Error', [
+                return response()->json([
                     'success' => false,
-                    'message' => $firstError[0],
-                ]], BaseResponse::STATUS_UNPROCESSABLE_ENTITY);
+                    'message' => $exception->getMessage() ?? 'Validation Error',
+                    'errors' => $errors
+                ], BaseResponse::STATUS_UNPROCESSABLE_ENTITY);
             }
 
             if ($exception instanceof AccessDeniedHttpException) {

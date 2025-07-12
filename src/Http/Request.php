@@ -540,12 +540,11 @@ class Request
         return Validator::validate($this->input(), $params, $separator);
     }
 
-    public function validateOrFail(array $params, string $separator = '|', $message = 'errors in request', $code = 400)
+    public function validateOrFail(array $params, string $separator = '|', $message = 'errors in request', $code = 422)
     {
-        if (!$validated = $this->validate($params, $separator)) {
-            throw new ValidationException($message, Validator::$errors, $code);
-        }
-        return $validated;
+        Validator::setErrorMessage($message);
+        Validator::setErrorCode($code);
+        return Validator::validate($this->input(), $params, $separator, true);
     }
 
     public function validationErrors()
