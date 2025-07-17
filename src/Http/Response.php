@@ -99,13 +99,13 @@ class Response extends BaseResponse
             ->setHeader('Content-Length', filesize($file_path));
     }
 
-    public function proxy(Request $request, ?string $target = null)
+    public function proxy(Request $request, ?string $target = null, array $extraHeaders = [])
     {
         if ($target) {
-            return (new Proxy($request, $target))->send();
+            return (new Proxy($request, $target, $extraHeaders))->send();
         }
 
-        return new Proxy($request);
+        return new Proxy($request, extraHeaders: $extraHeaders);
     }
 
     public function setCsrf(): void

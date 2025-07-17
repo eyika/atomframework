@@ -4,6 +4,7 @@ namespace Eyika\Atom\Framework\Support\Facade;
 
 use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\Response as HttpResponse;
+use Eyika\Atom\Framework\Http\Proxyproxy;
 
 /**
  * @method static HttpResponse getInstance()
@@ -17,6 +18,7 @@ use Eyika\Atom\Framework\Http\Response as HttpResponse;
  * @method static HttpResponse redirect(string $to, int $code = self::STATUS_FOUND, int|null $delay = null)
  * @method static HttpResponse back(int $code = self::STATUS_SEE_OTHER, int|null $delay = null)
  * @method static HttpResponse download(string $file_path, string|null $file_name = null)
+ * @method static HttpResponse|Proxyproxy(Request $request, ?string $target = null, array $extraHeaders = [])
  * @method static HttpResponse setCsrf()
  * @method static HttpResponse setCookie($name, $value = '', $expiry = 0, $path = '/', $domain = '', $secure = false, $httpOnly = true) Method to set a cookie header
  * @method static HttpResponse setHeader(string $key, string $content, int|null $code = null, bool $replace = true) Method to set a header

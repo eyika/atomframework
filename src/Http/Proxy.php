@@ -8,10 +8,14 @@ class Proxy
 {
     protected Request $request;
     protected ?string $target;
+    protected array $extraHeaders;
+    protected $blacklist; //['authorization', 'cookie', 'x-csrf-token'] could be in config/proxy.php
 
-    public function __construct(Request $request, ?string $target = null)
+    public function __construct(Request $request, ?string $target = null, array $extraHeaders = [])
     {
         $this->request = $request;
+        $this->extraHeaders = $extraHeaders;
+        $this->blacklist = [];
 
         if ($target) {
             if (!filter_var($target, FILTER_VALIDATE_URL) || !str_starts_with($target, 'http')) {
@@ -21,34 +25,60 @@ class Proxy
         }
     }
 
-    public function to(string $target)
+    public function to(string $target, array $extraHeaders = [])
     {
         if (!filter_var($target, FILTER_VALIDATE_URL) || !str_starts_with($target, 'http')) {
             throw new Exception("Invalid target URL: $target");
         }
         $this->target = $target;
+        $this->extraHeaders = $extraHeaders;
         return $this->send();
     }
 
     public function send(): Response
     {
         $headers = [];
+        $blacklist = $this->getBlacklistedHeaders();
+
         foreach ($this->request->headers() as $key => $value) {
             if (strtolower($key) === 'host') continue;
-            $headers[] = "$key: $value";
+            if (in_array(strtolower($key), $blacklist)) continue;
+            $headers[$key] = $value;
+        }
+
+        $headers = array_merge($headers, $this->extraHeaders);
+
+        $headerLines = [];
+        foreach ($headers as $k => $v) {
+            $headerLines[] = "$k: $v";
         }
 
         $options = [
             'http' => [
                 'method' => $this->request->method(),
-                'header' => implode("\r\n", $headers),
+                'header' => implode("\r\n", $headerLines),
                 'content' => $this->request->body(),
                 'ignore_errors' => true,
             ]
         ];
 
         $context = stream_context_create($options);
-        $body = @file_get_contents($this->target, false, $context);
+        $url = $this->target;
+
+        // Merge original query string
+        $query = $this->request->query();
+        $init = true;
+        foreach($query as $key => $val) {
+            if ($init) {
+                $url .= "?$key=$val";
+                $init = false;
+                continue;
+            }
+
+            $url .= "&$key=$val";
+        }
+
+        $body = @file_get_contents($url, false, $context);
 
         $response = new Response();
 
@@ -73,5 +103,11 @@ class Proxy
         }
 
         return $response;
+    }
+
+    private function getBlacklistedHeaders()
+    {
+        //in future this function should return blacklisted headers from /config/proxy.php
+        return $this->blacklist;
     }
 }
