@@ -99,6 +99,15 @@ class Response extends BaseResponse
             ->setHeader('Content-Length', filesize($file_path));
     }
 
+    public function proxy(Request $request, ?string $target = null)
+    {
+        if ($target) {
+            return (new Proxy($request, $target))->send();
+        }
+
+        return new Proxy($request);
+    }
+
     public function setCsrf(): void
     {
         Csrf::setCsrfToken();
