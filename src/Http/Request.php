@@ -48,7 +48,9 @@ class Request
 
         foreach ($_COOKIE as $name => $value) {
             // Create a new Cookie instance for each $_COOKIE element
-            $this->cookies->set($name, new Cookie($name, $value));
+            if (!in_array($name, config('cookies.whitelisted_cookies', []))) {
+                $this->cookies->set($name, new Cookie($name, $value));
+            }
         }
         $this->server = $_SERVER;
         $this->headers = array_change_key_case(getallheaders(), CASE_LOWER);
