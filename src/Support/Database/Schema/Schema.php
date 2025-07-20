@@ -45,6 +45,36 @@ class Schema
     }
 
     /**
+     * Check if a table exists.
+     *
+     * @param string $table
+     * @return bool
+     */
+    public static function columnExists(string $table, string $column): bool
+    {
+        $stmt = DatabaseConnection::query("SHOW COLUMNS FROM `$table` LIKE '$column'");
+        return $stmt->fetch() !== false;
+    }
+
+    /**
+     * Check if a table has given column names.
+     *
+     * @param array $table
+     * @return bool
+     */
+    public static function columnsExists(string $table, array $columns): bool
+    {
+        $column = array_pop($columns);
+        $q_string = "SHOW COLUMNS FROM `$table` LIKE '$column'";
+
+        foreach ($columns as $_column) {
+            $q_string .= " OR LIKE '$_column'";
+        }
+        $stmt = DatabaseConnection::query($q_string);
+        return $stmt->fetch() !== false;
+    }
+
+    /**
      * Alter an existing table.
      *
      * @param string $table
@@ -56,6 +86,7 @@ class Schema
         $blueprint = new Blueprint($table, true);
         $callback($blueprint);
         $sql = $blueprint->toSql();
+        echo $sql;
         DatabaseConnection::exec($sql);
     }
 }

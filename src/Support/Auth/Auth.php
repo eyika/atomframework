@@ -15,6 +15,7 @@ final class Auth
     protected static $guardName;
     protected static array $config;
     protected static string $jwt;
+    protected static string $sid;
 
     /** @property Authenticator[] */
     protected static $guards = [];
@@ -140,11 +141,28 @@ final class Auth
     }
 
     /**
+     * Set the logged in user's session_id for later retrieval
+     * Usually this will be called internally by the JwtGuard
+     */
+    public static function setSid(string $sid)
+    {
+        static::$sid = $sid;
+    }
+
+    /**
      * Get the logged in user's jwt token
      */
     public static function getJwt()
     {
         return static::$jwt;
+    }
+
+    /**
+     * Get the logged in user's sid token
+     */
+    public static function getSid()
+    {
+        return static::$sid;
     }
 
     /**

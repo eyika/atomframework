@@ -1,6 +1,8 @@
 <?php
 namespace Eyika\Atom\Framework\Support\Database\Schema;
 
+use Eyika\Atom\Framework\Support\Str;
+
 class ForeignKeyDefinition
 {
     protected string $column;
@@ -13,6 +15,14 @@ class ForeignKeyDefinition
     {
         $this->column = $column;
         $blueprint->foreignKeys[] = $this;
+    }
+
+    public function constrained(): self
+    {
+        [$on, $reference] = explode('_', $this->column);
+
+        $this->references($reference)->on(Str::plural($on));
+        return $this;
     }
 
     public function references(string $references): self

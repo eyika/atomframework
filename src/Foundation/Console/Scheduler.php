@@ -5,6 +5,7 @@ namespace Eyika\Atom\Framework\Foundation\Console;
 use Cron\CronExpression;
 use Exception;
 use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
+use Eyika\Atom\Framework\Foundation\Console\Contracts\QueueInterface;
 use Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel;
 
 class Scheduler
@@ -12,7 +13,7 @@ class Scheduler
     protected $tasks = [];
     protected $current_name = '';
 
-    public function command(string $signature, array $arguements = [], string|null $expression = null): self
+    public function command(string|callable|QueueInterface $signature, array $arguements = [], string|null $expression = null): self
     {
         $this->tasks[] = [
             'command' => $signature,

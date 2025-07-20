@@ -3,6 +3,7 @@
 namespace Eyika\Atom\Framework\Support\Auth\Guards\JwtGuards;
 
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
+use Eyika\Atom\Framework\Support\Str;
 use Eyika\Atom\Framework\Support\Auth\Auth;
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
 use Eyika\Atom\Framework\Support\Auth\Guards\Authenticator;
@@ -34,7 +35,10 @@ class JwtGuard extends Authenticator
         if (!$user = $this->validateCredentials($credentials)) {
             return null;
         }
-        Auth::setJwt($this->generateJwt($user));
+
+        $jwt = $this->generateJwt($user);
+        Auth::setJwt($jwt->token);
+        Auth::setSid($jwt->sid);
         return $user;
     }
 
@@ -45,9 +49,6 @@ class JwtGuard extends Authenticator
 
     public function user(?string $token = null): ?AuthenticatableInterface
     {
-        // if ($this->user) {
-        //     return $this->user;
-        // }
         if (!$user_id = $this->validate()) {
             return null;
         }
@@ -64,8 +65,12 @@ class JwtGuard extends Authenticator
         if (!$user = $this->user()) {
             return null;
         }
-        $jwt = $this->generateJwt($user);
-        return $jwt;
+        if (!$sid = $this->getSid()) {
+            return null;
+        }
+        Auth::setSid($sid);
+        $jwt = $this->generateJwt($user, $sid);
+        return $jwt->token;
     }
 
     public function remember(AuthenticatableInterface $user): void
@@ -80,6 +85,35 @@ class JwtGuard extends Authenticator
      */
     protected function validate(): ?int
     {
+        if (is_null($payload = $this->getPayload())) {
+            return null;
+        }
+        Auth::setSid($payload->sid);
+
+        return $payload->data->id;
+    }
+
+    /**
+     * Get the current session id
+     *
+     * @return null|string
+     */
+    protected function getSid(): ?string
+    {
+        if (is_null($payload = $this->getPayload())) {
+            return null;
+        }
+
+        return $payload->sid;
+    }
+
+    /**
+     * Get the jwt's payload data
+     *
+     * @return null|object
+     */
+    protected function getPayload(): ?object
+    {
         $jwt = $this->extractToken();
         if (empty($jwt)) {
             return null;
@@ -89,7 +123,7 @@ class JwtGuard extends Authenticator
             return null;
         }
 
-        return $payload->data->id;
+        return $payload;
     }
 
     protected static function extractToken(): ?string
@@ -117,13 +151,16 @@ class JwtGuard extends Authenticator
      * generates a time base user's jwt token
      *
      * @param User $user
-     * @return string|bool
+     * @param string|null $sid
+     * @return object
      */
-    public function generateJwt(User $user)
+    public function generateJwt(User $user, ?string $sid = null)
     {
         $issued_at = time();
         $expiration_time = $issued_at + config('auth.jwt_timeout', 60 * 60);      //valid for one hour by default
         $not_before = $issued_at - 5;
+        if (!$sid)
+            $sid = Str::uuid()->toString();
 
         $token = $this->encoder->encode([
             "iss" => $this->iss,
@@ -131,12 +168,16 @@ class JwtGuard extends Authenticator
             "iat" => $issued_at,
             "nbf" => $not_before,
             "exp" => $expiration_time,
+            "sid" => $sid,
             'data' => [
                 "id" => $user->id,
                 "email" => $user->email,
             ]
         ], $this->key);
-        return $token;
+        return (object)[
+            "token" => $token,
+            "sid" => $sid
+        ];
     }
 
     /**

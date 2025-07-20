@@ -4,7 +4,7 @@ namespace Eyika\Atom\Framework\Support\Facade;
 
 use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\Response as HttpResponse;
-use Eyika\Atom\Framework\Http\Proxyproxy;
+use Eyika\Atom\Framework\Http\Proxy;
 
 /**
  * @method static HttpResponse getInstance()

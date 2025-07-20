@@ -17,10 +17,15 @@ class Blueprint
 
     protected array $plugins = [];
     protected array $afterCreateHooks = [];
+    protected array $dropColumns = [];
+    protected array $modifyColumns = [];
+    protected array $renameColumns = [];
+    protected bool $alter;
 
-    public function __construct(string $table)
+    public function __construct(string $table, $alter = false)
     {
         $this->table = $table;
+        $this->alter = $alter;
     }
 
     public function id(): ColumnDefinition
@@ -166,6 +171,14 @@ class Blueprint
         return $foreignKey;
     }
 
+    public function foreignId(string $column): ForeignKeyDefinition
+    {
+        $this->addColumn("BIGINT UNSIGNED", $column);
+        $foreignKey = new ForeignKeyDefinition($column, $this);
+        // $this->foreignKeys[] = $foreignKey;
+        return $foreignKey;
+    }
+
     public function unique(string|array $column): self
     {
         // $this->indexes[] = is_string($column) ? "UNIQUE(`$column`)" : "UNIQUE(`" . implode("`, `", $column) . "`)";
@@ -202,7 +215,6 @@ class Blueprint
 
     public function index(string|array $column, ?string $name = null): self
     {
-        // $this->indexes[] = is_string($column) ? "INDEX(`$column`)" : "INDEX(`" . implode("`, `", $column) . "`)";
         $this->addIndex("INDEX", Arr::wrap($column), $name);
         return $this;
     }
@@ -227,8 +239,39 @@ class Blueprint
         $indexesSql = array_map(fn(IndexDefinition $index) => $index->toSql(), $this->indexes);
 
         $allDefinitions = array_merge($columnsSql, $foreignKeysSql, $indexesSql);
-        $definitions = implode(",\n    ", $allDefinitions);
 
+        if ($this->alter) {
+            $alter_command = 'ADD';
+            if (count($this->dropColumns)) {
+                $allDefinitions = [];
+                $alter_command = 'DROP COLUMN';
+                foreach ($this->dropColumns as $col) {
+                    $allDefinitions[] = "`$col`";
+                }
+            } elseif (count($this->modifyColumns)) {
+                $allDefinitions = [];
+                $alter_command = 'MODIFY';
+                foreach ($this->modifyColumns as $col) {
+                    $allDefinitions[] = $col->toSql();
+                }
+            } elseif (count($this->renameColumns)) {
+                $allDefinitions = [];
+                $alter_command = 'RENAME COLUMN';
+                foreach ($this->renameColumns as $pair) {
+                    $allDefinitions[] = "`{$pair['from']}` TO `{$pair['to']}`";
+                }
+            }
+
+            // For ALTER TABLE: each definition must be prefixed with ADD or MODIFY
+            $alterStatements = implode(",\n    ", array_map(
+                fn($sql) => "$alter_command " . $sql,
+                $allDefinitions
+            ));
+            return sprintf("ALTER TABLE `%s`\n    %s;", $this->table, $alterStatements);
+        }
+
+        // Otherwise, it's a CREATE TABLE
+        $definitions = implode(",\n    ", $allDefinitions);
         return sprintf("CREATE TABLE `%s` (\n    %s\n);", $this->table, $definitions);
     }
 
@@ -290,5 +333,26 @@ class Blueprint
         $column = new ColumnDefinition("`$name` $type");
         $this->columns[] = $column;
         return $column;
+    }
+
+    public function dropColumn(string ...$columns): static
+    {
+        foreach ($columns as $column) {
+            $this->dropColumns[] = $column;
+        }
+        return $this;
+    }
+
+    public function modifyColumn(string $name, string $type, array $options = []): static
+    {
+        $definition = new ColumnDefinition($name, $type, $options);
+        $this->modifyColumns[] = $definition;
+        return $this;
+    }
+
+    public function renameColumn(string $from, string $to): static
+    {
+        $this->renameColumns[] = compact('from', 'to');
+        return $this;
     }
 }

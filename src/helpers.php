@@ -10,6 +10,7 @@ use Eyika\Atom\Framework\Support\Auth\Auth;
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
 use Eyika\Atom\Framework\Support\Auth\User;
 use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
+use Eyika\Atom\Framework\Support\Carbon;
 use Eyika\Atom\Framework\Support\Collections\Collection;
 use Eyika\Atom\Framework\Support\Config;
 use Eyika\Atom\Framework\Support\Database\DB;
@@ -1193,5 +1194,18 @@ if (! function_exists('with')) {
     function with($value, ?callable $callback = null)
     {
         return is_null($callback) ? $value : $callback($value);
+    }
+}
+
+if (!function_exists('now')) {
+    /**
+     * Returns the current datetime formatted as Y-m-d H:i:s
+     * 
+     * @param \DateTimeZone|string|int|null $timezone
+     * @return Carbon
+     */
+    function now(DateTimeZone|string|int|null $timezone = null)
+    {
+        return Carbon::now();
     }
 }

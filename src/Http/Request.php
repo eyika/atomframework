@@ -344,6 +344,11 @@ class Request
         return $this->retrieveItem($this->headers, $key, $default);
     }
 
+    public function header($key, $default = null)
+    {
+        return $this->headers($key, $default);
+    }
+
     public function server($key = null, $default = null)
     {
         if ($key == null)
@@ -475,7 +480,7 @@ class Request
             return $this->headers['X-Forwarded-Host'];
         }
 
-        return $this->server['HTTP_HOST'];
+        return $this->server('HTTP_HOST');
     }
 
     public function address()
@@ -483,15 +488,22 @@ class Request
         return $this->server('REMOTE_ADDR', '');
     }
 
-    public static function clientIp()
+    public function clientIp()
     {
-        if (
-            isset($_SERVER['HTTP_X_FORWARDED_FOR'])
-            && \preg_match('/^(d{1,3}).(d{1,3}).(d{1,3}).(d{1,3})$/', $_SERVER['HTTP_X_FORWARDED_FOR'])
-        ) {
-            return $_SERVER['HTTP_X_FORWARDED_FOR'];
+        if (\preg_match('/^(d{1,3}).(d{1,3}).(d{1,3}).(d{1,3})$/', $this->server('HTTP_X_FORWARDED_FOR', ''))) {
+            return $this->server('HTTP_X_FORWARDED_FOR');
         }
-        return $_SERVER['REMOTE_ADDR'] ?? '';
+        return $this->address();
+    }
+
+    public function ip()
+    {
+        return $this->clientIp();
+    }
+
+    public function userAgent()
+    {
+        return $this->server('HTTP_USER_AGENT');
     }
 
     public function schemeAndHttpHost()

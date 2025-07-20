@@ -10,6 +10,7 @@ use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\NamespaceHelper;
 use Eyika\Atom\Framework\Foundation\Console\Command;
 use Eyika\Atom\Framework\Foundation\Console\Concerns\LogsMessages;
+use Eyika\Atom\Framework\Foundation\Console\Contracts\QueueInterface;
 use Eyika\Atom\Framework\Foundation\Console\Contracts\ShouldLogMessages;
 use Eyika\Atom\Framework\Foundation\Console\Scheduler;
 use Eyika\Atom\Framework\Http\Request;
@@ -40,14 +41,6 @@ class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
 
     public function __construct()
     {
-        // $this->loadCommands();
-        // $this->loadProjectCommands();
-        // // $this->loadLibrariesCommands();
-        // $this->loadFacades();
-
-        // Register all providers
-        // $this->registerProviders();
-        // $this->bootProviders();
     }
 
     protected $status = false;
@@ -69,14 +62,18 @@ class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
         $this->info($comment);
     }
 
-    public function run(string $signature, array $arguments = [], bool $requireConsoleRoute = true)
+    public function run(string|callable|QueueInterface $signature, array $arguments = [], bool $requireConsoleRoute = true)
     {
         app()->registerProviders();
         //Load console route command definitions into $commands array
         if ($requireConsoleRoute)
             require base_path('routes/console.php');
 
-        if (isset($this->commands[$signature])) {
+        if ($signature instanceof QueueInterface) {
+            $this->status = $signature->handle();
+        } else if (is_callable($signature)) {
+            $this->status = $signature(...$arguments);
+        } else if (isset($this->commands[$signature])) {
             $command = $this->commands[$signature]['command'];
 
             if ($command instanceof Command) {

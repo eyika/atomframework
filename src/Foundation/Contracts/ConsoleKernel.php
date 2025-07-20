@@ -3,6 +3,7 @@
 namespace Eyika\Atom\Framework\Foundation\Contracts;
 
 use Eyika\Atom\Framework\Foundation\Console\Command;
+use Eyika\Atom\Framework\Foundation\Console\Contracts\QueueInterface;
 
 interface ConsoleKernel
 {
@@ -24,7 +25,7 @@ interface ConsoleKernel
     /**
      * Execute a specified command from the list of commands in the kernel
      */
-    public function run(string $signature, array $arguments = [], bool $requireConsoleRoute = false);
+    public function run(string|callable|QueueInterface $signature, array $arguments = [], bool $requireConsoleRoute = false);
 
     /**
      * Terminate the execution of a command and return its value
