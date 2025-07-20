@@ -51,7 +51,7 @@ class Request
             $this->cookies->set($name, new Cookie($name, $value));
         }
         $this->server = $_SERVER;
-        $this->headers = getallheaders();
+        $this->headers = array_change_key_case(getallheaders(), CASE_LOWER);
         $this->query = $_GET;
         $this->setRequestBodyAndFiles();
         $this->input = [...$this->body, ...$this->files];
@@ -280,7 +280,7 @@ class Request
                 $this->body = $data;
                 break;
             default:
-                throw new BaseException("request data grou $bodyOrQuery does not exist");
+                throw new BaseException("request data group $bodyOrQuery does not exist");
         }
     }
 
@@ -341,7 +341,7 @@ class Request
     {
         if ($key == null)
             return $this->headers;
-        return $this->retrieveItem($this->headers, $key, $default);
+        return $this->retrieveItem($this->headers, strtolower($key), $default);
     }
 
     public function header($key, $default = null)
@@ -459,8 +459,8 @@ class Request
 
     public function scheme()
     {
-        if ($this->isFromTrustedProxy() && $this->headers('HTTP_X_FORWARDED_PROTO')) {
-            return $this->headers['HTTP_X_FORWARDED_PROTO'];
+        if ($this->isFromTrustedProxy() && $this->server('HTTP_X_FORWARDED_PROTO')) {
+            return $this->server('HTTP_X_FORWARDED_PROTO');
         }
 
         if (
@@ -477,7 +477,7 @@ class Request
     public function host()
     {
         if ($this->isFromTrustedProxy() && $this->headers('X-Forwarded-Host')) {
-            return $this->headers['X-Forwarded-Host'];
+            return $this->headers('X-Forwarded-Host');
         }
 
         return $this->server('HTTP_HOST');
