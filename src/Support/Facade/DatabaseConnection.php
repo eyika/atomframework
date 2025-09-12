@@ -26,7 +26,7 @@ use PDOStatement;
  * @method static int count($sql_or_table, $bind_or_filter = [], array|string $operators = '=', array|string $or_ands = "AND")
  * @method static mixed random($table, $filter = [], string|array $operators = '=', string|array $or_ands = "AND")
  * @method static \PDOStatement|false increment($column, $table, $filters, string|array $operators = '=', string|array $or_ands = "AND", $step = 1)
- * @method static \PDOStatement|false decrement($column, $table, $filters)
+ * @method static \PDOStatement|false decrement(string $column, string $table, array $filters, string|array $operators = '=', string|array $or_ands = "AND", $step = 1)
  * @method static \PDOStatement|false toggle($table, $filters, $column, $if, $then, string|array $operators = '=', string|array $or_ands = "AND")
  * @method static int insert($table, $data, $ignore = false) Data insertion
  * @method static void insert_update($table, $data) Insert to table or update value

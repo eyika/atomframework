@@ -10,7 +10,7 @@ use League\Flysystem\Filesystem;
  * @method static void setDisk(string $disk)
  * @method static void setContents(string $contents)
  * @method static string contents()
- * @method static bool `exists(string $path)
+ * @method static bool exists(string $path)
  * @method static string get(string $path)
  * @method static int put(string $path, string $contents, bool $lock = false)
  * @method static bool replace(string $path, string $contents)

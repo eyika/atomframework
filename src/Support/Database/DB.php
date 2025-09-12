@@ -4,6 +4,7 @@ namespace Eyika\Atom\Framework\Support\Database;
 
 use Exception;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
+use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Facade\DatabaseConnection;
 
 class DB
@@ -12,6 +13,7 @@ class DB
 
     protected static $bind_or_filter;
     protected static array|string $or_ands;
+    protected static array $joins = [];
     protected static  array|string $operators;
     protected static $order;
 
@@ -91,7 +93,6 @@ class DB
     public function orderBy($column = "id", $direction = "ASC")
     {
         static::$bind_or_filter['ORDER BY'] = "$column $direction";
-        // static::$order = "$column $direction";
         return $this;
     }
 
@@ -181,8 +182,6 @@ class DB
         $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
 
         $query_arr[$key] = $value;
-        // if (static::$order !== "")
-        //     $query_arr['order_by'] = static::$order;
     
         $fields = $select;
 
@@ -219,9 +218,6 @@ class DB
         if (static::$bind_or_filter)
             $query_arr = static::$bind_or_filter;
 
-        // if (static::$order !== "")
-        //     $query_arr['order_by'] = static::$order;
-
         if (!$fields = DatabaseConnection::fetch(static::$table, $query_arr, $select, static::$operators, static::$or_ands)) {
             static::resetInstance();
             return false;
@@ -229,12 +225,6 @@ class DB
         static::resetInstance();
         return $fields;
     }
-
-    // public function with($model)
-    // {
-    //     throw new NotImplementedException('method not fully implemented');
-    //     static::$with_model_name = $model;
-    // }
 
     public function get($select = '*')
     {
@@ -261,33 +251,6 @@ class DB
         }
         return PaginatedData::init($data, $totalRecords, $recordsPerPage, $totalPages, $currentPage);
     }
-
-    // public function count($column = "*")
-    // {
-    //     return static::_count(static::$table, $column);
-    // }
-
-    // public function _count($column = "*", $reset_instance = true)
-    // {
-    //     $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
-
-    //     $i = 0;
-    //     // foreach ($keys as $key) {
-    //     //     $query_arr[$key] = $values[$i];
-    //     //     $i++;
-    //     // }
-
-    //     if (!$count = DatabaseConnection::count(static::$table, $query_arr, static::$operators, static::$or_ands)) {
-    //         if ($reset_instance)
-    //             static::resetInstance();
-    //         return false;
-    //     }
-    //     if ($reset_instance)
-    //         static::resetInstance();
-
-    //     return $count;
-    // }
-
 
     public function random()
     {
@@ -414,8 +377,24 @@ class DB
     {
         $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
         $operators = static::$operators;
+        $column = $this->parseColumn($column);
 
-        return DatabaseConnection::increment($column, static::$table, $query_arr, $operators, static::$or_ands, $step);
+        if (DatabaseConnection::increment($column, static::$table, $query_arr, $operators, static::$or_ands, $step)) {
+            return false;
+        }
+        return true;
+    }
+
+    public function decrement(string $column, int $step = 1)
+    {
+        $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
+        $operators = static::$operators;
+        $column = $this->parseColumn($column);
+
+        if (DatabaseConnection::decrement($column, static::$table, $query_arr, $operators, static::$or_ands, $step)) {
+            return false;
+        }
+        return true;
     }
 
     public function delete(int|null $id = null)
@@ -432,10 +411,6 @@ class DB
 
     public function restore($id)
     {
-        // if (!static::$child->softdeletes) {
-        //     throw new Exception("this model does not support soft deleting");
-        // }
-
         return static::_update(['deleted_at', null], $id);
     }
 
@@ -459,6 +434,16 @@ class DB
     public function whereLike($column, $value = null)
     {
         return static::_where($column, 'LIKE', $value, 'AND');
+    }
+    
+    public function whereIn($column, $values)
+    {
+        return static::_where($column, 'IN', $values, 'AND');
+    }
+    
+    public function whereNotIn($column, $values)
+    {
+        return static::_where($column, 'NOT IN', $values, 'AND');
     }
 
     public function whereNotLike($column, $value = null)
@@ -503,12 +488,22 @@ class DB
 
     public function whereNotNull($column)
     {
-        return static::_where($column, 'NOT NULL');
+        return static::_where($column, 'IS NOT NULL');
     }
 
     public function orWhere($column, $operatorOrValue = null, $value = null)
     {
         return static::_where($column, $operatorOrValue, $value, 'OR');
+    }
+    
+    public function orWhereIn($column, $values)
+    {
+        return static::_where($column, 'IN', $values, 'OR');
+    }
+    
+    public function orWhereNotIn($column, $values)
+    {
+        return static::_where($column, 'NOT IN', $values, 'OR');
     }
 
     public function orWhereLike($column, $value = null)
@@ -599,9 +594,10 @@ class DB
             }
         }
         if (is_null($value) && !is_null($operatorOrValue) && str_contains($operatorOrValue, ' NULL')) {// only column and value was given but value is like `IS NULL` or `NOT NULL`
-            is_string(static::$operators) ? static::$operators = [$operatorOrValue] : array_push(static::$operators, $operatorOrValue);
-        }
-        else if (is_null($value) && !is_null($operatorOrValue) && !str_contains($operatorOrValue, ' NULL')) {// only column and value was given
+            $value = $operatorOrValue;
+        } else if (is_null($value) && Arr::exists(['!=', '==', '='], $operatorOrValue)) {
+            $value = $operatorOrValue == '!=' ? 'IS NOT NULL' : 'IS NULL';
+        } else if (is_null($value) && !is_null($operatorOrValue) && !str_contains($operatorOrValue, ' NULL')) {// only column and value was given
             is_string(static::$operators) ? static::$operators = ['='] : array_push(static::$operators, '=');
             $value = $operatorOrValue;
         } else {
@@ -609,9 +605,36 @@ class DB
         }
 
         is_string(static::$or_ands) ? static::$or_ands = [$boolean] : array_push(static::$or_ands, $boolean);
+        $column = static::parseColumn($column);
         is_null(static::$bind_or_filter) ? static::$bind_or_filter = array($column => $value) : static::$bind_or_filter[$column] = $value;
 
         return $this;
+    }
+
+    private function _join(string $table, string $first, string $operator, string $second, string $type = 'INNER'): static
+    {
+        $this->joins[] = compact('type', 'table', 'first', 'operator', 'second');
+        return $this;
+    }
+
+    public function join(string $table, string $first, string $operator, string $second)
+    {
+        return $this->_join($table, $first, $operator, $second);
+    }
+
+    public function leftJoin(string $table, string $first, string $operator, string $second)
+    {
+        return $this->_join($table, $first, $operator, $second, 'LEFT');
+    }
+
+    public function rightJoin(string $table, string $first, string $operator, string $second)
+    {
+        return $this->_join($table, $first, $operator, $second, 'RIGHT');
+    }
+
+    public function fullOuterJoin(string $table, string $first, string $operator, string $second)
+    {
+        return $this->_join($table, $first, $operator, $second, 'FULL OUTER');
     }
 
     public function distinct($column)
@@ -619,5 +642,18 @@ class DB
         is_string(static::$operators) ? static::$operators = ["DISTINCT `$column`"] : array_push(static::$operators, "DISTINCT `$column`");
 
         return $this;
+    }
+
+    private function parseColumn(string $column): string
+    {
+        if (strpos($column, '.') !== false) {
+            [$relation, $field] = explode('.', $column, 2);
+
+            $this->leftJoin("{$relation}s", static::$table.".{$relation}_id", '=', "{$relation}s.id");
+
+            return "{$relation}s.{$field}";
+        }
+
+        return static::$table.".{$column}";
     }
 }

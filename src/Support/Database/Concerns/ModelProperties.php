@@ -122,6 +122,13 @@ trait ModelProperties
     protected $or_ands;
 
     /**
+     * The join statements to add to the query
+     * 
+     * @var array
+     */
+    protected $joins = [];
+
+    /**
      * The filter key values
      * 
      * @var array|null

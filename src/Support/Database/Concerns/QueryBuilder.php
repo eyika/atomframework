@@ -41,17 +41,11 @@ trait QueryBuilder
     public function orderBy($column = "id", $direction = "ASC")
     {
         $this->bind_or_filter['ORDER BY'] = "$column $direction";
-        // static::$order = "$column $direction";
         return $this;
     }
 
     public function fill($values, $returnInstance = false)
     {
-        // foreach ($this::fillable as $item) {
-        //     if (Arr::keyExists($values, $item)) {
-        //         $this->{$item} = $values[$item];
-        //     }
-        // }
         foreach ($values as $key => $value) {
             if (Arr::exists($this::fillable, $key)) {
                 $this->{$key} = $value;
@@ -116,7 +110,7 @@ trait QueryBuilder
 
         $this->fill($model);
     
-        // 🔹 Trigger "retrieved" event for the main model
+        // Trigger "retrieved" event for the main model
         $this->boot($this, 'retrieved');
         $this->booted($this, 'retrieved');
         $this->booting($this, 'retrieved');
@@ -135,8 +129,6 @@ trait QueryBuilder
 
         if (is_array($models)) {
             foreach ($models as &$model) {
-                // $this->{$key_name."_id"} = $model->{$key_name."_id"};
-
                 if (empty($model->{$key_name."_id"})) {
                     $model->{$with_model_name} = null;
                     continue;
@@ -144,12 +136,10 @@ trait QueryBuilder
                 $item = $model->{$with_model_name}();
                 $model->{$with_model_name} = $item;
                 $model->relationshipItems[] = $with_model_name;
-                // $model->{$with_model_name} = $item ? $item->toArray($is_protected) : $item;
             }
             return $models;
         }
 
-        // $this->{$key_name."_id"} = $models->{$key_name."_id"};
         if (empty($models->{$key_name."_id"})) {
             $models->{$with_model_name} = null;
             return $models;
@@ -157,7 +147,6 @@ trait QueryBuilder
         $item = $models->{$with_model_name}();
         $models->{$with_model_name} = $item;
         $models->relationshipItems[] = $with_model_name;
-        // $models->{$with_model_name} = $item ? $item->toArray($is_protected) : $item;
         $this->resetInstance();
 
         return $models;
@@ -184,7 +173,6 @@ trait QueryBuilder
             return $model->toArray($is_protected);
         }
 
-        // $is_array_of_model = is_array($model);
         /** @var string[] $with_model_names */
         $with_model_names = $this->with_model_names;
         $this->resetInstance();
@@ -276,8 +264,6 @@ trait QueryBuilder
             $query_arr['deleted_at'] = "IS NULL";
             is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
         }
-        // if ($this->order !== "")
-        //     $query_arr['order_by'] = $this->order;
     
         $this->useHashForEncryptedColumnComparisonQueries($query_arr);
 
@@ -296,13 +282,12 @@ trait QueryBuilder
 
         $this->fill($model);
     
-        // 🔹 Trigger "retrieved" event for the main model
+        // Trigger "retrieved" event for the main model
         $this->boot($this, 'retrieved');
         $this->booted($this, 'retrieved');
         $this->booting($this, 'retrieved');
     
         return $this->fetchRelationship($this, true, $is_protected);
-        // return $this->fetchRelationship($model[0], true, $is_protected);
     }
 
     public function _findByArray($keys, $values, $or_and = "AND", $is_protected = true, $select = [])
@@ -339,13 +324,12 @@ trait QueryBuilder
 
         $this->fill($model);
     
-        // 🔹 Trigger "retrieved" event for the main model
+        // Trigger "retrieved" event for the main model
         $this->boot($this, 'retrieved');
         $this->booted($this, 'retrieved');
         $this->booting($this, 'retrieved');
     
         return $this->fetchRelationship($this, true, $is_protected);
-        // return $this->fetchRelationship($fields[0], true, $is_protected);
     }
 
     public function _all($is_protected = true, $select = [])
@@ -358,8 +342,6 @@ trait QueryBuilder
             $query_arr['deleted_at'] = "IS NULL";
             is_array($this->or_ands) ? $this->or_ands[] = "AND" : $this->or_ands = ["AND"];
         }
-        // if ($this->order !== "")
-        //     $query_arr['order_by'] = $this->order;
     
         $this->useHashForEncryptedColumnComparisonQueries($query_arr);
         if (count($select)) {
@@ -381,7 +363,7 @@ trait QueryBuilder
             $this->booting($model, 'retrieved');
         }
 
-        return $this->fetchRelationship($models, is_protected: $is_protected);
+        return $this->fetchRelationship($models, true, is_protected: $is_protected);
     }
 
     public function with($models)
@@ -548,6 +530,34 @@ trait QueryBuilder
         return $aggregate;
     }
 
+    public function _increment($column, $step = 1)
+    {
+        if ($this->bind_or_filter === null)
+            $this->bind_or_filter['id'] = $this->{$this->primaryKey};
+        $query_arr = $this->bind_or_filter;
+        $column = $this->_parseColumn($column);
+
+        if (!DatabaseConnection::increment($column, $this->table, $query_arr, $this->operators, $this->or_ands, $step)) {
+            return false;
+        }
+        return true;
+    }
+
+    public function _decrement($column, $step = 1)
+    {
+
+        if ($this->bind_or_filter === null)
+            $this->bind_or_filter['id'] = $this->{$this->primaryKey};
+
+        $query_arr = $this->bind_or_filter;
+        $column = $this->_parseColumn($column);
+
+        if (!DatabaseConnection::decrement($column, $this->table, $query_arr, $this->operators, $this->or_ands, $step)) {
+            return false;
+        }
+        return true;
+    }
+
     public function _update($values, $id=0, $is_protected = true)
     {
         return $this->__update($values, $id, is_protected: $is_protected);
@@ -675,7 +685,7 @@ trait QueryBuilder
 
     public function _whereNotNull($column)
     {
-        return $this->__where($column, 'NOT NULL');
+        return $this->__where($column, 'IS NOT NULL');
     }
 
     public function _orWhere($column, $operatorOrValue = null, $value = null)
@@ -787,7 +797,7 @@ trait QueryBuilder
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
         if ($this->softdeletes && !$internal) {
-            $query_arr['deleted_at'] = "IS NULL";
+            $query_arr['deleted_at'] = array_key_exists('deleted_at', $values) && $values['deleted_at'] === null ? "IS NOT NULL" : "IS NULL";
             is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
         }
         $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
@@ -848,9 +858,10 @@ trait QueryBuilder
             }
         }
         if (is_null($value) && !is_null($operatorOrValue) && str_contains($operatorOrValue, ' NULL')) {// only column and value was given but value is like `IS NULL` or `NOT NULL`
-            is_string($this->operators) ? $this->operators = [$operatorOrValue] : array_push($this->operators, $operatorOrValue);
-        }
-        else if (is_null($value) && !is_null($operatorOrValue) && !str_contains($operatorOrValue, ' NULL')) {// only column and value was given
+            $value = $operatorOrValue;
+        } else if (is_null($value) && Arr::exists(['!=', '==', '='], $operatorOrValue)) {
+            $value = $operatorOrValue == '!=' ? 'IS NOT NULL' : 'IS NULL';
+        } else if (is_null($value) && !is_null($operatorOrValue) && !str_contains($operatorOrValue, ' NULL')) {// only column and value was given
             is_string($this->operators) ? $this->operators = ['='] : array_push($this->operators, '=');
             $value = $operatorOrValue;
         } else {
@@ -858,9 +869,36 @@ trait QueryBuilder
         }
 
         is_string($this->or_ands) ? $this->or_ands = [$boolean] : array_push($this->or_ands, $boolean);
+        $column = $this->_parseColumn($column);
         is_null($this->bind_or_filter) ? $this->bind_or_filter = array($column => $value) : $this->bind_or_filter[$column] = $value;
 
         return $this;
+    }
+
+    private function __join(string $table, string $first, string $operator, string $second, string $type = 'INNER'): static
+    {
+        $this->joins[] = compact('type', 'table', 'first', 'operator', 'second');
+        return $this;
+    }
+
+    public function _join($table, $first, $operator, $second)
+    {
+        return $this->__join($table, $first, $operator, $second);
+    }
+
+    public function _leftJoin($table, $first, $operator, $second)
+    {
+        return $this->__join($table, $first, $operator, $second, 'LEFT');
+    }
+
+    public function _rightJoin($table, $first, $operator, $second)
+    {
+        return $this->__join($table, $first, $operator, $second, 'RIGHT');
+    }
+
+    public function _fullOuterJoin($table, $first, $operator, $second)
+    {
+        return $this->__join($table, $first, $operator, $second, 'FULL OUTER');
     }
 
     private function _save($is_protected = true, $select = []): bool|self
@@ -925,6 +963,22 @@ trait QueryBuilder
         return $this;
     }
 
+    private function _parseColumn(string $column): string
+    {
+        if (strpos($column, '.') !== false) {
+            [$relation, $field] = explode('.', $column, 2);
+            $relation_plural = Str::plural($relation);
+
+            // Example: posts.user_id = users.id
+            // a relation map might be better here for flexibility
+            $this->_leftJoin($relation_plural, "{$this->table}.{$relation}_id", '=', $relation_plural.".id");
+
+            return "$relation_plural.{$field}";
+        }
+
+        return "{$this->table}.{$column}";
+    }
+
     private function _toArray($guard = true, $select = [], $ignore = [], $includeDynamicProperties = false, $ignore_null = true)
     {
         $result = array();
@@ -938,9 +992,7 @@ trait QueryBuilder
         $select = array_intersect($obj_props, $select);
         if (count($select)) {
             foreach ($select as $item) {
-                // if (Arr::exists($obj_props, $item)) {
-                    $result[$item] = $this->{$item};
-                // }
+                $result[$item] = $this->{$item};
             }
             return $result;
         }

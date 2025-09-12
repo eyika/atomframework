@@ -65,7 +65,7 @@ class ExceptionHandler implements ContractExceptionHandler
                         'message' => $message,
                         'errors' => $errors
                     ]
-                ]);
+                ], $exception->getCode() ?? 400);
             }
 
             if ($exception instanceof ModelNotFoundException) {
@@ -86,7 +86,7 @@ class ExceptionHandler implements ContractExceptionHandler
             if ($exception instanceof NotFoundHttpException) {
                 $message = $exception->getMessage();
 
-                return response()->json(['message' => 'Not Found', [
+                return response()->json(['message' => 'Not Found', 'data' => [
                     'success' => false,
                     'message' => $message,
                 ]], BaseResponse::STATUS_NOT_FOUND);

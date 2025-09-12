@@ -39,10 +39,11 @@ class Request
     protected Session $session;
     protected bool $isAssetRequest;
 
-    public AuthenticatableInterface|User $auth_user;
+    public AuthenticatableInterface|User|null $auth_user;
 
     public function __construct()
     {
+        $this->auth_user = null;
         $this->cookies = new Arrayable();
         $this->isAssetRequest = false;
 
@@ -249,7 +250,7 @@ class Request
 
     public function merge(array $data)
     {
-        $this->body = array_merge($this->input, $data);
+        $this->input = array_merge($this->input, $data);
     }
 
     public function only(array $keys)
@@ -264,7 +265,7 @@ class Request
 
     public function replaceInput(array $input)
     {
-        $this->body = $input;
+        $this->input = $input;
     }
 
     public function replaceQuery(array $query)

@@ -101,6 +101,71 @@ class Connection {
     return $this->db;
   }
   
+/**
+ * Prepare conditions
+ * 
+ * @param string $k
+ * @param string|array $v
+ * @param string $or_and
+ * @param array $where
+ * @param bool &$incr_operator
+ * @param string $_operator
+ * 
+ * @return void
+ */
+private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '', $_operator = '=') {
+    $or_and = $or_and !== '' ? ' ' . $or_and : $or_and;
+    $__k = $k;
+    $_k = $k;
+
+    // ✅ handle dot notation properly
+    if (strpos($k, '.') !== false) {
+        $parts = explode('.', $k);
+        $__k = end($parts); // last segment only for binding key
+        $_k   = implode('.', array_map(fn($part) => "`{$part}`", $parts)); // quote each part
+    } else {
+        $_k = "`{$k}`"; // quote normal column too
+    }
+
+    if (is_array($v)) {
+        // IN (...)
+        $in = [];
+        foreach ($v as $i => $sub_v) {
+            $param = ":{$__k}_{$i}";
+            $in[]  = $param;
+            $bind[$param] = $sub_v;
+        }
+        $in = implode(', ', $in);
+        $where[] = "{$_k} {$_operator} ($in){$or_and}";
+        $incr_operator = false;
+
+    } else if ($v !== null && is_string($v) && str_contains(strtoupper($v), 'NULL')) {
+        // IS NULL / IS NOT NULL
+        $v = strtoupper($v);
+        $where[] = "{$_k} {$v}{$or_and}";
+        $incr_operator = false;
+
+    } else if ($v !== null && is_string($v) && str_contains(strtolower($v), 'now')) {
+        // NOW()
+        $where[] = "{$_k} $_operator now(){$or_and}";
+        $incr_operator = true;
+
+    } else if ($_operator !== null && is_string($_operator) && str_contains(strtoupper($_operator), 'LIKE')) {
+        // LIKE (case-insensitive)
+        $param = ":{$__k}";
+        $where[] = "LOWER({$_k}) $_operator LOWER($param){$or_and}";
+        $bind[$param] = "%$v%";
+        $incr_operator = false;
+
+    } else {
+        // default (=, >, <, etc.)
+        $param = ":{$__k}";
+        $where[] = "{$_k} $_operator {$param}{$or_and}";
+        $bind[$param] = $v;
+        $incr_operator = true;
+    }
+}
+
   /**
    * Prepare conditions
    * 
@@ -113,40 +178,50 @@ class Connection {
    * 
    * @return void
    */
-  private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '', $_operator = '=') {
-    $or_and = $or_and !== '' ? ' ' . $or_and : $or_and;
-    if ( is_array($v) ) {
-      $in = [];
+  // private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '', $_operator = '=') {
+  //   $or_and = $or_and !== '' ? ' ' . $or_and : $or_and;
+  //   $__k = $k;
+  //   $_k = $k;
+  
+  //   if (strpos($k, '.') !== false) {
+  //     $parts = explode('.', $k);
+  //     $__k = count($parts) > 1 ? $parts[count($parts) - 1] : str_replace('.', '', $k);
+  //     $_k = implode('.', array_map(fn($part) => "`{$part}`", explode('.', $k)));
+  //   }
 
-      foreach ( $v as $i => $sub_v ) {
-        $in[] = ":{$k}_{$i}";
-        $bind[":{$k}_{$i}"] = $sub_v;
-      }
+  //   if ( is_array($v) ) {
+  //     $in = [];
 
-      $in = implode(', ', $in);
-      $where[] = "`{$k}` {$_operator} ($in){$or_and}";
-      $incr_operator = false;
-    }
-    else if ($v !== null && is_string($v) && str_contains(strtoupper($v), 'NULL')) {
-      $v = strtoupper($v);
-      $where[] = "`{$k}` {$v}{$or_and}";
-      $incr_operator = false;
-    }
-    else if ($v !== null && is_string($v) && str_contains(strtolower($v), 'now')) {
-      $where[] = "`{$k}` $_operator now(){$or_and}";
-      $incr_operator = true;
-    }
-    else if ($_operator !== null && is_string($_operator) && str_contains(strtoupper($_operator), 'LIKE')) {
-      $where[] = "LOWER({$k}) $_operator LOWER(:$k){$or_and}";
-      $bind[":{$k}"] = "%$v%";
-      $incr_operator = false;
-    }
-    else {
-      $where[] = "`{$k}` $_operator :{$k}{$or_and}";
-      $bind[":{$k}"] = $v;
-      $incr_operator = true;
-    }
-  }
+  //     foreach ( $v as $i => $sub_v ) {
+  //       $in[] = ":{$k}_{$i}";
+  //       $bind[":{$k}_{$i}"] = $sub_v;
+  //     }
+
+  //     $in = implode(', ', $in);
+  //     $where[] = "`{$k}` {$_operator} ($in){$or_and}";
+  //     $incr_operator = false;
+  //   }
+  //   else if ($v !== null && is_string($v) && str_contains(strtoupper($v), 'NULL')) {
+  //     $v = strtoupper($v);
+  //     $where[] = "`{$k}` {$v}{$or_and}";
+  //     $incr_operator = false;
+  //   }
+  //   else if ($v !== null && is_string($v) && str_contains(strtolower($v), 'now')) {
+  //     $where[] = "`{$k}` $_operator now(){$or_and}";
+  //     $incr_operator = true;
+  //   }
+  //   else if ($_operator !== null && is_string($_operator) && str_contains(strtoupper($_operator), 'LIKE')) {
+  //     $where[] = "LOWER({$k}) $_operator LOWER(:$k){$or_and}";
+  //     $bind[":{$k}"] = "%$v%";
+  //     $incr_operator = false;
+  //   }
+  //   else {
+  //     $where[] = "{$_k} $_operator :{$__k}{$or_and}";
+  //     $bind[":{$__k}"] = $v;
+  //     $incr_operator = true;
+  //   }
+  // }
+
   
   /**
    * Bind values and return the values
@@ -168,8 +243,8 @@ class Connection {
       else if ($value !== null && is_string($value) && str_contains($value, 'now')) {
         $values[] = "`{$name}` = current_timestamp";
       } else if ($value === null or $value === 'null') {
-        $values[] = "`{$name}` = :{$name}";
-        $bind[":{$name}"] = null;
+        $values[] = "`{$name}` = NULL";
+        // $bind[":{$name}"] = null;
       }
       else {
         $values[] = "`{$name}` = :{$name}";
@@ -334,7 +409,15 @@ class Connection {
     return [$query ? ('WHERE ' . implode(' ', $query)) : '', $bind];
   }
   
-  
+  protected function compileJoins(array $joins): string
+  {
+    if (!count($joins))
+      return '';
+
+    return implode(' ', array_map(function ($join) {
+        return "{$join['type']} JOIN {$join['table']} ON {$join['first']} {$join['operator']} {$join['second']}";
+    }, $joins));
+  }
   
   /**
    * fetch_cursor
@@ -346,7 +429,7 @@ class Connection {
    * @return \PDOStatement|false
    */
   
-  public function fetch_cursor($sql_or_table, $bind_or_filter = [], $select_what = '*', string|array $operators = "=", string|array $or_ands = "AND") {
+  public function fetch_cursor($sql_or_table, $bind_or_filter = [], $select_what = '*', string|array $operators = "=", string|array $or_ands = "AND", $joins = []) {
     if ( strpos($sql_or_table, ' ') || (strpos($sql_or_table, 'SELECT ') === 0) ) {
       $sql = $sql_or_table;
       $bind = $bind_or_filter;
@@ -354,6 +437,11 @@ class Connection {
     else {
       $select_str = is_array($select_what) ? implode(', ', $select_what) : $select_what;
       $sql = "SELECT {$select_str} FROM `{$sql_or_table}`";
+
+      if ($joins = $this->compileJoins($joins)) {
+        $sql .= " $joins";
+      }
+
       $order_limit_or_offset = '';
       
       if ( $bind_or_filter ) {
@@ -502,7 +590,7 @@ class Connection {
   
   /* --- Atomic increments/decrements --- */
   
-  public function increment($column, $table, $filters, string|array $operators = '=', string|array $or_ands = "AND", $step = 1) {
+  public function increment(string $column, string $table, array $filters, string|array $operators = '=', string|array $or_ands = "AND", $step = 1) {
     $bind = $where = [];
 
     $i = 0; $j = 0; $len = count($filters);
@@ -520,20 +608,24 @@ class Connection {
       $incr_operator = false;
     }
 
-    if ( $where ) {
-      $where_sql = 'WHERE ' . implode( " ", $where);
-    }
-    
+    $where_sql = $where ? ' WHERE ' . implode( " ", $where) : '';
+
     $step = intval($step);
     if ( $step > 0 ) {
       $step = "+{$step}";
     }
+
+    $parts = explode('.', $column);
+    $column = implode('.', array_map(fn($part) => "`{$part}`", $parts)); // quote each part
     
-    return $this->exec("UPDATE `{$table}` SET `{$column}` = `{$column}` {$step} {$where_sql}", $bind);
+    $sql = "UPDATE `{$table}` SET {$column} = {$column} {$step}{$where_sql}";
+    // info($sql);
+    return $this->exec($sql, $bind);
   }
   
-  public function decrement($column, $table, $filters) {
-    return $this->increment($column, $table, $filters, -1);
+  public function decrement(string $column, string $table, array $filters, string|array $operators = '=', string|array $or_ands = "AND", $step = 1) {
+    $step = -abs($step);
+    return $this->increment($column, $table, $filters, $operators, $or_ands, $step);
   }
   
   
@@ -565,8 +657,10 @@ class Connection {
     $bind[':if'] = $if;
     $bind[':v'] = $if;
     $bind[':then'] = $then;
-    
-    return $this->exec("UPDATE `{$table}` SET `{$column}` = IF(`{$column}` = :if, :then, :v) {$where_sql}", $bind);
+
+    $parts = explode('.', $column);
+    $column = implode('.', array_map(fn($part) => "`{$part}`", $parts)); // quote each part
+    return $this->exec("UPDATE `{$table}` SET {$column} = IF({$column} = :if, :then, :v) {$where_sql}", $bind);
   }
   
   

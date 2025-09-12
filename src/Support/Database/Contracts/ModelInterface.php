@@ -365,6 +365,26 @@ interface ModelInterface extends ModelEventsInterface
     public function _bit_xor(string $column);
 
     /**
+     * Increment the given column by 1 or the given number of steps
+     * 
+     * @param string $column
+     * @param int $step
+     * 
+     * @return bool
+     */
+    public function _increment(string $column, int $step = 1);
+
+    /**
+     * Decrement the given column by 1 or the given number of steps
+     * 
+     * @param string $column
+     * @param int $step
+     * 
+     * @return bool
+     */
+    public function _decrement(string $column, int $step = 1);
+
+    /**
      * update a model
      * 
      * @param array $values
@@ -678,6 +698,54 @@ interface ModelInterface extends ModelEventsInterface
      * @return void
      */
     public function _rollback();
+
+    /**
+     * Add a join clause to the query instance
+     * 
+     * @param string $table
+     * @param string $first
+     * @param string $operator
+     * @param string $second
+     * 
+     * @return Model
+     */
+    public function _join($table, $first, $operator, $second);
+
+    /**
+     * Add a join clause to the query instance
+     * 
+     * @param string $table
+     * @param string $first
+     * @param string $operator
+     * @param string $second
+     * 
+     * @return Model
+     */
+    public function _leftJoin($table, $first, $operator, $second);
+
+    /**
+     * Add a join clause to the query instance
+     * 
+     * @param string $table
+     * @param string $first
+     * @param string $operator
+     * @param string $second
+     * 
+     * @return Model
+     */
+    public function _rightJoin($table, $first, $operator, $second);
+
+    /**
+     * Add a join clause to the query instance
+     * 
+     * @param string $table
+     * @param string $first
+     * @param string $operator
+     * @param string $second
+     * 
+     * @return Model
+     */
+    public function _fullOuterJoin($table, $first, $operator, $second);
 
     /**
      * specify that the query should return distinct results based on specified column

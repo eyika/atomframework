@@ -36,6 +36,17 @@ class PaginatedData
         return new static($data, $total_records, $records_per_page, $total_pages, $current_page, $route_name);
     }
 
+    /**
+     * Apply a callback to each item in the paginated data.
+     *
+     * @param callable(&$data, string|int $key): void $callback
+     * @return void
+     */
+    public static function each(callable $callback)
+    {
+        array_walk(static::$data, $callback);
+    }
+
     public static function toArray()
     {
         return [

@@ -35,6 +35,8 @@ use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
  * @method static int stddev(string $column)
  * @method static int bit_and(string $column)
  * @method static int bit_xor(string $column)
+ * @method static bool increment(string $column, int $step = 1)
+ * @method static bool decrement(string $column, int $step = 1)
  * @method static string group_concat(string $column)
  * @method static self|bool update($values, $id=0, $is_protected = true)
  * @method static self|bool updateOrCreate($values, $id=0, $is_protected = true)
@@ -69,6 +71,10 @@ use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
  * @method static void commit()
  * @method static void rollback()
  * @method static self distinct(string $column)
+ * @method static self join($table, $first, $operator, $second)
+ * @method static self leftJoin($table, $first, $operator, $second)
+ * @method static self rightJoin($table, $first, $operator, $second)
+ * @method static self fullOuterJoin($table, $first, $operator, $second)
  */
 
 abstract class Model implements ModelInterface
@@ -77,7 +83,7 @@ abstract class Model implements ModelInterface
 
     protected const DYNAMIC_STATIC_METHODS = [
         'create', 'find', '_findByEmail', '_findByUsername', 'findOr', 'first', 'firstOr', 'firstWhere', 'firstOrCreate', 'findBy',
-        'findByArray', 'all', 'get', 'paginate', 'random', 'count', 'avg', 'max', 'min',
+        'findByArray', 'all', 'get', 'paginate', 'random', 'count', 'avg', 'max', 'min', 'increment', 'decrement',
         'sum', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'group_concact', 'update',
         'updateOrCreate', 'delete', 'restore', 'limit', 'offset', 'where', 'whereIn',
         'whereNotIn', 'whereNotIn', 'whereLike', 'whereNotLike', 'whereLessThan',
@@ -85,7 +91,7 @@ abstract class Model implements ModelInterface
         'whereEqual', 'whereNotEqual', 'orWhere', 'orWhereLike', 'orWhereNotLike',
         'orWhereLessThan', 'orWhereGreaterThan', 'orWhereGreaterThan', 'orWhereGreaterThanOrEqual',
         'orWhereEqual', 'orWhereNotEqual', 'orWhereNull', 'orWhereNotNull', 'beginTransaction',
-        'commit', 'rollback', 'distinct'
+        'commit', 'rollback', 'distinct', 'join', 'leftJoin', 'rightJoin', 'fullOuterJoin'
     ];
 
     /**

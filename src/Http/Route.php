@@ -4,6 +4,7 @@ namespace Eyika\Atom\Framework\Http;
 
 use Eyika\Atom\Framework\Exceptions\Http\NotFoundHttpException;
 use Eyika\Atom\Framework\Support\Arr;
+use Eyika\Atom\Framework\Support\Facade\Response;
 
 class Route
 {
@@ -193,12 +194,14 @@ class Route
             ->run($request);
     
         // Output the response
-        if ($response instanceof BaseResponse)
-            return $response->send();
-        elseif (is_string($response)) {
-            echo $response;
-            return true;
-        } else return true;
+        if (!$response instanceof BaseResponse)
+            $response = Response::plain(is_null($response) ? '' : (string)$response);
+
+        return $response->send();
+        // elseif (is_string($response)) {
+        //     echo $response;
+        //     return true;
+        // } else return true;
     }
 
     public static function route($name, $parameters = [])
