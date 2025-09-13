@@ -16,10 +16,7 @@ class ServePublicAssets implements MiddlewareInterface
      */
     public function handle(Request $request, Closure $next): BaseResponse
     {
-        $server = strtolower($request->server('SERVER_SOFTWARE', ''));
-    
-    
-        if (in_array($_ENV['APP_ENV'], [ 'local', 'dev' ]) && !str_contains($server, 'apache') && !str_contains($server, 'nginx') && (!str_contains($server, 'litespeed'))) {
+        if (config('app.serve_public_assets')) {
             $customMappings = [
                 'js' => 'text/javascript', //'application/javascript',
                 'css' => 'text/css',
@@ -51,7 +48,7 @@ class ServePublicAssets implements MiddlewareInterface
                     return $response->body(file_get_contents($path));
                 }
 
-                return Response::html("File Not Found", BaseResponse::STATUS_NOT_FOUND);
+                return Response::plain("File Not Found", BaseResponse::STATUS_NOT_FOUND);
             }
         }
 
