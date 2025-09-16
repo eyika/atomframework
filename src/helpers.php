@@ -17,7 +17,6 @@ use Eyika\Atom\Framework\Support\Database\DB;
 use Eyika\Atom\Framework\Support\Database\Model;
 use Eyika\Atom\Framework\Support\Database\PaginatedData;
 use Eyika\Atom\Framework\Support\Encrypter;
-use Eyika\Atom\Framework\Support\Facade\App;
 use Eyika\Atom\Framework\Support\Facade\Broadcast;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\Facade\JsonResponse;
@@ -483,13 +482,13 @@ if (!function_exists('is_windows')) {
 
 if (! function_exists('logger')) {
     function logger(
-        string|null $path = null,
+        ?string $path = null,
         Level $level = Level::Debug,
         bool $bubble = true,
-        int $filePermission = 0664,
+        ?int $filePermission = null,
         bool $useLocking = false,
         bool $internal = false,
-        string|null $name = null,
+        ?string $name = null,
         bool $isConsole = false
     ) {
         if ($internal && config('app.debug', true) == false) {
