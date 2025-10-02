@@ -2,6 +2,8 @@
 
 namespace Eyika\Atom\Framework\Http;
 
+use Eyika\Atom\Framework\Support\Str;
+
 class Cookie
 {
     /**
@@ -68,6 +70,9 @@ class Cookie
         $httpOnly = false,
         ?\DateTime $expires = null
     ) {
+        if ($this->isJsonObjectOrArray($value)) {
+            $value = urlencode($value);
+        }
         $this->validateName($name);
         $this->validateValue($value);
         $this->validateMaxAge($maxAge);
@@ -518,5 +523,15 @@ class Cookie
             $this->secure ? 'Secure; ' : '',
             $this->httpOnly ? 'HttpOnly' : ''
         );
+    }
+
+    private function isJsonObjectOrArray(string $string): bool
+    {
+        if (!Str::isJson($string)) {
+            return false;
+        }
+
+        $decoded = json_decode($string, true);
+        return is_array($decoded);
     }
 }
