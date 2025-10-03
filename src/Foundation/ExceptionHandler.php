@@ -174,7 +174,7 @@ class ExceptionHandler implements ContractExceptionHandler
 
     protected function renderErrorPage(Request $request, Throwable $exception): BaseResponse
     {
-        if (config('app.debug', true)) {
+        if (config('app.debug', 'false') == 'true') {
             $whoops = new \Whoops\Run;
             $whoops->allowQuit(false);
             $whoops->writeToOutput(false);
