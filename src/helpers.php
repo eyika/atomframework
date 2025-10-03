@@ -264,12 +264,12 @@ if (! function_exists('env')) {
      */
     function env($key, $default = null)
     {
-        $value = $_ENV[$key];
+        $value = $_ENV[$key] ?? $default;
 
         if ($value == 'false' || $value == 'true')
             $value = (bool)$value;
 
-        return $value ?? $default;
+        return $value;
     }
 }
 
