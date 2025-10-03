@@ -266,8 +266,10 @@ if (! function_exists('env')) {
     {
         $value = $_ENV[$key] ?? $default;
 
-        if ($value == 'false' || $value == 'true')
-            $value = (bool)$value;
+        if ($value == 'false')
+            $value = false;
+        else if($value == 'true')
+            $value = true;
 
         return $value;
     }
