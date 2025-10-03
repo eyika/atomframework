@@ -904,7 +904,7 @@ trait QueryBuilder
     private function _save($is_protected = true, $select = []): bool|self
     {
         if ($this->isSaved()) {
-            $values = Arr::where($this->toArray(false, ignore: ['deleted_at', 'created_at']), function ($v, $k) {      // to be used to filter out empty values in future
+            $values = Arr::where($this->toArray(false, ignore: ['deleted_at', 'created_at', $this->primaryKey]), function ($v, $k) {      // to be used to filter out empty values in future
                 return true;
             }, ARRAY_FILTER_USE_BOTH);
 
@@ -925,7 +925,7 @@ trait QueryBuilder
         $this->booted($this, 'creating');
         $this->booting($this, 'creating');
 
-        $values = Arr::where($this->_toArray(false, ignore: ['deleted_at']), function ($v, $k) {      // to be used to filter out empty values in future
+        $values = Arr::where($this->_toArray(false, ignore: ['deleted_at', $this->primaryKey]), function ($v, $k) {      // to be used to filter out empty values in future
             return true;
         }, ARRAY_FILTER_USE_BOTH);
 
