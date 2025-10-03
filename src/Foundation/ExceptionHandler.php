@@ -182,7 +182,7 @@ class ExceptionHandler implements ContractExceptionHandler
 
             return response()->html($whoops->handleException($exception));
         }
-        
+
         $serverErrorPage = config('view.server_error.path', '');
 
         if (!empty($serverErrorPage)) {

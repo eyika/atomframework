@@ -68,6 +68,9 @@ class Config
     {
         self::instance();
         if (self::$cacheEnabled && $value = self::$cache->getItem(self::$cache_prefix . $key)) {
+            if ($value == 'false' || $value == 'true')
+                $value = (bool)$value;
+
             return $value;
         }
 
@@ -84,6 +87,9 @@ class Config
         if (self::$cacheEnabled) {
             self::$cache->setItem(self::$cache_prefix . $key, $config);
         }
+
+        if ($config == 'false' || $config == 'true')
+            $config = (bool)$config;
 
         return $config;
     }
