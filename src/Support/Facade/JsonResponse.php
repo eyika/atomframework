@@ -8,10 +8,10 @@ use Eyika\Atom\Framework\Http\JsonResponse as HttpJsonResponse;
 /**
  * @method static HttpJsonResponse getInstance()
  * @method static BaseResponse terminate()
- * @method static HttpJsonResponse ok(string $message, $data = [])
+ * @method static HttpJsonResponse ok(string $message, mixed $data = [])
  * @method static HttpJsonResponse noContent()
- * @method static HttpJsonResponse created(string $message = '', $data = [])
- * @method static HttpJsonResponse notFound(string $message, array|null $data = null)
+ * @method static HttpJsonResponse created(string $message = '', mixed $data = [])
+ * @method static HttpJsonResponse notFound(string $message, mixed $data = null)
  * @method static HttpJsonResponse unprocessableEntity(string $message = "unprocessable request", string|array $errors = "")
  * @method static HttpJsonResponse serverError(string $message="")
  * @method static HttpJsonResponse badRequest(string $message = "", array $errors = [])

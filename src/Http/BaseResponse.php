@@ -3,6 +3,7 @@
 namespace Eyika\Atom\Framework\Http;
 
 use Exception;
+use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Arrayable;
 use Eyika\Atom\Framework\Support\Facade\Blade;
 use Eyika\Atom\Framework\Support\Facade\Request as FacadeRequest;
@@ -239,8 +240,10 @@ class BaseResponse
         }
     }
 
-    private function convertObjectsToArray(array $data, array &$seen = [], ?callable $customHandler = null): array
+    private function convertObjectsToArray(mixed $data, array &$seen = [], ?callable $customHandler = null): array
     {
+        $data = Arr::wrap($data);
+
         foreach ($data as $key => $value) {
             if (is_object($value)) {
                 $objectId = spl_object_hash($value);

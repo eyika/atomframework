@@ -51,7 +51,7 @@ class ExceptionHandler implements ContractExceptionHandler
     {
         if ($request->wantsJson()) {
             $code = $exception->getCode();
-            $message = $exception->getMessage();
+            $message = config('app.debug') ? $exception->getMessage() : 'An error occured, contact administrator';
             if ($code < 100 || $code >= 600) {
                 $code = BaseResponse::STATUS_INTERNAL_SERVER_ERROR;
             }
@@ -116,20 +116,18 @@ class ExceptionHandler implements ContractExceptionHandler
                 ]], $exception->getStatusCode());
             }
 
-            if ($request->wantsJson() or $request->isXmlHttpRequest()) {
-                return Response::json(['message' => 'An error occured', [
-                    'success' => false,
-                    'message' => str_contains($message, 'SQLSTATE') || str_contains($message, 'Illuminate') ? 'something happened try again' : $message,
-                    'data' => config('app.debug', false) ? $exception->getTrace() : null,
-                ]], is_numeric($code) ? intval($code) : 500);
-            }
+            return Response::json(['message' => 'An error occured', [
+                'success' => false,
+                'message' => $message,
+                'data' => config('app.debug', false) ? $exception->getTrace() : null,
+            ]], is_numeric($code) ? intval($code) : 500);
 
-            if ($request->expectsJson() or $request->isXmlHttpRequest()) {
-                return Response::json('Error Occured', [
-                    'success' => false,
-                    'message' => $message,
-                ], is_numeric($code) ? intval($code) : 500);
-            }
+            // if ($request->expectsJson() or $request->isXmlHttpRequest()) {
+            //     return Response::json('Error Occured', [
+            //         'success' => false,
+            //         'message' => $message,
+            //     ], is_numeric($code) ? intval($code) : 500);
+            // }
         } else {
             $code = $exception->getCode();
             $message = $exception->getMessage();
