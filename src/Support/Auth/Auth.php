@@ -16,6 +16,8 @@ final class Auth
     protected static array $config;
     protected static string $jwt;
     protected static string $sid;
+    protected static ?int $impersonatorId = null;
+    protected static bool $isImpersonating = false;
 
     /** @property Authenticator[] */
     protected static $guards = [];
@@ -132,6 +134,16 @@ final class Auth
     }
 
     /**
+     * Validate the user's token or session.
+     */
+    public static function isValid(?string $token): bool
+    {
+        $guard = static::guard();
+
+        return $guard->isValid($token);
+    }
+
+    /**
      * Set the logged in user's jwt token for later retrieval
      * Usually this will be called internally by the JwtGuard
      */
@@ -163,6 +175,22 @@ final class Auth
     public static function getSid()
     {
         return static::$sid;
+    }
+
+    public static function setImpersonation(bool $isImpersonating, ?int $impersonatorId = null): void
+    {
+        static::$isImpersonating = $isImpersonating;
+        static::$impersonatorId = $impersonatorId;
+    }
+
+    public static function isImpersonating(): bool
+    {
+        return (bool) static::$isImpersonating;
+    }
+
+    public static function getImpersonatorId(): ?int
+    {
+        return static::$impersonatorId;
     }
 
     /**

@@ -250,7 +250,7 @@ class Request
 
     public function merge(array $data)
     {
-        $this->input = array_merge($this->input, $data);
+        $this->attributes = array_merge($this->attributes, $data);
     }
 
     public function only(array $keys)
@@ -273,6 +273,11 @@ class Request
         $this->query = $query;
     }
 
+    public function replaceAttributes(array $input)
+    {
+        $this->input = $input;
+    }
+
     public function replace(string $bodyOrQuery, array $data)
     {
         switch ($bodyOrQuery) {
@@ -289,7 +294,7 @@ class Request
 
     public function all()
     {
-        return array_merge($this->query, $this->body, $this->attributes);
+        return array_merge($this->query, $this->input(), $this->attributes);
     }
 
     public function has($key)

@@ -55,4 +55,14 @@ class TokenGuard extends Authenticator
     {
         throw new NotImplementedException('Static token guard does not implement the refresh token method');
     }
+
+    public function isValid(?string $token): bool
+    {
+        throw new NotImplementedException('Static token guard does not implement the refresh token method');
+    }
+
+    public function generateJwt(User $user, ?string $sid = null, bool $is_impersonating = false, ?int $impersonator_id = null, ?int $ttl = null): object
+    {
+        throw new NotImplementedException('Static token guard does not implement the generateJwt method');
+    }
 }

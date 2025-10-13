@@ -3,6 +3,7 @@ namespace Eyika\Atom\Framework\Support\Auth\Guards;
 
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
 use Eyika\Atom\Framework\Support\Auth\Drivers\DriverFactory;
+use Eyika\Atom\Framework\Support\Auth\User;
 
 abstract class Authenticator
 {
@@ -54,6 +55,15 @@ abstract class Authenticator
     }
 
     /**
+     * Check if a user's jwt or session token is valid
+     * 
+     * @param ?string $token
+     * 
+     * @return bool
+     */
+    abstract public function isValid(?string $token): bool;
+
+    /**
      * Attempt to authenticate a user using the given credentials.
      *
      * @param array $credentials
@@ -63,11 +73,22 @@ abstract class Authenticator
 
     /**
      * Attempt to refresh the user's jwt token, should only be implemented by JwtBased Guards
+     * 
+     * @return ?string
      */
     abstract public function refreshJwt(): ?string;
 
     /**
+     * Attempt to generate a jwt token for a user
+     * 
+     * @return object
+     */
+    abstract public function generateJwt(User $user, ?string $sid = null, bool $is_impersonating = false, ?int $impersonator_id = null, ?int $ttl = null): object;
+
+    /**
      * Set remember me token cookie
+     * 
+     * @return void
      */
     abstract public function remember(AuthenticatableInterface $user): void;
 

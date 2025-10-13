@@ -63,4 +63,14 @@ class SessionGuard extends Authenticator
     {
         throw new NotImplementedException('Session guard does not implement the refresh token method');
     }
+
+    public function isValid(?string $token): bool
+    {
+        throw new NotImplementedException('Session guard does not implement the isValid method');
+    }
+
+    public function generateJwt(User $user, ?string $sid = null, bool $is_impersonating = false, ?int $impersonator_id = null, ?int $ttl = null): object
+    {
+        throw new NotImplementedException('Session guard does not implement the generateToken method');
+    }
 }

@@ -30,6 +30,9 @@ class JwtGuard extends Authenticator
         $this->guard = $guard;
     }
 
+    /**
+     * Validate the user's credentials, Generate and set a jwt for the current user
+     */
     public function attempt(array $credentials): ?AuthenticatableInterface
     {
         if (!$user = $this->validateCredentials($credentials)) {
@@ -42,11 +45,25 @@ class JwtGuard extends Authenticator
         return $user;
     }
 
+    /**
+     * Check that the user has a valid token and set the current user
+     */
     public function check(): bool
     {
         return (bool)$this->validate();
     }
 
+    /**
+     * Check that a user's token is valid
+     */
+    public function isValid(?string $token): bool
+    {
+        return $this->validate($token);
+    }
+
+    /**
+     * Get the current user based on a token or the request headers
+     */
     public function user(?string $token = null): ?AuthenticatableInterface
     {
         if (!$user_id = $this->validate()) {
@@ -60,6 +77,9 @@ class JwtGuard extends Authenticator
         return $user;
     }
 
+    /**
+     * Refresh the current user's jwt token based on the request header
+     */
     public function refreshJwt(): ?string
     {
         if (!$user = $this->user()) {
@@ -81,14 +101,20 @@ class JwtGuard extends Authenticator
     /**
      * validate function
      *
-     * @return null|int
+     * @return bool|int
      */
-    protected function validate(): ?int
+    protected function validate(?string $jwt = null): ?int
     {
         if (is_null($payload = $this->getPayload())) {
             return null;
         }
-        Auth::setSid($payload->sid);
+
+        $isImpersonating = $payload->data->is_impersonating;
+        $impersonatorId = $payload->data->impersonator_id ?? null;
+
+        Auth::setImpersonation($isImpersonating, $impersonatorId);
+
+        Auth::setSid($payload->sid ?? null);
 
         return $payload->data->id;
     }
@@ -150,19 +176,16 @@ class JwtGuard extends Authenticator
     /**
      * generates a time base user's jwt token
      *
-     * @param User $user
-     * @param string|null $sid
-     * @return object
      */
-    public function generateJwt(User $user, ?string $sid = null)
+    public function generateJwt(User $user, ?string $sid = null, bool $is_impersonating = false, ?int $impersonator_id = null, ?int $ttl = null): object
     {
         $issued_at = time();
-        $expiration_time = $issued_at + config('auth.jwt_timeout', 60 * 60);      //valid for one hour by default
+        $expiration_time = $issued_at + ($ttl ?? config('auth.jwt_timeout', 60 * 60));      // fallback
         $not_before = $issued_at - 5;
         if (!$sid)
             $sid = Str::uuid()->toString();
 
-        $token = $this->encoder->encode([
+        $payload = [
             "iss" => $this->iss,
             "aud" => $this->aud,
             "iat" => $issued_at,
@@ -172,8 +195,12 @@ class JwtGuard extends Authenticator
             'data' => [
                 "id" => $user->id,
                 "email" => $user->email,
+                "is_impersonating" => $is_impersonating,
+                "impersonator_id" => $impersonator_id
             ]
-        ], $this->key);
+        ];
+
+        $token = $this->encoder->encode($payload, $this->key);
         return (object)[
             "token" => $token,
             "sid" => $sid
