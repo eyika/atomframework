@@ -16,7 +16,7 @@ use League\Flysystem\Filesystem;
  * @method static bool replace(string $path, string $contents)
  * @method static int prepend(string $path, string $data)
  * @method static int append(string $path, string $data)
- * @method static int upload(string $tempPath, string $path)
+ * @method static int upload(string $path)
  * @method static bool delete(string $path)
  * @method static bool move(string $from, string $to)
  * @method static string name(string $path)

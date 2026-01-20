@@ -240,7 +240,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
         $values[] = "`{$name}` = JSON_SET({$name}, '$.{$key}', :{$place_holder}) ";
         $bind[":{$place_holder}"] = $value;
       }
-      else if ($value !== null && is_string($value) && str_contains($value, 'now')) {
+      else if ($value !== null && is_string($value) && strtolower($value) === 'now') {
         $values[] = "`{$name}` = current_timestamp";
       } else if ($value === null or $value === 'null') {
         $values[] = "`{$name}` = NULL";

@@ -30,8 +30,7 @@ class Request
     protected $input;
     protected $attributes;
     protected Arrayable $cookies;
-    /** @property File[] $files */
-    protected $files;
+    protected array $files;
     protected $server;
     protected array $headers;
     protected $proxyheader;
@@ -67,7 +66,7 @@ class Request
     protected function setRequestBodyAndFiles()
     {
         if ($this->isMethod('PUT') && strpos($this->headers['Content-Type'] ?? '', 'multipart/form-data') === 0) {
-            $this->body = $this->parseMultipartPutRequest();
+            $this->body = $this->parseMultipartRequest();
         } elseif ($this->isJson()) {
             // Read raw JSON input if content-type is JSON
             $jsonData = json_decode(file_get_contents('php://input'), true);
@@ -83,7 +82,7 @@ class Request
         $this->initRequestFiles();
     }
 
-    protected function parseMultipartPutRequest()
+    protected function parseMultipartRequest()
     {
         $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
     
@@ -163,7 +162,7 @@ class Request
     // Save file to a temporary location
     protected function saveTempFile($content)
     {
-        $tempFile = tempnam(sys_get_temp_dir(), 'put_');
+        $tempFile = tempnam(sys_get_temp_dir(), 'atom_put_');
         file_put_contents($tempFile, $content);
         return $tempFile;
     }
@@ -205,7 +204,7 @@ class Request
         if ($item = $this->retrieveItem($this->attributes, $name)) {
             return $item;
         }
-        $data = array_merge($this->query, $this->body, $this->cookies, $this->files, $this->server, $this->headers);
+        $data = array_merge($this->query, $this->body, $this->cookies->all(), $this->files, $this->server, $this->headers);
         return $this->retrieveItem($data, $name);
     }
 
@@ -320,14 +319,17 @@ class Request
         return $this->files;
     }
 
-    public function file(string $key): File|null
+    /**
+     * @return File[]|File|null
+     */
+    public function file(string $key): Array|File|null
     {
         return $this->retrieveItem($this->files, $key);
     }
 
     public function hasFile(string $key)
     {
-        return !(isNull($this->files($key)));
+        return !(isNull($this->file($key)));
     }
 
     /**

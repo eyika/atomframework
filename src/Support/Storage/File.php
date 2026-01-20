@@ -205,6 +205,7 @@ class File
     public function setUploadProperties(FileUploadProperties $properties)
     {
         $this->uploadProperties = $properties;
+        return $this;
     }
 
     public function uploadProperties()
@@ -338,14 +339,18 @@ class File
     /**
      * Put the uploaded contents into a file using Flysystem.
      *
-     * @param string $tempPath The uploaded file contents.
-     * @param string $path The path where the file should be stored.
+     * @param string|null $path The path where the file should be stored.
      * @return int
      * @throws UnableToWriteFile
      * @throws FilesystemException
      */
-    public function upload($tempPath, $path)
+    public function upload($path, $compress = false)
     {
+        $uploadProperties = $this->uploadProperties();
+        if ($uploadProperties === null) {
+            throw new FilesystemException('Temp file path cannot be null');
+        }
+        $tempPath = $uploadProperties->tmpName();
         if (!file_exists($tempPath)) {
             throw new FilesystemException('Temp file does not exist: ' . $tempPath);
         }
