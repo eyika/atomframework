@@ -116,7 +116,7 @@ class Response extends BaseResponse
     // Add errors to the response
     public function withErrors(array $errors)
     {
-        $this->errors = $errors;
+        $this->errors = array_merge($this->errors, $errors);
         return $this;
     }
 

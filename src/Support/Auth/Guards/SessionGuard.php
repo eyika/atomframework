@@ -3,6 +3,7 @@ namespace Eyika\Atom\Framework\Support\Auth\Guards;
 
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
+use Eyika\Atom\Framework\Support\Auth\User;
 use Eyika\Atom\Framework\Support\Database\DB;
 use Eyika\Atom\Framework\Support\Facade\Request;
 use Eyika\Atom\Framework\Support\Facade\Response;

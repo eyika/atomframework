@@ -15,6 +15,7 @@ class BaseResponse
 {
     public const REQUEST_VALIDATION_ERRORS_KEY = 'validation_errors';
     public const REQUEST_ERRORS_KEY = 'errors';
+    public const VIEW_ERRORS_KEY = 'view_errors';
     public const REQUEST_OLD_INPUTS_KEY = 'old_inputs';
 
     public const STATUS_OK = 200;
@@ -123,10 +124,9 @@ class BaseResponse
 
     protected function _send($terminate = true)
     {
-        http_response_code($this->statusCode);
-        $this->sendHeaders();
-
         if (FacadeRequest::isNotHtml()) {
+            http_response_code($this->statusCode);
+            $this->sendHeaders();
             echo $this->body;
             if ($terminate)
                 return true;
@@ -135,6 +135,8 @@ class BaseResponse
         }
 
         if ($this->isFileResponse) {
+            http_response_code($this->statusCode);
+            $this->sendHeaders();
             ob_clean();
             flush();
             readfile($this->file_path);
@@ -145,12 +147,16 @@ class BaseResponse
         }
 
         if ($this->isRedirect) {
-            if (!empty($this->errors))
+            if (count($this->errors))
                 Session::set(self::REQUEST_ERRORS_KEY, $this->errors);
-            if (!empty($this->validationErrors))
+            if (count($this->validationErrors))
                 Session::set(self::REQUEST_VALIDATION_ERRORS_KEY, $this->validationErrors);
-            if (!empty($this->inputs))
+            if (count($this->inputs))
                 Session::set(self::REQUEST_OLD_INPUTS_KEY, $this->inputs);
+
+            http_response_code($this->statusCode);
+            $this->sendHeaders();
+
             if ($terminate)
                 return true;
 
@@ -161,6 +167,8 @@ class BaseResponse
             $this->compileView();
         }
 
+        http_response_code($this->statusCode);
+        $this->sendHeaders();
         echo $this->body;
         if ($terminate)
             return true;
@@ -220,8 +228,9 @@ class BaseResponse
         try {
             if (config('view.use_advance_engine')) {
                 $view = Blade::instance();
-                if (!empty($view->atomErrors()))
-                    $this->viewData['errors'] = new Arrayable($view->atomErrors());
+                $this->errors = array_merge($this->errors, $view->atomErrors());
+                if (count($this->errors))
+                    Session::set(self::REQUEST_ERRORS_KEY, $this->errors);
 
                 $content = $view->run($this->viewFileName, $this->viewData);
             } else {

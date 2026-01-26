@@ -95,11 +95,18 @@ class Validator {
         return $errors;
     }
 
-    private function getError(string $param, string $type): string 
+    private function getError(string $param, string|ValidatorRule $type): string 
     {
+        $resp = '';
         $paramval = $this->getParamValue($param);
+        if ($type instanceof ValidatorRule) {
+            if (!$type->passes($paramval))
+                $resp = $type->getError();
+
+            return $resp;
+        }
         if ($paramval === false && $type != 'required') {
-            return '';
+            return $resp;
         }
         switch ($type) {
             case 'required':

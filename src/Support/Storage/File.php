@@ -3,6 +3,7 @@
 namespace Eyika\Atom\Framework\Support\Storage;
 
 use Exception;
+use Eyika\Atom\Framework\Exceptions\Storage\FileNotFoundException;
 use Eyika\Atom\Framework\Support\Arr;
 use finfo;
 use Google\Cloud\Storage\StorageClient;
@@ -577,12 +578,13 @@ class File
      * @return int
      * @throws UnableToRetrieveMetadata
      * @throws FilesystemException
+     * @throws FileNotFoundException
      */
     public function size($path)
     {
 
         if (!static::exists($path)) {
-            throw new Exception("File does not exist at path {$path}");
+            throw new FileNotFoundException("File does not exist at path {$path} ". json_encode($this->diskconfig));
         }
 
         return $this->filesystem->fileSize($path);

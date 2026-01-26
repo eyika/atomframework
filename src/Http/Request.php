@@ -340,11 +340,14 @@ class Request
         return $this->cookies;
     }
 
+    /**
+     * @return Cookie[]|Cookie
+     */
     public function cookie($key = null, $default = null)
     {
         if ($key == null)
-            return $this->cookies;
-        return $this->retrieveItem($this->cookies, $key, $default);
+            return $this->cookies->toArray();
+        return $this->retrieveItem($this->cookies->toArray(), $key, $default);
     }
 
     public function headers($key = null, $default = null)

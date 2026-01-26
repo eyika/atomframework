@@ -2,6 +2,7 @@
 
 use DebugBar\JavascriptRenderer;
 use DebugBar\StandardDebugBar;
+use Eyika\Atom\Framework\Foundation\Application;
 use Eyika\Atom\Framework\Foundation\Console\ConsoleColorizer;
 use Eyika\Atom\Framework\Foundation\Event\Dispatcher;
 use Eyika\Atom\Framework\Http\BaseResponse;

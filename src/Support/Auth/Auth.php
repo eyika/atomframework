@@ -107,7 +107,7 @@ final class Auth
     /**
      * Attempt to authenticate a user using the current guard.
      */
-    public static function attempt(array $credentials, bool $remember = false): bool
+    public static function attempt(array $credentials, bool $remember = false): AuthenticatableInterface|false
     {
         $guard = static::guard();
         $user = $guard->attempt($credentials);
@@ -117,7 +117,7 @@ final class Auth
             if ($remember && method_exists($guard, 'remember')) {
                 $guard->remember($user);
             }
-            return true;
+            return $user;
         }
 
         return false;

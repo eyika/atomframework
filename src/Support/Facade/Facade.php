@@ -194,10 +194,10 @@ class Facade
      * 
      * @return Arrayable
      */
-    // public static function pushDefaultAliases(array $aliases = [])
-    // {
-    //     static::$defaultAliases = isset(static::$defaultAliases) ? static::$defaultAliases->push($aliases) : new Arrayable($aliases);
-    // }
+    public static function pushDefaultAliases(array $aliases = [])
+    {
+        // static::$defaultAliases = isset(static::$defaultAliases) ? static::$defaultAliases->push($aliases) : new Arrayable($aliases);
+    }
 
     /**
      * Get the application instance behind the facade.

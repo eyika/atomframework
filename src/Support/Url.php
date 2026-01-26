@@ -2,6 +2,8 @@
 
 namespace Eyika\Atom\Framework\Support;
 
+use Eyika\Atom\Framework\Support\Facade\Session;
+
 class Url
 {
     protected static $routes = [];
@@ -55,7 +57,7 @@ class Url
      */
     public static function storeCurrent()
     {
-        $_SESSION['previous_url'] = self::current();
+        Session::set('previous_url', self::current());
     }
 
     /**
@@ -66,10 +68,10 @@ class Url
     public static function previous(bool $store = false)
     {
         if ($store) {
-            $_SESSION['previous_url'] = self::current();
+            Session::set('previous_url', self::current());
             return;
         }
-        return isset($_SESSION['previous_url']) ? $_SESSION['previous_url'] : null;
+        return Session::get('previous_url');
     }
 
     public static function route($name, $parameters = [])

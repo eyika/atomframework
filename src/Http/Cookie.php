@@ -511,7 +511,7 @@ class Cookie
     }
 
     // Convert the cookie object to a string suitable for `Set-Cookie` header
-    public function __toString()
+    public function toString()
     {
         return sprintf(
             '%s=%s; Expires=%s; Path=%s; Domain=%s; %s%s',
