@@ -39,8 +39,38 @@ class Validator {
             }
             $dat = array_merge(static::$req_data, static::$req_files);
 
-            if (Arr::keyExists($dat, $paramKey))
+            // Support dot notation for nested arrays
+            if (strpos($paramKey, '.') !== false) {
+                $keys = explode('.', $paramKey);
+                $value = $dat;
+                $exists = true;
+
+                foreach ($keys as $key) {
+                    if (is_array($value) && array_key_exists($key, $value)) {
+                        $value = $value[$key];
+                    } else {
+                        $exists = false;
+                        break;
+                    }
+                }
+
+                if ($exists) {
+                    // Build nested array structure in validated
+                    $current = &static::$validated;
+                    foreach ($keys as $i => $key) {
+                        if ($i === count($keys) - 1) {
+                            $current[$key] = $value;
+                        } else {
+                            if (!isset($current[$key]) || !is_array($current[$key])) {
+                                $current[$key] = [];
+                            }
+                            $current = &$current[$key];
+                        }
+                    }
+                }
+            } elseif (Arr::keyExists($dat, $paramKey)) {
                 static::$validated[$paramKey] = $dat[$paramKey];
+            }
         }
 
         foreach (static::$confirms as $paramKey => $paramValue) {
@@ -293,6 +323,22 @@ class Validator {
     private function getParamValue(string $param): int|bool|float|string|array|File
     {
         $dat = array_merge(self::$req_data, self::$req_files);
+
+        // Support dot notation for nested arrays (e.g., 'analytics.totalTrades')
+        if (strpos($param, '.') !== false) {
+            $keys = explode('.', $param);
+            $value = $dat;
+
+            foreach ($keys as $key) {
+                if (is_array($value) && array_key_exists($key, $value)) {
+                    $value = $value[$key];
+                } else {
+                    return false;
+                }
+            }
+
+            return $value;
+        }
 
         if (!array_key_exists($param, $dat)) {
             return false;
