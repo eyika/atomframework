@@ -404,7 +404,7 @@ class Job_Queue
 					$this->pipeline,
 					$job['payload'],
 					$added_dt,
-					$job['tries']
+					$job['attempts'] ?? 0
 				]);
 				
 				$id = intval($this->connection->lastInsertId());

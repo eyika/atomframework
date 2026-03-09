@@ -125,7 +125,7 @@ class Validator {
         return $errors;
     }
 
-    private function getError(string $param, string|ValidatorRule $type): string 
+    private function getError(string $param, string|ValidatorRule $type): string
     {
         $resp = '';
         $paramval = $this->getParamValue($param);
@@ -135,45 +135,39 @@ class Validator {
 
             return $resp;
         }
-        if ($paramval === false && $type != 'required') {
+        if ($paramval === false && $type !== 'required' && $type !== 'sometimes' && $type !== 'forbidden') {
             return $resp;
         }
         switch ($type) {
             case 'required':
-                if (gettype($paramval) !== 'boolean' || $paramval != false)
-                    $resp = '';
-                else
+                if ($paramval === false || (is_string($paramval) && trim($paramval) === ''))
                     $resp = "$param is required";
+                else
+                    $resp = '';
+                break;
+            case 'sometimes':
+                $resp = '';
                 break;
             case 'forbidden':
-                $resp = "$param is forbidden in this request";
+                $resp = $paramval === false ? '' : "$param is forbidden in this request";
                 break;
             case 'string':
                 $stat = is_string($paramval);
                 $resp = !$stat ? "$param should be a string" : '';
                 break;
             case 'bool':
-                $stat = !is_bool($paramval);
-                $resp = $stat ? "$param should be a boolean" : '';
-                break;
             case 'boolean':
-                $stat = !is_bool($paramval);
-                $resp = $stat ? "$param should be a boolean" : '';
+                $stat = is_bool($paramval);
+                $resp = !$stat ? "$param should be a boolean" : '';
                 break;
             case 'float':
+            case 'double':
                 $stat = is_float($paramval) || is_int($paramval) || is_numeric($paramval);
                 $resp = !$stat ? "$param should be a float" : '';
                 break;
-            case 'double':
-                $stat = is_double($paramval) || is_int($paramval) || is_numeric($paramval);
-                $resp = !$stat ? "$param should be a double" : '';
-                break;
             case 'integer':
-                $stat = is_integer($paramval) || is_int($paramval) || is_numeric($paramval) && !stripos($paramval,'.');
-                $resp = !$stat ? "$param should be an integer" : '';
-                break;
             case 'int':
-                $stat = is_integer($paramval) || is_int($paramval) || is_numeric($paramval) && !stripos($paramval,'.');
+                $stat = is_int($paramval) || (is_numeric($paramval) && strpos((string)$paramval, '.') === false);
                 $resp = !$stat ? "$param should be an integer" : '';
                 break;
             case 'numeric':
@@ -235,12 +229,14 @@ class Validator {
     {
         if ($paramval instanceof File) {
             return ($paramval->uploadProperties()->size() / 1024) > $max ? "{$param} should not be more than $max kb" : '';
-        } elseif (is_string($paramval) || is_array($paramval)) {
-            return count($paramval) > $max ? "{$param} should not contain more than $max ". (is_string($paramval) ? 'characters' : 'items') : '';
+        } elseif (is_string($paramval)) {
+            return strlen($paramval) > $max ? "{$param} should not contain more than $max characters" : '';
+        } elseif (is_array($paramval)) {
+            return count($paramval) > $max ? "{$param} should not contain more than $max items" : '';
         } elseif (is_numeric($paramval)) {
             return (float)$paramval > $max ? "{$param} should not be greater than $max" : '';
         }
-    
+
         return '';
     }
 
@@ -248,12 +244,14 @@ class Validator {
     {
         if ($paramval instanceof File) {
             return ($paramval->uploadProperties()->size() / 1024) < $min ? "{$param} should not be less than $min kb" : '';
-        } elseif (is_string($paramval) || is_array($paramval)) {
-            return count($paramval) < $min ? ("{$param} should not contain less than $min ". is_string($paramval) ? 'characters' : 'items') : '';
+        } elseif (is_string($paramval)) {
+            return strlen($paramval) < $min ? "{$param} should not contain less than $min characters" : '';
+        } elseif (is_array($paramval)) {
+            return count($paramval) < $min ? "{$param} should not contain less than $min items" : '';
         } elseif (is_numeric($paramval)) {
             return (float)$paramval < $min ? "{$param} should not be less than $min" : '';
         }
-    
+
         return '';
     } 
 
@@ -292,11 +290,11 @@ class Validator {
                     $resp = DatabaseConnection::count($_items[0], [$_items[1] => $paramval]) < 1 ? "" : "{$param} should not exist in {$_items[1]} column of table {$_items[0]}";
                     break;
                 case 'contains':
-                    $stat = Str::contains($items[0], $items[1]);
+                    $stat = is_string($paramval) && Str::contains($paramval, $items[1]);
                     $resp = !$stat ? "{$param} should be a string that contains $items[1]" : '';
                     break;
                 case 'includes':
-                    $stat = Arr::has($items[0], $items[1]);
+                    $stat = is_array($paramval) && Arr::has($paramval, $items[1]);
                     $resp = !$stat ? "{$param} should be an array that has $items[1]" : '';
                     break;
                 case 'mimes':
