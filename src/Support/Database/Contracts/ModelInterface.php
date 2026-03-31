@@ -46,8 +46,16 @@ interface ModelInterface extends ModelEventsInterface
 
     /**
      * Indicates what database attributes of the model can be exposed outside the application
-     * 
+     *
      * @var array $guarded
+     */
+
+    /**
+     * The attributes that should be cast to native types.
+     *
+     * Supported types: 'boolean', 'bool', 'integer', 'int', 'float', 'double', 'string', 'array', 'json', 'object'
+     *
+     * @var array $casts
      */
 
     /**

@@ -133,7 +133,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
         foreach ($v as $i => $sub_v) {
             $param = ":{$__k}_{$i}";
             $in[]  = $param;
-            $bind[$param] = $sub_v;
+            $bind[$param] = is_bool($sub_v) ? (int)$sub_v : $sub_v;
         }
         $in = implode(', ', $in);
         $where[] = "{$_k} {$_operator} ($in){$or_and}";
@@ -161,7 +161,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
         // default (=, >, <, etc.)
         $param = ":{$__k}";
         $where[] = "{$_k} $_operator {$param}{$or_and}";
-        $bind[$param] = $v;
+        $bind[$param] = is_bool($v) ? (int)$v : $v;
         $incr_operator = true;
     }
 }
@@ -238,7 +238,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
         $name = array_shift($path);
         $key = implode('.', $path);
         $values[] = "`{$name}` = JSON_SET({$name}, '$.{$key}', :{$place_holder}) ";
-        $bind[":{$place_holder}"] = $value;
+        $bind[":{$place_holder}"] = is_bool($value) ? (int)$value : $value;
       }
       else if ($value !== null && is_string($value) && strtolower($value) === 'now') {
         $values[] = "`{$name}` = current_timestamp";
@@ -248,7 +248,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
       }
       else {
         $values[] = "`{$name}` = :{$name}";
-        $bind[":{$name}"] = $value;
+        $bind[":{$name}"] = is_bool($value) ? (int)$value : $value;
       }
     }
     
@@ -722,7 +722,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
       
       $c = 0;
       foreach ( $row as $v ) {
-        $bind[":r{$r}{$c}"] = $v;
+        $bind[":r{$r}{$c}"] = is_bool($v) ? (int)$v : $v;
         $c++;
       }
     }

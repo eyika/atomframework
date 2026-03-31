@@ -47,6 +47,7 @@ trait QueryBuilder
     public function fill($values, $returnInstance = false)
     {
         foreach ($values as $key => $value) {
+            $value = $this->castAttribute($key, $value);
             if (Arr::exists($this::fillable, $key)) {
                 $this->{$key} = $value;
                 continue;
@@ -55,6 +56,41 @@ trait QueryBuilder
         }
         if ($returnInstance)
             return clone $this;
+    }
+
+    /**
+     * Cast an attribute to a native PHP type.
+     *
+     * @param string $key
+     * @param mixed $value
+     * @return mixed
+     */
+    protected function castAttribute(string $key, mixed $value): mixed
+    {
+        if (!defined('static::casts') || !array_key_exists($key, static::casts) || is_null($value)) {
+            return $value;
+        }
+
+        switch (static::casts[$key]) {
+            case 'bool':
+            case 'boolean':
+                return (bool)$value;
+            case 'int':
+            case 'integer':
+                return (int)$value;
+            case 'float':
+            case 'double':
+                return (float)$value;
+            case 'string':
+                return (string)$value;
+            case 'array':
+            case 'json':
+                return is_string($value) ? json_decode($value, true) : (array)$value;
+            case 'object':
+                return is_string($value) ? json_decode($value, false) : (object)$value;
+            default:
+                return $value;
+        }
     }
 
     public function toArray($guard = true, $select = [], $ignore = [], $includeDynamicProperties = false)

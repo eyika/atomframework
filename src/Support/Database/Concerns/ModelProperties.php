@@ -66,8 +66,17 @@ trait ModelProperties
     protected const defaultGuarded = ['incrementing', 'exists', 'wasRecentlyCreated'];
 
     /**
+     * The attributes that should be cast to native types.
+     *
+     * Supported types: 'boolean', 'bool', 'integer', 'int', 'float', 'double', 'string', 'array', 'json', 'object'
+     *
+     * @var array
+     */
+    protected const casts = [];
+
+    /**
      * Indicates values that should be encrypted when saving and decrypted when retrieving
-     * 
+     *
      * @var array
      */
     protected const encrypted = [];
