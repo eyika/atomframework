@@ -50,6 +50,15 @@ class IndexDefinition
         $invisiblePart = $this->invisible ? ' INVISIBLE' : '';
         $columns = implode(',', $this->columns);
 
+        $isPrimary = strtoupper($this->type) === "PRIMARY KEY";
+
+        if ($isPrimary) {
+            return sprintf(
+                'PRIMARY KEY (%s)',
+                $columns
+            );
+        }
+
         return sprintf(
             '%s%s%s `%s` (%s)%s%s%s',
             strtoupper($this->type),

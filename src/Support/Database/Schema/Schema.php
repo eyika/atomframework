@@ -86,7 +86,6 @@ class Schema
         $blueprint = new Blueprint($table, true);
         $callback($blueprint);
         $sql = $blueprint->toSql();
-        echo $sql;
         DatabaseConnection::exec($sql);
     }
 }

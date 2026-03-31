@@ -207,9 +207,9 @@ class Blueprint
         return $index;
     }
 
-    public function primary(string $column): self
+    public function primary(string|array $column): self
     {
-        $this->addIndex("PRIMARY KEY", [$column]);
+        $this->addIndex("PRIMARY KEY", Arr::wrap($column));
         return $this;
     }
 
