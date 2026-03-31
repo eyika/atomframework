@@ -201,11 +201,26 @@ class Request
     }
 
     public function __get($name) {
-        if ($item = $this->retrieveItem($this->attributes, $name)) {
-            return $item;
+        if (array_key_exists($name, $this->input)) {
+            return $this->input[$name];
         }
-        $data = array_merge($this->query, $this->body, $this->cookies->all(), $this->files, $this->server, $this->headers);
-        return $this->retrieveItem($data, $name);
+        if (array_key_exists($name, $this->route_params)) {
+            return $this->route_params[$name];
+        }
+        if (array_key_exists($name, $this->query)) {
+            return $this->query[$name];
+        }
+        if (array_key_exists($name, $this->attributes)) {
+            return $this->attributes[$name];
+        }
+        return null;
+    }
+
+    public function __isset($name) {
+        return array_key_exists($name, $this->input)
+            || array_key_exists($name, $this->route_params)
+            || array_key_exists($name, $this->query)
+            || array_key_exists($name, $this->attributes);
     }
 
     public function __set($name, $value) {
@@ -265,6 +280,7 @@ class Request
     public function replaceInput(array $input)
     {
         $this->input = $input;
+        $this->body = array_diff_key($input, $this->files);
     }
 
     public function replaceQuery(array $query)

@@ -20,7 +20,7 @@ class Validator {
     public function __construct(Request|array $_req_obj = [])
     {
         self::$req_data = $_req_obj instanceof Request ? $_req_obj->input() : $_req_obj;
-        self::$req_files = $_req_obj instanceof Request ? $_req_obj->files() : [];
+        self::$req_files = [];
         self::$errors = [];
         self::$validated = [];
         self::$confirms = [];
@@ -135,12 +135,12 @@ class Validator {
 
             return $resp;
         }
-        if ($paramval === false && $type !== 'required' && $type !== 'sometimes' && $type !== 'forbidden') {
+        if ($paramval === null && $type !== 'required' && $type !== 'sometimes' && $type !== 'forbidden') {
             return $resp;
         }
         switch ($type) {
             case 'required':
-                if ($paramval === false || (is_string($paramval) && trim($paramval) === ''))
+                if ($paramval === null || (is_string($paramval) && trim($paramval) === ''))
                     $resp = "$param is required";
                 else
                     $resp = '';
@@ -149,7 +149,7 @@ class Validator {
                 $resp = '';
                 break;
             case 'forbidden':
-                $resp = $paramval === false ? '' : "$param is forbidden in this request";
+                $resp = $paramval === null ? '' : "$param is forbidden in this request";
                 break;
             case 'string':
                 $stat = is_string($paramval);
@@ -318,7 +318,7 @@ class Validator {
         return $resp;
     }
 
-    private function getParamValue(string $param): int|bool|float|string|array|File
+    private function getParamValue(string $param): int|bool|float|string|array|File|null
     {
         $dat = array_merge(self::$req_data, self::$req_files);
 
@@ -331,7 +331,7 @@ class Validator {
                 if (is_array($value) && array_key_exists($key, $value)) {
                     $value = $value[$key];
                 } else {
-                    return false;
+                    return null;
                 }
             }
 
@@ -339,7 +339,7 @@ class Validator {
         }
 
         if (!array_key_exists($param, $dat)) {
-            return false;
+            return null;
         }
         return $dat[$param] ?? '';
     }
