@@ -20,7 +20,7 @@ class FileCache implements CacheInterface
         $this->prefix = config('cache.prefix');
 
         if (!file_exists($cacheDirectory))
-            mkdir($cacheDirectory, 0775, true);
+            mkdir($cacheDirectory, 0744, true);
 
         $adapter = new LocalFilesystemAdapter(
             $cacheDirectory,

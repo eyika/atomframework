@@ -28,13 +28,13 @@ class Blade extends BladeOne
     public function __construct($templatePath = null, $compiledPath = null)
     {
         if (!$mode = config('view.mode')) {
-            $mode = env('APP_ENV') == 'local' ? BladeOne::MODE_DEBUG : BladeOne::MODE_FAST;
+            $mode = env('APP_ENV') == 'local' ? BladeOne::MODE_DEBUG : BladeOne::MODE_AUTO;
         }
         $templatePath = $templatePath ?? config('view.paths');
         $compiledPath = $compiledPath ?? config('view.compiled');
 
         if (!file_exists($compiledPath)) {
-            mkdir($compiledPath, 0775, true);
+            mkdir($compiledPath, 0744, true);
         }
         
         $this->oldInputs = [];
