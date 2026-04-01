@@ -34,7 +34,7 @@ class Blade extends BladeOne
         $compiledPath = $compiledPath ?? config('view.compiled');
 
         if (!file_exists($compiledPath)) {
-            mkdir($compiledPath, 0744, true);
+            mkdir($compiledPath, 0775, true);
         }
         
         $this->oldInputs = [];

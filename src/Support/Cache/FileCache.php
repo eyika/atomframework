@@ -11,7 +11,6 @@ use League\Flysystem\UnixVisibility\PortableVisibilityConverter;
 class FileCache implements CacheInterface
 {
     protected $file;
-    protected $cacheDirectory;
     protected $prefix;
     protected array $deferredItems = [];
 
@@ -46,15 +45,14 @@ class FileCache implements CacheInterface
         //     $this->file->makeDirectory($cacheDirectory, 0755, true);
         // }
 
-        $this->cacheDirectory = rtrim($cacheDirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
     }
 
     /**
-     * Get the cache file path based on the key.
+     * Get the cache file path relative to the cache root directory.
      */
     protected function getCacheFilePath(string $key): string
     {
-        return $this->cacheDirectory . md5($key) . '.cache';
+        return md5($key) . '.cache';
     }
 
     /**
@@ -122,7 +120,7 @@ class FileCache implements CacheInterface
      */
     public function clear(): bool
     {
-        $files = $this->file->files($this->cacheDirectory);
+        $files = $this->file->files('');
 
         foreach ($files as $file) {
             $this->file->delete($file);
