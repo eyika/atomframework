@@ -14,16 +14,14 @@ class FileSessionHandler implements SessionHandlerInterface, SessionIdInterface,
     {
         $this->savePath = config('session.files', sys_get_temp_dir()); // Default to system temp dir if not set
         if (!is_dir($this->savePath)) {
-            mkdir($this->savePath, 0777, true);
+            mkdir($this->savePath, 0744, true);
         }
     }
 
     public function open($savePath, $sessionName): bool
     {
-        $this->savePath = $savePath ?: $this->savePath;
-
         if (!is_dir($this->savePath)) {
-            return mkdir($this->savePath, 0777, true);
+            return mkdir($this->savePath, 0744, true);
         }
 
         return true;
