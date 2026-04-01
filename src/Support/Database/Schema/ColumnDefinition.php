@@ -5,6 +5,9 @@ class ColumnDefinition
 {
     protected string $definition;
     protected array $modifiers = [];
+    public bool $isChange = false;
+    public string $name = '';
+    public ?string $commentText = null;
 
     public function __construct(string $definition)
     {
@@ -116,13 +119,15 @@ class ColumnDefinition
 
     public function comment(string $text): self
     {
+        $this->commentText = $text;
+
         // If COMMENT already exists, replace it
         if (preg_match('/COMMENT\s+\'?.+?\'?/', implode(" ", $this->modifiers))) {
             $this->modifiers = preg_replace('/COMMENT\s+\'?.+?\'?/', "COMMENT '$text'", $this->modifiers);
         } else {
             $this->modifiers[] = "COMMENT '$text'";
         }
-    
+
         return $this;
     }
 
@@ -171,6 +176,12 @@ class ColumnDefinition
 
         $this->modifiers[] = $modifier;
 
+        return $this;
+    }
+
+    public function change(): self
+    {
+        $this->isChange = true;
         return $this;
     }
 

@@ -8,9 +8,9 @@ use InvalidArgumentException;
 class Blueprint
 {
     protected string $table;
-    /** @property ColumnDefinition[] */
+    /** @var ColumnDefinition[] */
     protected array $columns = [];
-    /** @property IndexDefinition[] */
+    /** @var IndexDefinition[] */
     public array $indexes = [];
     /** @property ForeignKeyDefinition[] */
     public array $foreignKeys = [];
@@ -234,44 +234,49 @@ class Blueprint
 
     public function toSql(): string
     {
-        $columnsSql = array_map(fn(ColumnDefinition $column) => $column->toSql(), $this->columns);
-        $foreignKeysSql = array_map(fn(ForeignKeyDefinition $foreign) => $foreign->toSql(), $this->foreignKeys);
-        $indexesSql = array_map(fn(IndexDefinition $index) => $index->toSql(), $this->indexes);
-
-        $allDefinitions = array_merge($columnsSql, $foreignKeysSql, $indexesSql);
-
         if ($this->alter) {
-            $alter_command = 'ADD';
-            if (count($this->dropColumns)) {
-                $allDefinitions = [];
-                $alter_command = 'DROP COLUMN';
-                foreach ($this->dropColumns as $col) {
-                    $allDefinitions[] = "`$col`";
-                }
-            } elseif (count($this->modifyColumns)) {
-                $allDefinitions = [];
-                $alter_command = 'MODIFY';
-                foreach ($this->modifyColumns as $col) {
-                    $allDefinitions[] = $col->toSql();
-                }
-            } elseif (count($this->renameColumns)) {
-                $allDefinitions = [];
-                $alter_command = 'RENAME COLUMN';
-                foreach ($this->renameColumns as $pair) {
-                    $allDefinitions[] = "`{$pair['from']}` TO `{$pair['to']}`";
+            $statements = [];
+
+            // Partition columns into ADD and MODIFY COLUMN
+            foreach ($this->columns as $col) {
+                if ($col instanceof ColumnDefinition && $col->isChange) {
+                    $statements[] = "MODIFY COLUMN " . $col->toSql();
+                } else {
+                    $sql = $col instanceof ColumnDefinition ? $col->toSql() : (string) $col;
+                    $statements[] = "ADD " . $sql;
                 }
             }
 
-            // For ALTER TABLE: each definition must be prefixed with ADD or MODIFY
-            $alterStatements = implode(",\n    ", array_map(
-                fn($sql) => "$alter_command " . $sql,
-                $allDefinitions
-            ));
+            foreach ($this->foreignKeys as $foreign) {
+                $statements[] = "ADD " . $foreign->toSql();
+            }
+
+            foreach ($this->indexes as $index) {
+                $statements[] = "ADD " . $index->toSql();
+            }
+
+            foreach ($this->modifyColumns as $col) {
+                $statements[] = "MODIFY COLUMN " . $col->toSql();
+            }
+
+            foreach ($this->dropColumns as $col) {
+                $statements[] = "DROP COLUMN `$col`";
+            }
+
+            foreach ($this->renameColumns as $pair) {
+                $statements[] = "RENAME COLUMN `{$pair['from']}` TO `{$pair['to']}`";
+            }
+
+            $alterStatements = implode(",\n    ", $statements);
             return sprintf("ALTER TABLE `%s`\n    %s;", $this->table, $alterStatements);
         }
 
         // Otherwise, it's a CREATE TABLE
-        $definitions = implode(",\n    ", $allDefinitions);
+        $columnsSql = array_map(fn(ColumnDefinition $column) => $column->toSql(), $this->columns);
+        $foreignKeysSql = array_map(fn(ForeignKeyDefinition $foreign) => $foreign->toSql(), $this->foreignKeys);
+        $indexesSql = array_map(fn(IndexDefinition $index) => $index->toSql(), $this->indexes);
+
+        $definitions = implode(",\n    ", array_merge($columnsSql, $foreignKeysSql, $indexesSql));
         return sprintf("CREATE TABLE `%s` (\n    %s\n);", $this->table, $definitions);
     }
 
@@ -291,7 +296,7 @@ class Blueprint
     {
         $metadata = [];
         foreach ($this->columns as $column) {
-            $metadata[$column->name] = $column->comment ?? '';
+            $metadata[$column->name] = $column->commentText ?? '';
         }
         return $metadata;
     }
@@ -331,6 +336,7 @@ class Blueprint
             $type = "$type({$param_str}{$param_num})";
         }
         $column = new ColumnDefinition("`$name` $type");
+        $column->name = $name;
         $this->columns[] = $column;
         return $column;
     }
