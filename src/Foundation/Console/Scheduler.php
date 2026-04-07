@@ -5,11 +5,14 @@ namespace Eyika\Atom\Framework\Foundation\Console;
 use Cron\CronExpression;
 use Exception;
 use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
+use Eyika\Atom\Framework\Foundation\Console\Concerns\LogsMessages;
 use Eyika\Atom\Framework\Foundation\Console\Contracts\QueueInterface;
+use Eyika\Atom\Framework\Foundation\Console\Contracts\ShouldLogMessages;
 use Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel;
 
-class Scheduler
+class Scheduler implements ShouldLogMessages
 {
+    use LogsMessages;
     protected $tasks = [];
     protected $current_name = '';
 
@@ -149,14 +152,24 @@ class Scheduler
     {
         $now = new \DateTime();
         $registry->schedule();
-        
+
+        $ranCount = 0;
         foreach ($this->tasks as $task) {
-            if (!$task['expression'] ?? null)
+            if (!($task['expression'] ?? null))
                 continue;
             $expression = new CronExpression($task['expression']);
             if ($expression->isDue($now)) {
-                $registry->run($task['command'], $task['arguements']);
+                $command = is_string($task['command']) ? $task['command'] : 'closure';
+                $this->info("Running scheduled command: {$command}");
+                $registry->run($task['command'], $task['arguements'], false);
+                $ranCount++;
             }
+        }
+
+        if ($ranCount === 0) {
+            $this->info('No scheduled commands are ready to run.');
+        } else {
+            $this->info("Ran {$ranCount} scheduled command(s).");
         }
     }
 }

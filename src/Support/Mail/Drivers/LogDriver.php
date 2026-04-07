@@ -10,13 +10,11 @@ class LogDriver implements MailerInterface
     protected $logger;
     protected array $tos;
 
-    public function __construct(array $config)
+    public function __construct(array $config = [])
     {
-        if (empty($config)) {
-            throw new Exception('bad configuration data');
-        }
         $this->tos = [];
-        $this->logger = $config['logger'] ?? new \Monolog\Logger('mail');
+        $path = $config['path'] ?? storage_path('logs/mail.log');
+        $this->logger = $config['logger'] ?? logger($path, name: 'mail');
     }
 
     public function to(string $address, string|null $name = null): self
@@ -34,6 +32,7 @@ class LogDriver implements MailerInterface
                 'body' => $body,
             ]);
 
+            $this->tos = [];
             return new MailerResponse(true, null, null);
         } catch (Exception $e) {
             return new MailerResponse(false, null, $e->getMessage(), $e);
