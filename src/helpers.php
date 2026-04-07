@@ -547,6 +547,28 @@ if (!function_exists('info')) {
     }
 }
 
+if (!function_exists('dispatch')) {
+    /**
+     * Dispatch a job to the queue, Laravel-style.
+     *
+     * Usage:
+     *   dispatch(new SendEmailJob($user));
+     *   dispatch(new SendEmailJob($user))->delay(60);
+     *   dispatch(new SendEmailJob($user))->delay(60)->onQueue('emails');
+     *
+     * The wrapper auto-runs the job on destruct, so even fire-and-forget calls
+     * (no chaining) get queued. Chained calls (delay/onQueue/priority) configure
+     * the job before it runs.
+     *
+     * @param object $job An instance of a class using the ShouldQueue trait
+     * @return \Eyika\Atom\Framework\Foundation\Console\PendingDispatch
+     */
+    function dispatch(object $job)
+    {
+        return new \Eyika\Atom\Framework\Foundation\Console\PendingDispatch($job);
+    }
+}
+
 if (!function_exists('notice')) {
     function notice(string $message, array $context = []) {
         logger()->notice($message, $context);
