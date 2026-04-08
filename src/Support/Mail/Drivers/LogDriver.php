@@ -4,6 +4,10 @@ namespace Eyika\Atom\Framework\Support\Mail\Drivers;
 use Exception;
 use Eyika\Atom\Framework\Support\Mail\Contracts\MailerInterface;
 use Eyika\Atom\Framework\Support\Mail\Contracts\MailerResponse;
+use Monolog\Formatter\LineFormatter;
+use Monolog\Handler\StreamHandler;
+use Monolog\Level;
+use Monolog\Logger;
 
 class LogDriver implements MailerInterface
 {
@@ -16,7 +20,21 @@ class LogDriver implements MailerInterface
     {
         $this->tos = [];
         $path = $config['path'] ?? storage_path('logs/mail.log');
-        $this->logger = $config['logger'] ?? logger($path, name: 'mail');
+
+        if (isset($config['logger'])) {
+            $this->logger = $config['logger'];
+            return;
+        }
+
+        // Build a Monolog logger that writes each email on a SINGLE line so the
+        // log viewer's line-based regex parser can read the whole JSON context
+        // (including the HTML body) as one entry.
+        $format = "[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n";
+        $formatter = new LineFormatter($format, 'Y-m-d H:i:s', false, true);
+        $handler = new StreamHandler($path, Level::Debug);
+        $handler->setFormatter($formatter);
+
+        $this->logger = (new Logger('mail'))->pushHandler($handler);
     }
 
     public function to(string $address, string|null $name = null): self
