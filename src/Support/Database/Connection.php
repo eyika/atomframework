@@ -231,6 +231,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
    * @return string
    */
   private function values($data, &$bind = []) {
+    $values = [];
     foreach ( $data as $name => $value ) {
       if ( strpos($name, '.') ) {
         $path = explode('.', $name);
