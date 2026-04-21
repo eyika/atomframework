@@ -63,6 +63,21 @@ class Blueprint
         return $this->addColumn("TEXT", $column);
     }
 
+    public function tinyText(string $column): ColumnDefinition
+    {
+        return $this->addColumn("TINYTEXT", $column);
+    }
+
+    public function mediumText(string $column): ColumnDefinition
+    {
+        return $this->addColumn("MEDIUMTEXT", $column);
+    }
+
+    public function longText(string $column): ColumnDefinition
+    {
+        return $this->addColumn("LONGTEXT", $column);
+    }
+
     public function json(string $column): ColumnDefinition
     {
         return $this->addColumn("JSON", $column);

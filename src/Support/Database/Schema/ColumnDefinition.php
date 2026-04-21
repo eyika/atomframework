@@ -57,15 +57,27 @@ class ColumnDefinition
 
     public function default(mixed $value): self
     {
-        $default = $value;
-    
-        // If DEFAULT already exists, replace it
-        if (preg_match('/DEFAULT\s+\'?.+?\'?/', implode(" ", $this->modifiers))) {
-            $this->modifiers = preg_replace('/DEFAULT\s+\'?.+?\'?/', "DEFAULT '$default'", $this->modifiers);
+        if (is_bool($value)) {
+            $rendered = $value ? '1' : '0';
+        } elseif (is_null($value)) {
+            $rendered = 'NULL';
+        } elseif (is_int($value) || is_float($value)) {
+            $rendered = (string) $value;
+        } elseif (is_string($value) && $value === 'CURRENT_TIMESTAMP') {
+            // Raw SQL keyword — don't quote
+            $rendered = 'CURRENT_TIMESTAMP';
         } else {
-            $this->modifiers[] = "DEFAULT '$default'";
+            $escaped = str_replace("'", "\\'", (string) $value);
+            $rendered = "'$escaped'";
         }
-    
+
+        // Remove any existing DEFAULT clause then append the new one
+        $this->modifiers = array_values(array_filter(
+            $this->modifiers,
+            fn($m) => !preg_match('/^DEFAULT\b/i', $m)
+        ));
+        $this->modifiers[] = "DEFAULT $rendered";
+
         return $this;
     }
 
