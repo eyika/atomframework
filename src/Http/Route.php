@@ -326,7 +326,9 @@ class Route
         $parameters = [];
         for ($i = 0; $i < count($requestUriParts); $i++) {
             if (preg_match("/^{([^}]+)\??}$/", $routeParts[$i], $matches)) {
-                $parameters[$matches[1]] = $requestUriParts[$i];
+                // URL-decode route parameter values so things like "Simple%20RSI"
+                // become "Simple RSI" before they reach controllers / DB queries.
+                $parameters[$matches[1]] = rawurldecode($requestUriParts[$i]);
             } elseif ($routeParts[$i] !== $requestUriParts[$i]) {
                 return false;
             }
