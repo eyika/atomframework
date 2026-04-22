@@ -64,8 +64,10 @@ class SmtpDriver implements MailerInterface
         $r = false;
         try {
             $this->mailer->Subject = $subject;
-            //Set an HTML and plain-text body, import relative image references
-            $this->mailer->msgHTML($body, './images/'); //TODO: images path not yet correct
+            // Set HTML body. No basedir: image src attributes are hosted
+            // on an HTTP(S) endpoint, so PHPMailer shouldn't try to resolve
+            // them against a local directory or inline-attach them.
+            $this->mailer->msgHTML($body);
             $r = $this->mailer->send();
     
             return new MailerResponse($r, $this->mailer->getLastMessageID());
