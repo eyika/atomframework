@@ -48,6 +48,8 @@ use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
  * @method static self whereNotIn($column, array $values)
  * @method static self whereLike($column, $value)
  * @method static self whereNotLike($column, $value)
+ * @method static self whereBetween($column, array $range)
+ * @method static self whereNotBetween($column, array $range)
  * @method static self whereLessThan($column, $value)
  * @method static self whereGreaterThan($column, $value)
  * @method static self whereLessThanOrEqual($column, $value)
@@ -85,7 +87,7 @@ abstract class Model implements ModelInterface
         'findByArray', 'all', 'get', 'paginate', 'random', 'count', 'avg', 'max', 'min', 'increment', 'decrement',
         'sum', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'group_concact', 'update',
         'updateOrCreate', 'delete', 'restore', 'limit', 'offset', 'where', 'whereIn',
-        'whereNotIn', 'whereNotIn', 'whereLike', 'whereNotLike', 'whereLessThan',
+        'whereNotIn', 'whereNotIn', 'whereLike', 'whereNotLike', 'whereBetween', 'whereNotBetween', 'whereLessThan',
         'whereLessThanOrEqual', 'whereGreaterThanOrEqual', 'whereNull', 'whereNotNull',
         'whereEqual', 'whereNotEqual', 'orWhere', 'orWhereLike', 'orWhereNotLike',
         'orWhereLessThan', 'orWhereGreaterThan', 'orWhereGreaterThan', 'orWhereGreaterThanOrEqual',

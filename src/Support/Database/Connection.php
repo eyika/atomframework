@@ -115,29 +115,45 @@ class Connection {
  */
 private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '', $_operator = '=') {
     $or_and = $or_and !== '' ? ' ' . $or_and : $or_and;
-    $__k = $k;
-    $_k = $k;
+
+    // QueryBuilder appends a __dupN suffix to the bind key when multiple
+    // where() calls target the same column, so their binds don't collide.
+    // Here we strip the suffix to recover the real column for the SQL
+    // reference while keeping it in the param name to keep it unique.
+    $k_col = preg_replace('/__dup\d+$/', '', $k);
+    $__k = $k;  // full key (with suffix if any) — used as bind param name
+    $_k  = $k_col;
 
     // ✅ handle dot notation properly
-    if (strpos($k, '.') !== false) {
-        $parts = explode('.', $k);
-        $__k = end($parts); // last segment only for binding key
+    if (strpos($k_col, '.') !== false) {
+        $parts = explode('.', $k_col);
+        $__k  = end($parts) . (preg_match('/__dup\d+$/', $k, $m) ? $m[0] : '');
         $_k   = implode('.', array_map(fn($part) => "`{$part}`", $parts)); // quote each part
     } else {
-        $_k = "`{$k}`"; // quote normal column too
+        $_k = "`{$k_col}`"; // quote normal column too
     }
 
     if (is_array($v)) {
-        // IN (...)
-        $in = [];
-        foreach ($v as $i => $sub_v) {
-            $param = ":{$__k}_{$i}";
-            $in[]  = $param;
-            $bind[$param] = is_bool($sub_v) ? (int)$sub_v : $sub_v;
+        $opUpper = is_string($_operator) ? strtoupper($_operator) : '';
+        if ($opUpper === 'BETWEEN' || $opUpper === 'NOT BETWEEN') {
+            $p1 = ":{$__k}_0";
+            $p2 = ":{$__k}_1";
+            $bind[$p1] = is_bool($v[0]) ? (int)$v[0] : $v[0];
+            $bind[$p2] = is_bool($v[1]) ? (int)$v[1] : $v[1];
+            $where[] = "{$_k} {$opUpper} {$p1} AND {$p2}{$or_and}";
+            $incr_operator = true;
+        } else {
+            // IN (...)
+            $in = [];
+            foreach ($v as $i => $sub_v) {
+                $param = ":{$__k}_{$i}";
+                $in[]  = $param;
+                $bind[$param] = is_bool($sub_v) ? (int)$sub_v : $sub_v;
+            }
+            $in = implode(', ', $in);
+            $where[] = "{$_k} {$_operator} ($in){$or_and}";
+            $incr_operator = false;
         }
-        $in = implode(', ', $in);
-        $where[] = "{$_k} {$_operator} ($in){$or_and}";
-        $incr_operator = false;
 
     } else if ($v !== null && is_string($v) && str_contains(strtoupper($v), 'NULL')) {
         // IS NULL / IS NOT NULL

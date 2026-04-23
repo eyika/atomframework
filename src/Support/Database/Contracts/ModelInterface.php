@@ -502,11 +502,31 @@ interface ModelInterface extends ModelEventsInterface
     public function _whereNotLike($column, $value);
 
     /**
+     * Add a where BETWEEN clause for a [min, max] range on a single column.
+     *
+     * @param string $column
+     * @param array $range [min, max]
+     *
+     * @return Model
+     */
+    public function _whereBetween($column, array $range);
+
+    /**
+     * Add a where NOT BETWEEN clause for a [min, max] range on a single column.
+     *
+     * @param string $column
+     * @param array $range [min, max]
+     *
+     * @return Model
+     */
+    public function _whereNotBetween($column, array $range);
+
+    /**
      * Add a where clause to the query instance
-     * 
+     *
      * @param string $column
      * @param mixed $value
-     * 
+     *
      * @return Model
      */
     public function _whereLessThan($column, $value);

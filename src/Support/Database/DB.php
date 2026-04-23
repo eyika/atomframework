@@ -81,6 +81,23 @@ class DB
         return $statement->fetchAll();
     }
 
+    /**
+     * Run a parameterized SELECT and return an array of associative rows.
+     * Bindings are named (e.g. `:limit`, `:start`).
+     *
+     * @param string $sql
+     * @param array $bind
+     * @return array
+     */
+    public static function query(string $sql, array $bind = []): array
+    {
+        $statement = DatabaseConnection::exec($sql, $bind);
+        if ($statement === false) {
+            return [];
+        }
+        return $statement->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
     protected function resetInstance()
     {
         static::$bind_or_filter = null;
@@ -451,6 +468,22 @@ class DB
         return static::_where($column, 'NOT LIKE', $value, 'AND');
     }
 
+    public function whereBetween($column, array $range)
+    {
+        if (count($range) !== 2) {
+            throw new \InvalidArgumentException('whereBetween expects a [min, max] array');
+        }
+        return static::_where($column, 'BETWEEN', array_values($range), 'AND');
+    }
+
+    public function whereNotBetween($column, array $range)
+    {
+        if (count($range) !== 2) {
+            throw new \InvalidArgumentException('whereNotBetween expects a [min, max] array');
+        }
+        return static::_where($column, 'NOT BETWEEN', array_values($range), 'AND');
+    }
+
     public function whereLessThan($column, $value = null)
     {
         return static::_where($column, '<', $value, 'AND');
@@ -606,7 +639,18 @@ class DB
 
         is_string(static::$or_ands) ? static::$or_ands = [$boolean] : array_push(static::$or_ands, $boolean);
         $column = static::parseColumn($column);
-        is_null(static::$bind_or_filter) ? static::$bind_or_filter = array($column => $value) : static::$bind_or_filter[$column] = $value;
+
+        // See QueryBuilder::__where() for rationale on the __dupN suffix.
+        $bindKey = $column;
+        if (is_array(static::$bind_or_filter) && array_key_exists($bindKey, static::$bind_or_filter)) {
+            $n = 1;
+            while (array_key_exists($column . '__dup' . $n, static::$bind_or_filter)) {
+                $n++;
+            }
+            $bindKey = $column . '__dup' . $n;
+        }
+
+        is_null(static::$bind_or_filter) ? static::$bind_or_filter = array($bindKey => $value) : static::$bind_or_filter[$bindKey] = $value;
 
         return $this;
     }

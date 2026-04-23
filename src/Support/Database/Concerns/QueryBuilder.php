@@ -684,6 +684,22 @@ trait QueryBuilder
         return $this->__where($column, 'NOT LIKE', $value, 'AND');
     }
 
+    public function _whereBetween($column, array $range)
+    {
+        if (count($range) !== 2) {
+            throw new \InvalidArgumentException('whereBetween expects a [min, max] array');
+        }
+        return $this->__where($column, 'BETWEEN', array_values($range), 'AND');
+    }
+
+    public function _whereNotBetween($column, array $range)
+    {
+        if (count($range) !== 2) {
+            throw new \InvalidArgumentException('whereNotBetween expects a [min, max] array');
+        }
+        return $this->__where($column, 'NOT BETWEEN', array_values($range), 'AND');
+    }
+
     public function _whereLessThan($column, $value)
     {
         return $this->__where($column, '<', $value, 'AND');
@@ -906,7 +922,22 @@ trait QueryBuilder
 
         is_string($this->or_ands) ? $this->or_ands = [$boolean] : array_push($this->or_ands, $boolean);
         $column = $this->_parseColumn($column);
-        is_null($this->bind_or_filter) ? $this->bind_or_filter = array($column => $value) : $this->bind_or_filter[$column] = $value;
+
+        // Multiple where() calls on the same column must not overwrite each
+        // other — e.g. ->where('created_at', '>=', $a)->where('created_at', '<=', $b).
+        // We keep the real column in the key but append a __dupN suffix to
+        // distinguish. Connection::condition() strips the suffix when building
+        // the SQL column reference, keeping it only for the bind param name.
+        $bindKey = $column;
+        if (is_array($this->bind_or_filter) && array_key_exists($bindKey, $this->bind_or_filter)) {
+            $n = 1;
+            while (array_key_exists($column . '__dup' . $n, $this->bind_or_filter)) {
+                $n++;
+            }
+            $bindKey = $column . '__dup' . $n;
+        }
+
+        is_null($this->bind_or_filter) ? $this->bind_or_filter = array($bindKey => $value) : $this->bind_or_filter[$bindKey] = $value;
 
         return $this;
     }
