@@ -36,11 +36,15 @@ class FileSessionHandler implements SessionHandlerInterface, SessionIdInterface,
     {
         $file = $this->filePath($sessionId);
 
-        if (file_exists($file)) {
-            return unlink($file);
+        // @unlink avoids the "no such file" warning when a concurrent
+        // request (or session GC) already removed the file between the
+        // existence check and our own unlink — classic TOCTOU.
+        if (@unlink($file)) {
+            return true;
         }
 
-        return true;
+        // If the file is gone for any reason, treat destroy as successful.
+        return !file_exists($file);
     }
 
     public function gc($maxLifetime): int|false
@@ -60,18 +64,46 @@ class FileSessionHandler implements SessionHandlerInterface, SessionIdInterface,
     {
         $file = $this->filePath($sessionId);
 
-        if (file_exists($file)) {
-            return file_get_contents($file);
+        if (!file_exists($file)) {
+            return '';
         }
 
-        return '';
+        // Shared lock so we don't read a file mid-write. file_get_contents
+        // doesn't take a lock by itself, so we open+flock manually.
+        $fh = @fopen($file, 'rb');
+        if ($fh === false) {
+            return '';
+        }
+
+        $data = '';
+        if (flock($fh, LOCK_SH)) {
+            $data = stream_get_contents($fh);
+            flock($fh, LOCK_UN);
+        }
+        fclose($fh);
+
+        return $data === false ? '' : $data;
     }
 
     public function write($sessionId, $sessionData): bool
     {
         $file = $this->filePath($sessionId);
 
-        return file_put_contents($file, $sessionData) !== false;
+        // Atomic write: write to a tmp file in the same directory then
+        // rename over the target. rename() is atomic on the same filesystem,
+        // so concurrent readers never see a half-written session file —
+        // which was causing PHP to emit "Failed to decode session object".
+        $tmp = $file . '.tmp.' . bin2hex(random_bytes(6));
+        if (@file_put_contents($tmp, $sessionData, LOCK_EX) === false) {
+            return false;
+        }
+
+        if (!@rename($tmp, $file)) {
+            @unlink($tmp);
+            return false;
+        }
+
+        return true;
     }
 
     public function create_sid(): string

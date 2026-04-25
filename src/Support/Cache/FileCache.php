@@ -68,8 +68,15 @@ class FileCache implements CacheInterface
 
         $data = $this->file->get($filePath);
 
-        // Decode the data
-        $cacheItem = unserialize($data);
+        // Decode the data. A torn write or stale file from before the cache
+        // path refactor can leave the file unparseable; treat that as a miss
+        // and delete the file so the next write starts clean.
+        $cacheItem = $data !== '' && $data !== false ? @unserialize($data) : false;
+
+        if (!is_array($cacheItem) || !array_key_exists('expires_at', $cacheItem)) {
+            $this->deleteItem($key);
+            return new CacheItem($key, null, false);
+        }
 
         // Check if the cache item is still valid
         if ($cacheItem['expires_at'] !== 0 && $cacheItem['expires_at'] < time()) {
@@ -109,7 +116,12 @@ class FileCache implements CacheInterface
         }
 
         $data = $this->file->get($filePath);
-        $cacheItem = unserialize($data);
+        $cacheItem = $data !== '' && $data !== false ? @unserialize($data) : false;
+
+        if (!is_array($cacheItem) || !array_key_exists('expires_at', $cacheItem)) {
+            $this->deleteItem($key);
+            return false;
+        }
 
         // Check if the cache has expired
         return $cacheItem['expires_at'] === 0 || $cacheItem['expires_at'] > time();
