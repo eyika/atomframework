@@ -140,10 +140,15 @@ class Validator {
         }
         switch ($type) {
             case 'required':
-                if ($paramval === null || (is_string($paramval) && trim($paramval) === ''))
+                if (
+                    $paramval === null
+                    || (is_string($paramval) && trim($paramval) === '')
+                    || (is_array($paramval) && count($paramval) === 0)
+                ) {
                     $resp = "$param is required";
-                else
+                } else {
                     $resp = '';
+                }
                 break;
             case 'sometimes':
                 $resp = '';
@@ -175,11 +180,16 @@ class Validator {
                 $resp = !$stat ? "$param should be a numeric" : '';
                 break;
             case 'url':
-                $stat = is_link($paramval);
+                // Was using is_link() — a filesystem syscall that checks for
+                // symbolic links on disk. Replaced with FILTER_VALIDATE_URL.
+                $stat = is_string($paramval) && filter_var($paramval, FILTER_VALIDATE_URL) !== false;
                 $resp = !$stat ? "$param should be an url" : '';
                 break;
             case 'file':
-                $stat = is_file($paramval);
+                // Was using is_file() — checks if the value is a path to a
+                // regular file on disk. Uploaded files arrive as instances of
+                // the framework's File class, so use the same shape as 'image'.
+                $stat = $paramval instanceof File;
                 $resp = !$stat ? "$param should be a file" : '';
                 break;
             case 'array':
@@ -230,7 +240,9 @@ class Validator {
         if ($paramval instanceof File) {
             return ($paramval->uploadProperties()->size() / 1024) > $max ? "{$param} should not be more than $max kb" : '';
         } elseif (is_string($paramval)) {
-            return strlen($paramval) > $max ? "{$param} should not contain more than $max characters" : '';
+            // mb_strlen so multi-byte chars (emojis, accented letters,
+            // non-Latin scripts) count as one character each, not 2-4 bytes.
+            return mb_strlen($paramval, 'UTF-8') > $max ? "{$param} should not contain more than $max characters" : '';
         } elseif (is_array($paramval)) {
             return count($paramval) > $max ? "{$param} should not contain more than $max items" : '';
         } elseif (is_numeric($paramval)) {
@@ -245,7 +257,7 @@ class Validator {
         if ($paramval instanceof File) {
             return ($paramval->uploadProperties()->size() / 1024) < $min ? "{$param} should not be less than $min kb" : '';
         } elseif (is_string($paramval)) {
-            return strlen($paramval) < $min ? "{$param} should not contain less than $min characters" : '';
+            return mb_strlen($paramval, 'UTF-8') < $min ? "{$param} should not contain less than $min characters" : '';
         } elseif (is_array($paramval)) {
             return count($paramval) < $min ? "{$param} should not contain less than $min items" : '';
         } elseif (is_numeric($paramval)) {
@@ -253,7 +265,7 @@ class Validator {
         }
 
         return '';
-    } 
+    }
 
     private function performAdvanceValidation(string $type, $param, $paramval)
     {
@@ -270,10 +282,13 @@ class Validator {
                     $resp = $this->isLessThanMin($param, $paramval, $items[1]);
                     break;
                 case 'equals':
-                    $resp = $paramval === $items[1] ? '' : "{$param} should be same as " . str_replace('_confirm', '', $param);
+                    // Loose compare: $items[1] is always the rule's RHS as a
+                    // string, but $paramval can be int/bool/float, so strict
+                    // === would always fail for non-strings.
+                    $resp = $paramval == $items[1] ? '' : "{$param} should be same as " . str_replace('_confirm', '', $param);
                     break;
                 case 'not_equals':
-                    $resp = $paramval === $items[1] ? "{$param} should not be same as " . str_replace('_confirm', '', $param) : '';
+                    $resp = $paramval == $items[1] ? "{$param} should not be same as " . str_replace('_confirm', '', $param) : '';
                     break;
                 case 'in':
                     $resp = !Arr::exists(array_map('trim', explode(',', $items[1])), $paramval, true) ? "{$param} should contain one of {$items[1]}" : '';
@@ -341,6 +356,10 @@ class Validator {
         if (!array_key_exists($param, $dat)) {
             return null;
         }
-        return $dat[$param] ?? '';
+        // Preserve explicit null values — previously `?? ''` coerced an
+        // explicit null in the request into '', conflating "key absent"
+        // and "key present with null". Callers using the 'sometimes' /
+        // 'required' rules already handle null correctly.
+        return $dat[$param];
     }
 }
