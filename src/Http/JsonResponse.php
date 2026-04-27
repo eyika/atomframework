@@ -24,6 +24,11 @@ class JsonResponse extends BaseResponse
         return $this->create(['message' => $message, 'errors' => $data], self::STATUS_NOT_FOUND);
     }
 
+    public function conflict(string $message = "", array $errors = []): self
+    {
+        return $this->create(['message' => $message, 'errors' => $errors], self::STATUS_CONFLICT);
+    }
+
     public function unprocessableEntity(string $message = "unprocessable request", string $errors = ""): self
     {
         return $this->create(['message' => $message, 'errors' => $errors], self::STATUS_UNPROCESSABLE_ENTITY);
