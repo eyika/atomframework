@@ -276,17 +276,17 @@ class Validator {
                     $resp = $paramval === $items[1] ? "{$param} should not be same as " . str_replace('_confirm', '', $param) : '';
                     break;
                 case 'in':
-                    $resp = !Arr::exists(explode(', ', $items[1]), $paramval, true) ? "{$param} should contain one of {$items[1]}" : '';
+                    $resp = !Arr::exists(array_map('trim', explode(',', $items[1])), $paramval, true) ? "{$param} should contain one of {$items[1]}" : '';
                     break;
                 case 'not_in':
-                    $resp = Arr::exists(explode(', ', $items[1]), $paramval, true) ? "{$param} should not contain any of {$items[1]}" : '';
+                    $resp = Arr::exists(array_map('trim', explode(',', $items[1])), $paramval, true) ? "{$param} should not contain any of {$items[1]}" : '';
                     break;
                 case 'exist':
-                    $_items = explode(',', $items[1]);
+                    $_items = array_map('trim', explode(',', $items[1]));
                     $resp = DatabaseConnection::count($_items[0], [$_items[1] => $paramval]) > 0 ? "" : "{$param} should exist in {$_items[1]} column of table {$_items[0]}";
                     break;
                 case 'not_exist':
-                    $_items = explode(',', $items[1]);
+                    $_items = array_map('trim', explode(',', $items[1]));
                     $resp = DatabaseConnection::count($_items[0], [$_items[1] => $paramval]) < 1 ? "" : "{$param} should not exist in {$_items[1]} column of table {$_items[0]}";
                     break;
                 case 'contains':
@@ -298,14 +298,14 @@ class Validator {
                     $resp = !$stat ? "{$param} should be an array that has $items[1]" : '';
                     break;
                 case 'mimes':
-                    $mimes = explode(',', $items[1]);
+                    $mimes = array_map('trim', explode(',', $items[1]));
                     $mimeParts = explode('/', mime_content_type($paramval->uploadProperties()->tmpName()));
                     $mime = $mimeParts[1] ?? '';
                     $is_valid_mime = $paramval instanceof File && Arr::exists($mimes, $mime);
                     $resp = $is_valid_mime ? '' : "$param should be a file with one of " . $items[1] ."mime";
                     break;
                 case 'mimetypes':
-                    $mimes = explode(',', $items[1]);
+                    $mimes = array_map('trim', explode(',', $items[1]));
                     $mimeType = mime_content_type($paramval->uploadProperties()->tmpName());
                     $is_valid_mime = $paramval instanceof File && Arr::exists($mimes, $mimeType);
                     $resp = $is_valid_mime ? '' : "$param should be a file with one of " . $items[1] ."mime type";
