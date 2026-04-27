@@ -32,6 +32,7 @@ class BaseResponse
     public const STATUS_CONFLICT = 409;
     public const STATUS_UNPROCESSABLE_ENTITY = 422;
     public const STATUS_INTERNAL_SERVER_ERROR = 500;
+    public const STATUS_BAD_GATEWAY = 502;
     public const STATUS_SERVICE_NOT_AVAILABLE = 503;
 
     protected const METHOD_TO_FUNC = [

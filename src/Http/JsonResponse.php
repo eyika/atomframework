@@ -11,7 +11,7 @@ class JsonResponse extends BaseResponse
 
     public function noContent(): self
     {
-        return $this->create(statusCode: self::STATUS_CREATED);
+        return $this->create(statusCode: self::STATUS_NO_CONTENT);
     }
 
     public function created(string $message = '', mixed $data = []): self
@@ -37,6 +37,11 @@ class JsonResponse extends BaseResponse
     public function serverError(string $message=""): self
     {
         return $this->create(['message' => $message], self::STATUS_INTERNAL_SERVER_ERROR);
+    }
+
+    public function badGateway(string $message = ""): self
+    {
+        return $this->create(['message' => $message], self::STATUS_BAD_GATEWAY);
     }
 
     public function badRequest(string $message = "", array $errors = []): self
