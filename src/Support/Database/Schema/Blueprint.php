@@ -20,6 +20,17 @@ class Blueprint
     protected array $dropColumns = [];
     protected array $modifyColumns = [];
     protected array $renameColumns = [];
+    /**
+     * Pending index drops. Each entry is one of:
+     *   ['kind' => 'PRIMARY']
+     *   ['kind' => 'INDEX', 'name' => '<explicit-name>']
+     *   ['kind' => 'INDEX', 'columns' => [...], 'unique' => bool]
+     * The third form is resolved to a name via INFORMATION_SCHEMA in
+     * resolveDropIndexes() before toSql() emits the ALTER.
+     *
+     * @var array<int, array<string, mixed>>
+     */
+    protected array $dropIndexes = [];
     protected bool $alter;
 
     public function __construct(string $table, $alter = false)
@@ -234,6 +245,107 @@ class Blueprint
         return $this;
     }
 
+    /**
+     * Queue a unique index drop. Pass column name(s) (the framework will
+     * look up the actual index name covering exactly those columns) OR
+     * an explicit string to drop a specific named index.
+     */
+    public function dropUnique(string|array $columns): self
+    {
+        if (is_string($columns)) {
+            $this->dropIndexes[] = ['kind' => 'INDEX', 'name' => $columns];
+        } else {
+            $this->dropIndexes[] = ['kind' => 'INDEX', 'columns' => array_values($columns), 'unique' => true];
+        }
+        return $this;
+    }
+
+    /**
+     * Queue a non-unique index drop. Same column-or-string semantics as
+     * dropUnique().
+     */
+    public function dropIndex(string|array $columns): self
+    {
+        if (is_string($columns)) {
+            $this->dropIndexes[] = ['kind' => 'INDEX', 'name' => $columns];
+        } else {
+            $this->dropIndexes[] = ['kind' => 'INDEX', 'columns' => array_values($columns), 'unique' => false];
+        }
+        return $this;
+    }
+
+    public function dropPrimary(): self
+    {
+        $this->dropIndexes[] = ['kind' => 'PRIMARY'];
+        return $this;
+    }
+
+    /**
+     * Look up real index names from INFORMATION_SCHEMA for any column-based
+     * drop entries queued by dropUnique()/dropIndex(). Called by Schema
+     * before toSql() so the generated ALTER references actual index names
+     * — this is what lets dropUnique() work against legacy uniqid-suffixed
+     * indexes without requiring the caller to know the suffix.
+     *
+     * Throws if a queued drop has no matching index in the live schema, so
+     * a typo in the column list fails loudly instead of silently no-oping.
+     */
+    public function resolveDropIndexes(): void
+    {
+        foreach ($this->dropIndexes as $i => $entry) {
+            if (($entry['kind'] ?? null) !== 'INDEX') {
+                continue;
+            }
+            if (isset($entry['name'])) {
+                continue;
+            }
+
+            $columns = $entry['columns'] ?? [];
+            $unique = (bool)($entry['unique'] ?? false);
+            $name = $this->lookupIndexNameForColumns($columns, $unique);
+
+            if ($name === null) {
+                throw new \RuntimeException(sprintf(
+                    'No %s index on `%s` covering exactly: [%s]',
+                    $unique ? 'unique' : 'non-unique',
+                    $this->table,
+                    implode(', ', $columns)
+                ));
+            }
+            $this->dropIndexes[$i] = ['kind' => 'INDEX', 'name' => $name];
+        }
+    }
+
+    /**
+     * Find the index whose covered columns match $columns exactly (in
+     * order). Returns null if none match. PRIMARY is excluded since it's
+     * dropped via dropPrimary()/DROP PRIMARY KEY, not by name.
+     */
+    protected function lookupIndexNameForColumns(array $columns, bool $unique): ?string
+    {
+        $colsCsv = implode(',', $columns);
+        $sql = "SELECT INDEX_NAME, GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) AS cols
+                FROM INFORMATION_SCHEMA.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = :table
+                  AND NON_UNIQUE = :non_unique
+                  AND INDEX_NAME != 'PRIMARY'
+                GROUP BY INDEX_NAME
+                HAVING cols = :cols
+                LIMIT 1";
+
+        $stmt = \Eyika\Atom\Framework\Support\Facade\DatabaseConnection::exec($sql, [
+            'table' => $this->table,
+            'non_unique' => $unique ? 0 : 1,
+            'cols' => $colsCsv,
+        ]);
+        if ($stmt === false) {
+            return null;
+        }
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        return $row['INDEX_NAME'] ?? null;
+    }
+
     public function addIndex(string $type, array $columns, ?string $name = null): IndexDefinition
     {
         $indexName = $name ?? $this->generateIndexName($type, $columns);
@@ -280,6 +392,21 @@ class Blueprint
 
             foreach ($this->renameColumns as $pair) {
                 $statements[] = "RENAME COLUMN `{$pair['from']}` TO `{$pair['to']}`";
+            }
+
+            foreach ($this->dropIndexes as $entry) {
+                if (($entry['kind'] ?? null) === 'PRIMARY') {
+                    $statements[] = 'DROP PRIMARY KEY';
+                    continue;
+                }
+                if (!isset($entry['name'])) {
+                    // resolveDropIndexes() should have run; if it didn't,
+                    // we'd be emitting an ALTER with an unbound drop.
+                    throw new \RuntimeException(
+                        'Blueprint::resolveDropIndexes() must run before toSql() when there are column-based drops queued.'
+                    );
+                }
+                $statements[] = 'DROP INDEX `' . $entry['name'] . '`';
             }
 
             $alterStatements = implode(",\n    ", $statements);

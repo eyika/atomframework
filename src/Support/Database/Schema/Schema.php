@@ -85,6 +85,9 @@ class Schema
     {
         $blueprint = new Blueprint($table, true);
         $callback($blueprint);
+        // Resolve column-based dropUnique/dropIndex calls to real index
+        // names by querying INFORMATION_SCHEMA before generating the ALTER.
+        $blueprint->resolveDropIndexes();
         $sql = $blueprint->toSql();
         DatabaseConnection::exec($sql);
     }
