@@ -857,6 +857,7 @@ trait QueryBuilder
         $this->useHashForEncryptedColumnComparisonQueries($query_arr);
         $this->createHashDuplicatesForCreateAndUpdateQueries($values);
         $this->encryptValues($values);
+        $this->serializeCastedValues($values);
 
         $create = $create_if_not_exist && !DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands);
         if ($create) {
@@ -1005,6 +1006,7 @@ trait QueryBuilder
 
         $this->createHashDuplicatesForCreateAndUpdateQueries($values);
         $this->encryptValues($values);
+        $this->serializeCastedValues($values);
 
         if (!$id = DatabaseConnection::insert($this->table, $values)) {
             return false;

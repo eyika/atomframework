@@ -84,4 +84,28 @@ trait ModelHelpers
             $values[$key.$this::hashed_col_suffix] = getHash($values[$key], 'sha256', env('APP_KEY'));
         }
     }
+
+    /**
+     * Re-serialize values for columns whose cast is 'array' / 'json' / 'object'
+     * before they hit the DB writer. fill() runs castAttribute() on writes too,
+     * so a json_encoded payload gets decoded back into a PHP array; without
+     * this step, Connection::values() binds the array as-is and exec() then
+     * tries to expand it as an IN-list, producing SQLSTATE[HY093].
+     */
+    private function serializeCastedValues(array &$values)
+    {
+        if (!defined('static::casts')) {
+            return;
+        }
+
+        foreach ($values as $key => $value) {
+            if (!array_key_exists($key, static::casts) || !is_array($value)) {
+                continue;
+            }
+            $cast = static::casts[$key];
+            if ($cast === 'array' || $cast === 'json' || $cast === 'object') {
+                $values[$key] = json_encode($value);
+            }
+        }
+    }
 }
