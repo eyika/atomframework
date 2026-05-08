@@ -42,13 +42,21 @@ class ExceptionHandler implements ContractExceptionHandler
     /**
      * Render an exception into an HTTP response.
      *
-     * @param  Request  $request
+     * @param  Request|null  $request
      * @return BaseResponse
      *
      * @throws \Exception
      */
-    public function render(Request $request, \Throwable $exception): BaseResponse
+    public function render(?Request $request, \Throwable $exception): BaseResponse
     {
+        if ($request === null) {
+            $message = config('app.debug') ? $exception->getMessage() : 'An error occured, contact administrator';
+            return response()->json([
+                'success' => false,
+                'message' => $message,
+            ], BaseResponse::STATUS_INTERNAL_SERVER_ERROR);
+        }
+
         if ($request->wantsJson()) {
             $code = $exception->getCode();
             $message = config('app.debug') ? $exception->getMessage() : 'An error occured, contact administrator';

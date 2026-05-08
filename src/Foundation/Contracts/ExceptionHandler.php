@@ -7,5 +7,5 @@ use Eyika\Atom\Framework\Http\Request;
 
 interface ExceptionHandler
 {
-    public function render(Request $request, \Throwable $exception): BaseResponse;
+    public function render(?Request $request, \Throwable $exception): BaseResponse;
 }

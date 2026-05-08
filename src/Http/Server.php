@@ -42,10 +42,10 @@ class Server
     public static function handle(): bool
     {
         try {
-            static::$app->registerProviders();
-            // ErrorHandler::register();
             $request = static::$app->make('request');
             static::$app->instance('request', $request);
+            static::$app->registerProviders();
+            // ErrorHandler::register();
             if (preg_match('/^.*$/i', $request->requestUri())) {
                 //register controllers
                 if (!str_contains($request->pathInfo(), '/api') && !$request->wantsJson() && !$request->isXmlHttpRequest() && !$request->isOptions()) {
