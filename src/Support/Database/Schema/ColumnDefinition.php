@@ -14,16 +14,32 @@ class ColumnDefinition
         $this->definition = $definition;
     }
 
-    public function nullable(): self
+    /**
+     * Mark the column nullable (default) or NOT NULL.
+     *
+     * Matches Laravel's API so ->nullable(false)->change() flips an
+     * existing nullable column to NOT NULL on the way through MODIFY
+     * COLUMN. Previously, the no-arg signature silently ignored the
+     * caller's intent and always emitted NULL — a footgun on ->change()
+     * paths where the migration appeared to do nothing.
+     *
+     * Strips any prior NULL / NOT NULL on the same column so chained
+     * calls (or a nullable()->notNullable() flip) end with a single,
+     * coherent null constraint instead of both clauses concatenated.
+     */
+    public function nullable(bool $value = true): self
     {
-        $this->addModifier("NULL");
+        $this->modifiers = array_values(array_filter(
+            $this->modifiers,
+            fn($m) => !preg_match('/^(NOT\s+)?NULL$/i', $m)
+        ));
+        $this->modifiers[] = $value ? 'NULL' : 'NOT NULL';
         return $this;
     }
 
     public function notNullable(): self
     {
-        $this->addModifier("NOT NULL");
-        return $this;
+        return $this->nullable(false);
     }
 
     public function varChar(int $len = 255): self
@@ -201,21 +217,31 @@ class ColumnDefinition
     {
         $comment = null;
         $nullConstraint = null;
+        $positionClause = null;
         $otherModifiers = [];
-    
+
         foreach ($this->modifiers as $modifier) {
-            if (stripos($modifier, 'COMMENT') === 0) {
+            // Position clause (FIRST | AFTER col_name) is part of the
+            // ALTER TABLE ADD/MODIFY syntax, NOT column_definition, so it
+            // MUST come at the very end. MariaDB strictly enforces this
+            // and 1064s on `... AFTER x NULL`; MySQL is lenient and
+            // accepts either order — which is how this bug shipped.
+            if (stripos($modifier, 'AFTER ') === 0 || strcasecmp($modifier, 'FIRST') === 0) {
+                $positionClause = $modifier;
+            } elseif (stripos($modifier, 'COMMENT') === 0) {
                 $comment = $modifier;
-            } elseif (stripos($modifier, 'NULL') !== false) {
+            } elseif (preg_match('/^(NOT\s+)?NULL$/i', $modifier)) {
                 $nullConstraint = $modifier;
             } else {
                 $otherModifiers[] = $modifier;
             }
         }
-    
-        // Construct the final definition order
-        $orderedModifiers = array_merge($otherModifiers, array_filter([$nullConstraint, $comment]));
-    
+
+        $orderedModifiers = array_merge(
+            $otherModifiers,
+            array_filter([$nullConstraint, $comment, $positionClause])
+        );
+
         return trim("$this->definition " . implode(" ", $orderedModifiers));
     }
 
