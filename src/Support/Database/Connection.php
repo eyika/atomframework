@@ -155,14 +155,16 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
             $incr_operator = false;
         }
 
-    } else if ($v !== null && is_string($v) && str_contains(strtoupper($v), 'NULL')) {
-        // IS NULL / IS NOT NULL
-        $v = strtoupper($v);
+    } else if ($v !== null && is_string($v) && in_array(strtoupper(trim($v)), ['NULL', 'IS NULL', 'IS NOT NULL', 'NOT NULL'], true)) {
+        // IS NULL / IS NOT NULL — exact tokens only (a value merely CONTAINING "null",
+        // e.g. "Annulled", must bind as a literal, not collapse to IS NULL).
+        $v = strtoupper(trim($v));
         $where[] = "{$_k} {$v}{$or_and}";
         $incr_operator = false;
 
-    } else if ($v !== null && is_string($v) && str_contains(strtolower($v), 'now')) {
-        // NOW()
+    } else if ($v !== null && is_string($v) && strtolower($v) === 'now') {
+        // NOW() — exact match only. A substring test wrongly rewrote any value
+        // CONTAINING "now" (e.g. "Know Sure Thing") to the now() function → no match.
         $where[] = "{$_k} $_operator now(){$or_and}";
         $incr_operator = true;
 
