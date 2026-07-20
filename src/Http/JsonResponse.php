@@ -49,6 +49,11 @@ class JsonResponse extends BaseResponse
         return $this->create(['message' => $message, 'errors' => $errors], self::STATUS_BAD_REQUEST);
     }
 
+    public function paymentRequired(string $message = "", array $errors = []): self
+    {
+        return $this->create(['message' => $message, 'errors' => $errors], self::STATUS_PAYMENT_REQUIRED);
+    }
+
     public function forbidden(string $message = "", array $errors = []): self
     {
         return $this->create(['message' => $message, 'errors' => $errors], self::STATUS_FORBIDDEN);

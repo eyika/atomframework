@@ -15,6 +15,7 @@ use Eyika\Atom\Framework\Http\JsonResponse as HttpJsonResponse;
  * @method static HttpJsonResponse unprocessableEntity(string $message = "unprocessable request", string|array $errors = "")
  * @method static HttpJsonResponse serverError(string $message="")
  * @method static HttpJsonResponse badRequest(string $message = "", array $errors = [])
+ * @method static HttpJsonResponse paymentRequired(string $message = "", array $errors = [])
  * @method static HttpJsonResponse forbidden(string $message = "", array $errors = [])
  * @method static HttpJsonResponse unauthorized(string $message = "Unauthorized")
  */

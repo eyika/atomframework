@@ -27,6 +27,7 @@ class BaseResponse
     public const STATUS_NOT_MODIFIED = 304;
     public const STATUS_BAD_REQUEST = 400;
     public const STATUS_UNAUTHORIZED = 401;
+    public const STATUS_PAYMENT_REQUIRED = 402;
     public const STATUS_FORBIDDEN = 403;
     public const STATUS_NOT_FOUND = 404;
     public const STATUS_CONFLICT = 409;
@@ -42,6 +43,7 @@ class BaseResponse
         self::STATUS_NOT_MODIFIED => 'notModified',
         self::STATUS_BAD_REQUEST => 'badRequest',
         self::STATUS_UNAUTHORIZED => 'unauthorized',
+        self::STATUS_PAYMENT_REQUIRED => 'paymentRequired',
         self::STATUS_FORBIDDEN => 'forbidden',
         self::STATUS_NOT_FOUND => 'notFound',
         self::STATUS_UNPROCESSABLE_ENTITY => 'unprocessableEntity',
