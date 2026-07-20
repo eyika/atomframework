@@ -20,6 +20,24 @@ trait QueryBuilder
         return new $classname;
     }
 
+    /** Pessimistic write lock (SELECT ... FOR UPDATE) for the next first()/get(). */
+    protected $for_update = false;
+
+    /**
+     * Add a row-level write lock to the next first()/get() read. Use inside a
+     * transaction to serialize read-modify-write access to a row (e.g. a wallet
+     * balance). Chainable; the flag is cleared by resetInstance() after the read.
+     *
+     * Underscore-prefixed + whitelisted in Model::DYNAMIC_STATIC_METHODS so both
+     * the instance chain (getBuilder()->lockForUpdate()) and the static entry
+     * (Model::lockForUpdate()) resolve through __call/__callStatic.
+     */
+    public function _lockForUpdate()
+    {
+        $this->for_update = true;
+        return $this;
+    }
+
     private function prepareModel($values = [])
     {
         $this->or_ands = 'AND';
@@ -34,6 +52,7 @@ trait QueryBuilder
         $this->or_ands = '';
         $this->operators = '=';
         $this->order = '';
+        $this->for_update = false;
         $this->transaction_mode = false;
         $this->with_model_name = '';
     }
@@ -137,7 +156,7 @@ trait QueryBuilder
     
         $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
     
-        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
+        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands, $this->for_update)) {
             $this->resetInstance();
             return false;
         }
@@ -309,7 +328,7 @@ trait QueryBuilder
             $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
         }
 
-        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
+        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands, $this->for_update)) {
             $this->resetInstance();
             return false;
         }
@@ -386,7 +405,7 @@ trait QueryBuilder
             $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
         }
     
-        if (!$models = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
+        if (!$models = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands, $this->for_update)) {
             $this->resetInstance();
             return false;
         }
@@ -876,7 +895,7 @@ trait QueryBuilder
             $count = DatabaseConnection::update($this->table, $query_arr, $values, $this->operators, $this->or_ands);
         }
 
-        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
+        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands, $this->for_update)) {
             $this->resetInstance();
             return false;
         }

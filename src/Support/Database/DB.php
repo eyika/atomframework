@@ -16,6 +16,7 @@ class DB
     protected static array $joins = [];
     protected static  array|string $operators;
     protected static $order;
+    protected static bool $for_update = false;
 
     private static $instantiated = false;
 
@@ -104,7 +105,19 @@ class DB
         static::$or_ands = '';
         static::$operators = '=';
         static::$order = '';
+        static::$for_update = false;
         self::$transaction_mode = false;
+    }
+
+    /**
+     * Add a pessimistic write lock (SELECT ... FOR UPDATE) to the next first()/get().
+     * Use inside a transaction to serialize read-modify-write access to a row
+     * (e.g. wallet balance). The flag is cleared by resetInstance() after the read.
+     */
+    public function lockForUpdate()
+    {
+        static::$for_update = true;
+        return $this;
     }
 
     public function orderBy($column = "id", $direction = "ASC")
@@ -171,7 +184,7 @@ class DB
         if ($id && $id > 0)
             $query_arr['id'] = $id;
 
-        if (!$model = DatabaseConnection::fetch(static::$table, $query_arr, $fields, static::$operators, static::$or_ands)) {
+        if (!$model = DatabaseConnection::fetch(static::$table, $query_arr, $fields, static::$operators, static::$or_ands, static::$for_update)) {
             static::resetInstance();
             return false;
         }
@@ -235,7 +248,7 @@ class DB
         if (static::$bind_or_filter)
             $query_arr = static::$bind_or_filter;
 
-        if (!$fields = DatabaseConnection::fetch(static::$table, $query_arr, $select, static::$operators, static::$or_ands)) {
+        if (!$fields = DatabaseConnection::fetch(static::$table, $query_arr, $select, static::$operators, static::$or_ands, static::$for_update)) {
             static::resetInstance();
             return false;
         }

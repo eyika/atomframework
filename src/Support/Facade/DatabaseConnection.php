@@ -19,8 +19,8 @@ use PDOStatement;
  *                subsequent queries will be executed in a transaction
  * @method static Connection commit() commit all changes made in the transaction chain
  * @method static Connection rollback() rollback all changes made in the transaction chain
- * @method static \PDOStatement|false fetch_cursor($sql_or_table, $bind_or_filter = [], $select_what = '*', string|array $operators = "=", string|array $or_ands = "AND")
- * @method static array fetch($sql_or_table, $bind_or_filter = [], $select_what = '*', array|string $operators = '=', array|string $or_ands = "AND")
+ * @method static \PDOStatement|false fetch_cursor($sql_or_table, $bind_or_filter = [], $select_what = '*', string|array $operators = "=", string|array $or_ands = "AND", $joins = [], bool $lock = false)
+ * @method static array fetch($sql_or_table, $bind_or_filter = [], $select_what = '*', array|string $operators = '=', array|string $or_ands = "AND", bool $lock = false)
  * @method static array array($sql_or_table, $bind_or_filter = [], $select_what = '*', array|string $operators = '=', array|string $or_ands = "AND")
  * @method static array key_vals($sql_or_table, $bind_or_filter = [], $select_what = '*', array|string $operators = '=', array|string $or_ands = "AND")
  * @method static int count($sql_or_table, $bind_or_filter = [], array|string $operators = '=', array|string $or_ands = "AND")

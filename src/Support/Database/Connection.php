@@ -448,7 +448,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
    * @return \PDOStatement|false
    */
   
-  public function fetch_cursor($sql_or_table, $bind_or_filter = [], $select_what = '*', string|array $operators = "=", string|array $or_ands = "AND", $joins = []) {
+  public function fetch_cursor($sql_or_table, $bind_or_filter = [], $select_what = '*', string|array $operators = "=", string|array $or_ands = "AND", $joins = [], bool $lock = false) {
     if ( strpos($sql_or_table, ' ') || (strpos($sql_or_table, 'SELECT ') === 0) ) {
       $sql = $sql_or_table;
       $bind = $bind_or_filter;
@@ -517,6 +517,12 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
       }
 
       $sql .= $order_limit_or_offset;
+
+      // Pessimistic row lock (SELECT ... FOR UPDATE) — serializes concurrent readers
+      // within a transaction so read-modify-write flows (e.g. wallet balances) are safe.
+      if ($lock) {
+        $sql .= ' FOR UPDATE';
+      }
     }
     // logger()->info($sql, isset($bind) &&  is_array($bind) ? $bind : []);
 
@@ -533,8 +539,8 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
    * 
    * @return array
    */
-  public function fetch($sql_or_table, $bind_or_filter = [], $select_what = '*', array|string $operators = '=', array|string $or_ands = "AND") {
-    if (!$statement = $this->fetch_cursor($sql_or_table, $bind_or_filter, $select_what, $operators, $or_ands)) {
+  public function fetch($sql_or_table, $bind_or_filter = [], $select_what = '*', array|string $operators = '=', array|string $or_ands = "AND", bool $lock = false) {
+    if (!$statement = $this->fetch_cursor($sql_or_table, $bind_or_filter, $select_what, $operators, $or_ands, [], $lock)) {
       return false;
     }
     $rows = $statement->fetchAll(PDO::FETCH_ASSOC);

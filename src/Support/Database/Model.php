@@ -23,6 +23,7 @@ use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
  * @method static self|false findByArray(array $keys, array $values, string $or_and = "AND", bool $is_protected = true, array $select = [])
  * @method static array|false all(bool $is_protected = true, array $select = [])
  * @method static array|false get(bool $is_protected = true, array $select = [])
+ * @method self lockForUpdate()
  * @method static PaginatedData|false paginate(int $currentPage = null, int $recordsPerPage = null, bool $isProtected = true, array $select = [], ?string $routeName = null)
  * @method static self|false random()
  * @method static int count(string $column = '')
@@ -92,7 +93,7 @@ abstract class Model implements ModelInterface
         'whereEqual', 'whereNotEqual', 'orWhere', 'orWhereLike', 'orWhereNotLike',
         'orWhereLessThan', 'orWhereGreaterThan', 'orWhereGreaterThan', 'orWhereGreaterThanOrEqual',
         'orWhereEqual', 'orWhereNotEqual', 'orWhereNull', 'orWhereNotNull', 'beginTransaction',
-        'commit', 'rollback', 'distinct', 'join', 'leftJoin', 'rightJoin', 'fullOuterJoin'
+        'commit', 'rollback', 'distinct', 'join', 'leftJoin', 'rightJoin', 'fullOuterJoin', 'lockForUpdate'
     ];
 
     /**
