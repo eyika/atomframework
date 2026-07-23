@@ -124,13 +124,17 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
     $__k = $k;  // full key (with suffix if any) — used as bind param name
     $_k  = $k_col;
 
-    // ✅ handle dot notation properly
+    // ✅ handle dot notation properly. SECURITY: identifiers are backtick-escaped
+    // (any embedded backtick is doubled) so a crafted column name — e.g. a query
+    // param NAME looped into where() — can never break out of the quoting into raw
+    // SQL. This closes column-identifier injection at the builder for every call site.
+    $quoteIdent = static fn($part) => '`' . str_replace('`', '``', (string) $part) . '`';
     if (strpos($k_col, '.') !== false) {
         $parts = explode('.', $k_col);
         $__k  = end($parts) . (preg_match('/__dup\d+$/', $k, $m) ? $m[0] : '');
-        $_k   = implode('.', array_map(fn($part) => "`{$part}`", $parts)); // quote each part
+        $_k   = implode('.', array_map($quoteIdent, $parts)); // quote + escape each part
     } else {
-        $_k = "`{$k_col}`"; // quote normal column too
+        $_k = $quoteIdent($k_col); // quote + escape normal column too
     }
 
     if (is_array($v)) {
