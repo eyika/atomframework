@@ -71,4 +71,10 @@ class ModelEventTest extends DatabaseTestCase
         (new EventWidget())->find($widget->id);
         $this->assertContains('retrieved', $fired);
     }
+
+    public function test_find_missing_returns_null_not_false(): void
+    {
+        // BUG-23: single-result finders now return null on miss.
+        $this->assertNull((new EventWidget())->find(9999));
+    }
 }

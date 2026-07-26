@@ -166,13 +166,13 @@ trait QueryBuilder
     
         if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands, $this->for_update, $this->joins)) {
             $this->resetInstance();
-            return false;
+            return null; // BUG-23: was `false`; single-result finders now return null
         }
         $model = $model[0];
         $this->decryptValues($model);
 
         $this->fill($model);
-    
+
         // Trigger "retrieved" event for the main model
         $this->boot($this, 'retrieved');
         $this->booted($this, 'retrieved');
@@ -370,13 +370,13 @@ trait QueryBuilder
 
         if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands, $this->for_update, $this->joins)) {
             $this->resetInstance();
-            return false;
+            return null; // BUG-23: was `false`; single-result finders now return null
         }
         $model = $model[0];
         $this->decryptValues($model);
 
         $this->fill($model);
-    
+
         // Trigger "retrieved" event for the main model
         $this->boot($this, 'retrieved');
         $this->booted($this, 'retrieved');
