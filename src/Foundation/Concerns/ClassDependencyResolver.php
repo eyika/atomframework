@@ -41,16 +41,40 @@ trait ClassDependencyResolver
 
         foreach ($parameters as $parameter) {
             /** @var ReflectionParameter $parameter */
-            $dependency = $parameter->getType();
+            $type = $parameter->getType();
 
-            if ($dependency === null) {
+            // Only a single class/interface type can be autowired. Anything else —
+            // no type, a builtin (string/int/bool/…), or a union/intersection —
+            // falls back to the default value, then null (if nullable), else fails.
+            // (The old code called App::make() on builtins and on union types'
+            // non-existent getName(), which fatally crashed autowiring.)
+            if ($type === null || !$type instanceof \ReflectionNamedType || $type->isBuiltin()) {
+                if ($parameter->isVariadic()) {
+                    continue; // no variadic arguments to inject
+                }
                 if ($parameter->isDefaultValueAvailable()) {
                     $dependencies[] = $parameter->getDefaultValue();
+                } elseif ($type !== null && $type->allowsNull()) {
+                    $dependencies[] = null;
                 } else {
-                    throw new BaseException("Cannot resolve dependency {$parameter->name}");
+                    throw new BaseException("Cannot resolve dependency \${$parameter->name}");
                 }
-            } else {
-                $dependencies[] = App::make($dependency->getName());
+                continue;
+            }
+
+            // A class/interface type → resolve from the container. If it can't be
+            // resolved and the param is nullable/optional, fall back instead of
+            // crashing.
+            try {
+                $dependencies[] = App::make($type->getName());
+            } catch (\Throwable $e) {
+                if ($type->allowsNull()) {
+                    $dependencies[] = null;
+                } elseif ($parameter->isDefaultValueAvailable()) {
+                    $dependencies[] = $parameter->getDefaultValue();
+                } else {
+                    throw $e;
+                }
             }
         }
 

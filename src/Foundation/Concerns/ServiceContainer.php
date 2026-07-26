@@ -12,6 +12,8 @@ trait ServiceContainer
 
     protected $bindings = [];
     protected $instances = [];
+    protected $aliases = [];
+    protected $resolved = [];
 
     // Bind a service to the container
     public function bind(string $key, $resolver): void
@@ -53,14 +55,15 @@ trait ServiceContainer
         return isset($this->aliases[$name]);
     }
 
-    // Bind a singleton service to the container
+    // Bind a singleton service to the container. The resolver is invoked once
+    // (memoized) and RECEIVES the container so it can resolve its own deps.
     public function singleton(string $key, $resolver): void
     {
-        $this->bindings[$key] = function() use ($resolver) {
+        $this->bindings[$key] = function ($app = null) use ($resolver) {
             static $instance;
 
             if ($instance === null) {
-                $instance = is_callable($resolver) ? $resolver() : new $resolver;
+                $instance = is_callable($resolver) ? $resolver($app) : new $resolver;
             }
 
             return $instance;
@@ -74,7 +77,12 @@ trait ServiceContainer
         return $instance;
     }
 
-    // Resolve a service and its dependencies
+    // Resolve a service and its dependencies.
+    //  - instance(): returned from $instances (shared).
+    //  - singleton(): its resolver self-memoizes, so make() returns the same object.
+    //  - bind() / auto-resolved: TRANSIENT — a fresh object each call. (Previously
+    //    make() cached EVERY resolution into $instances, silently turning bind() and
+    //    auto-resolved classes into de-facto singletons.)
     public function make(string $key): mixed
     {
         if (isset($this->instances[$key])) {
@@ -82,14 +90,10 @@ trait ServiceContainer
         }
 
         if (isset($this->bindings[$key])) {
-            $resolver = $this->bindings[$key];
-            $object = $resolver($this);
-        } else {
-            $object = $this->resolve($key);
+            return $this->bindings[$key]($this);
         }
 
-        $this->instances[$key] = $object;
-        return $object;
+        return $this->resolve($key);
     }
 
     /**
