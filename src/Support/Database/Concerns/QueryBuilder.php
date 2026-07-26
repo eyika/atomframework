@@ -670,7 +670,9 @@ trait QueryBuilder
         }
         $id = $id > 0 ? $id : $this->{$this->primaryKey};
 
-        return $this->__update(['deleted_at', null], $id, true);
+        // Associative — a list ['deleted_at', null] wrote columns `0`/`1` and never
+        // cleared deleted_at (corrupting the row instead of restoring it).
+        return $this->__update(['deleted_at' => null], $id, true);
     }
 
     public function _limit($amount)

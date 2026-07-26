@@ -84,9 +84,9 @@ abstract class Model implements ModelInterface
     use QueryBuilder, InitsModelEvents, DeepClonesSelf;
 
     protected const DYNAMIC_STATIC_METHODS = [
-        'create', 'find', '_findByEmail', '_findByUsername', 'findOr', 'first', 'firstOr', 'firstWhere', 'firstOrCreate', 'findBy',
+        'create', 'find', 'findByEmail', 'findByUsername', 'findOr', 'first', 'firstOr', 'firstWhere', 'firstOrCreate', 'findBy',
         'findByArray', 'all', 'get', 'paginate', 'random', 'count', 'avg', 'max', 'min', 'increment', 'decrement',
-        'sum', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'group_concact', 'update',
+        'sum', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor', 'group_concat', 'update',
         'updateOrCreate', 'delete', 'restore', 'limit', 'offset', 'where', 'whereIn',
         'whereNotIn', 'whereNotIn', 'whereLike', 'whereNotLike', 'whereBetween', 'whereNotBetween', 'whereLessThan',
         'whereLessThanOrEqual', 'whereGreaterThanOrEqual', 'whereNull', 'whereNotNull',

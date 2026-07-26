@@ -448,7 +448,8 @@ class DB
 
     public function restore($id)
     {
-        return static::_update(['deleted_at', null], $id);
+        // Associative — a list wrote columns `0`/`1` and never cleared deleted_at.
+        return static::_update(['deleted_at' => null], $id);
     }
 
     public function limit($amount)
