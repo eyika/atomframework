@@ -296,6 +296,19 @@ trait QueryBuilder
         return $this->find(is_protected: $is_protected);
     }
 
+    /**
+     * Return the first matching model, or the result of $callable when none is found
+     * (mirrors _findOr but for the accumulated where-filter query).
+     */
+    public function _firstOr($callable = null, $is_protected = true)
+    {
+        if (!$model = $this->first($is_protected)) {
+            return is_callable($callable) ? $callable() : $model;
+        }
+
+        return $model;
+    }
+
     public function _firstWhere($column, $operatorOrValue = null, $value = null, $is_protected = true)
     {
         return $this->where($column, $operatorOrValue, $value)->first($is_protected);

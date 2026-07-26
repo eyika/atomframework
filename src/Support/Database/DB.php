@@ -181,6 +181,18 @@ class DB
         return static::_find(null, $fields);
     }
 
+    /**
+     * First matching row, or the result of $callable when none is found.
+     */
+    public function firstOr($callable = null, array|string $fields = '*')
+    {
+        if (!$model = static::_find(null, $fields)) {
+            return is_callable($callable) ? $callable() : $model;
+        }
+
+        return $model;
+    }
+
     private function _find(int|null $id, array|string $fields = '*')
     {
         $query_arr = [];
