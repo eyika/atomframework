@@ -16,16 +16,24 @@ class JwtGuard extends Authenticator
     private $encoder;
 
     // variables used for jwt
-    private $key;
     private $iss;
     private $aud;
 
     public function __construct(array $config, string $guard)
     {
-        $this->key = env('JWT_KEY');
         $this->iss = env('JWT_ISS');
         $this->aud = env('JWT_AUD');
-        $this->encoder = new JwtEncoder(config('app.key'));
+
+        // Sign with app.key. (JWT_KEY was previously read but silently ignored —
+        // encode() only takes the payload — so every token has always been signed
+        // with app.key; switching keys now would invalidate all live tokens.)
+        // Fail CLOSED: a JWT guard with no signing key can't verify anything.
+        $signingKey = config('app.key');
+        if (empty($signingKey)) {
+            throw new \RuntimeException('JWT signing key (app.key) is not configured.');
+        }
+
+        $this->encoder = new JwtEncoder($signingKey);
         $this->config = $config;
         $this->guard = $guard;
     }
@@ -109,7 +117,7 @@ class JwtGuard extends Authenticator
             return null;
         }
 
-        $isImpersonating = $payload->data->is_impersonating;
+        $isImpersonating = $payload->data->is_impersonating ?? false;
         $impersonatorId = $payload->data->impersonator_id ?? null;
 
         Auth::setImpersonation($isImpersonating, $impersonatorId);
@@ -149,7 +157,29 @@ class JwtGuard extends Authenticator
             return null;
         }
 
+        // firebase/php-jwt validates exp/nbf/iat, but NOT issuer/audience — verify
+        // them here when configured so a token minted for another service (same
+        // key) is rejected.
+        if (!$this->claimsValid($payload)) {
+            return null;
+        }
+
         return $payload;
+    }
+
+    /**
+     * Verify issuer/audience claims when they are configured (JWT_ISS/JWT_AUD).
+     * If neither is set, the check is skipped (backward compatible).
+     */
+    private function claimsValid(object $payload): bool
+    {
+        if (!empty($this->iss) && ($payload->iss ?? null) !== $this->iss) {
+            return false;
+        }
+        if (!empty($this->aud) && ($payload->aud ?? null) !== $this->aud) {
+            return false;
+        }
+        return true;
     }
 
     protected static function extractToken(): ?string
@@ -161,13 +191,10 @@ class JwtGuard extends Authenticator
             return null;
         }
 
-        $auth_token = sanitize_data($auth_header);
-        if (empty($auth_token)) {
-            return null;
-        }
-
-        if (preg_match(self::HEADER_VALUE_PATTERN, $auth_token, $matches)) {
-            return $matches[1];
+        // Do NOT run sanitize_data() over a credential — HTML-escaping/strip_tags a
+        // bearer token is needless and can corrupt it. Extract the raw token.
+        if (preg_match(self::HEADER_VALUE_PATTERN, $auth_header, $matches)) {
+            return trim($matches[1]);
         }
 
         return null;
@@ -200,7 +227,7 @@ class JwtGuard extends Authenticator
             ]
         ];
 
-        $token = $this->encoder->encode($payload, $this->key);
+        $token = $this->encoder->encode($payload);
         return (object)[
             "token" => $token,
             "sid" => $sid
