@@ -323,12 +323,20 @@ trait QueryBuilder
         return $model;
     }
 
-    public function _firstOrNew()
+    /**
+     * Return the first row matching $search, or a NEW UNSAVED instance filled with
+     * $search + $values (Laravel-style). Previously took no args, ignored the search
+     * and persisted via save().
+     */
+    public function _firstOrNew($search, $values = [], $is_protected = true)
     {
-        if ($this->isSaved()) {
-            return $this;
+        if ($model = $this->findByArray(array_keys($search), array_values($search), 'AND', $is_protected)) {
+            return $model;
         }
-        return $this->save();
+
+        $instance = new static();
+        $instance->fill(array_merge($search, $values));
+        return $instance;
     }
 
     public function _findBy($key, $value, $is_protected = true, $select = [])

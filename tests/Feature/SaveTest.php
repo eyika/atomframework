@@ -46,4 +46,20 @@ class SaveTest extends DatabaseTestCase
         // The row still exists with its PK intact (not orphaned by a corrupted model).
         $this->assertNotFalse(DB::table('atomtest_widgets')->where('id', 1)->first());
     }
+
+    public function test_first_or_new_returns_existing_row(): void
+    {
+        $widget = (new SaveWidget())->firstOrNew(['name' => 'old']);
+
+        $this->assertEquals(1, $widget->id);
+    }
+
+    public function test_first_or_new_returns_unsaved_instance_when_absent(): void
+    {
+        $widget = (new SaveWidget())->firstOrNew(['name' => 'ghost'], ['name' => 'ghost']);
+
+        // BUG-36: previously ignored the search and persisted via save().
+        $this->assertFalse($widget->isSaved());
+        $this->assertFalse(DB::table('atomtest_widgets')->where('name', 'ghost')->first());
+    }
 }

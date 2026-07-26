@@ -196,7 +196,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return Model|bool
      */
-    public function _firstOrNew();
+    public function _firstOrNew($search, $values = [], $is_protected = true);
 
     /**
      * Find a model by key and value
