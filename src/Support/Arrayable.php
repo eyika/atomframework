@@ -266,7 +266,7 @@ class Arrayable implements ContractsArrayable, ArrayAccess
      */
     public function get($key, $default = null)
     {
-        return Arr::get($this->data, $default);
+        return Arr::get($this->data, $key, $default);
     }
 
     /**

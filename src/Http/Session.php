@@ -93,6 +93,19 @@ class Session
     public function start()
     {
         if (session_status() === PHP_SESSION_NONE) {
+            // Set secure session-cookie params explicitly rather than inheriting php.ini.
+            if (!headers_sent()) {
+                $secure = (!empty($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off')
+                    || (($_SERVER['SERVER_PORT'] ?? null) == 443);
+                session_set_cookie_params([
+                    'lifetime' => (int) config('session.lifetime', 0),
+                    'path'     => '/',
+                    'domain'   => config('session.domain', ''),
+                    'secure'   => $secure,
+                    'httponly' => true,
+                    'samesite' => config('session.same_site', 'Lax'),
+                ]);
+            }
             session_start();
         }
     }
@@ -106,7 +119,12 @@ class Session
 
     public function regenerate()
     {
-        session_regenerate_id(true);
+        // Only meaningful for an active session; guard so callers (e.g. login) can
+        // invoke it unconditionally without warnings when no session is running.
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            return session_regenerate_id(true);
+        }
+        return false;
     }
 
     public function active()

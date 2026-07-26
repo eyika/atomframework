@@ -39,6 +39,7 @@ abstract class IntegrationTestCase extends TestCase
         // Minimal facade bindings the HTTP layer resolves during dispatch.
         $this->app->instance('response', new Response());
         $this->app->instance('json_response', new JsonResponse());
+        $this->app->instance('encrypter', new \Eyika\Atom\Framework\Support\Encrypter());
     }
 
     protected function tearDown(): void

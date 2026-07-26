@@ -22,6 +22,9 @@ class SessionGuard extends Authenticator
         if (!$user = $this->validateCredentials($credentials)) {
             return null;
         }
+        // Regenerate the session id on privilege change to prevent session fixation
+        // (a pre-seeded id must not survive authentication).
+        Session::regenerate();
         Session::set('user_id', $user->id);
         return $user;
     }
@@ -48,7 +51,7 @@ class SessionGuard extends Authenticator
         $this->user = null;
 
         if (Request::cookie('auth_remember')) {
-            Response::setCookie('auth_remember', '', time() - 3600, "/");
+            Response::setCookie('auth_remember', '', time() - 3600, "/", '', true, true);
         }
 
         Session::forget('user_id');
@@ -57,7 +60,37 @@ class SessionGuard extends Authenticator
 
     public function remember(AuthenticatableInterface $user): void
     {
-        Response::setCookie('auth_remember', json_encode(['id' => $user->id]), time() + (86400 * 30), "/");
+        // Encrypt-then-MAC the payload so the cookie can't be forged. Previously this
+        // stored plaintext {"id":N}, so setting auth_remember={"id":1} = takeover.
+        // HttpOnly + Secure; read back via recall().
+        $token = encrypt(json_encode(['id' => $user->id, 'v' => 1]));
+        Response::setCookie('auth_remember', $token, time() + (86400 * 30), "/", '', true, true);
+    }
+
+    /**
+     * Resolve the user from a valid remember-me cookie (decrypt + verify), or null
+     * if the cookie is absent, tampered, or maps to no user. Callers wire this into
+     * their auto-login flow; a forged/plaintext cookie fails the MAC and returns null.
+     */
+    public function recall(): ?AuthenticatableInterface
+    {
+        $cookie = Request::cookie('auth_remember');
+        $token = is_object($cookie) && method_exists($cookie, 'getValue') ? $cookie->getValue() : $cookie;
+        if (empty($token)) {
+            return null;
+        }
+
+        try {
+            $data = json_decode(decrypt($token), true);
+        } catch (\Throwable $e) {
+            return null; // bad MAC / tampered / not encrypted by us
+        }
+
+        if (!is_array($data) || empty($data['id'])) {
+            return null;
+        }
+
+        return $this->getUserById($data['id']);
     }
 
     public function refreshJwt(): ?string

@@ -73,10 +73,25 @@ class BaseResponse
         $this->cookies = new Arrayable();
     }
 
-    // Method to set a cookie header
-    public function setCookie($name, $value = '', $expiry = 0, $path = '/', $domain = '', $secure = false, $httpOnly = true)
+    // Method to set a cookie header. $expiry is an ABSOLUTE unix timestamp (e.g.
+    // time()+86400); it is converted to both a Max-Age duration and an Expires date.
+    // (Previously path/domain were passed to Cookie in swapped positions.)
+    public function setCookie($name, $value = '', $expiry = 0, $path = '/', $domain = '', $secure = false, $httpOnly = true, $sameSite = 'Lax')
     {
-        $this->cookies->set($name, new Cookie($name, $value, $expiry, $path, $domain, $secure, $httpOnly));
+        $expires = $expiry > 0 ? (new \DateTime())->setTimestamp($expiry) : null;
+        $maxAge  = $expiry > 0 ? max(0, $expiry - time()) : null;
+
+        $this->cookies->set($name, new Cookie(
+            $name,
+            $value,
+            $maxAge,
+            $domain !== '' ? $domain : null,
+            $path,
+            $secure,
+            $httpOnly,
+            $expires,
+            $sameSite
+        ));
         return $this;
     }
 

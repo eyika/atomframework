@@ -21,6 +21,10 @@ require_once __DIR__ . '/../src/helpers.php';
 // Point framework path helpers at the fixture "mini app" used by Feature tests.
 $GLOBALS['base_path'] = __DIR__ . '/Fixtures/app';
 
+// Deterministic 32-byte app key so Encrypter-backed features (encrypt()/decrypt(),
+// remember-me tokens) work in tests.
+$_ENV['APP_KEY'] = '0123456789abcdef0123456789abcdef';
+
 // getallheaders() is an Apache/FPM SAPI function and is undefined under the CLI SAPI
 // PHPUnit runs on. Feature tests fabricate requests from $_SERVER, so provide the
 // standard polyfill (this is also what a worker runtime will need — see WRK-01).

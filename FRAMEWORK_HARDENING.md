@@ -12,6 +12,14 @@ Branch: `hardening/framework-audit-fixes` (off `dev`). Goal: fix **all** securit
 ## Phase order
 - **P0 Security** → **P1 Correctness bugs** → **P2 Performance** → **P3 Packaging/DX** → **P4 Worker-safety (Octane prep)**.
 
+## Progress log
+- **Test infra:** standalone PHPUnit suite added (unit + integration harness that boots a fixture app and dispatches fabricated requests). `composer install`, `phpunit.xml`, `tests/`. Suite green.
+- **Done (P0):** SEC-01, SEC-02 (cookies emit real Set-Cookie + correct Expires/Max-Age + SameSite); SEC-03 (remember-me encrypted + `recall()`); SEC-04 (session-fixation regenerate on login, guarded `Session::regenerate`); SEC-05 (secure session cookie params).
+- **New finds while fixing (add to scope):**
+  - **SEC-01b** — `BaseResponse::setCookie()` passed args to `Cookie` in swapped path/domain order and fed an absolute `$expiry` into the `maxAge` duration slot. **FIXED** (converts to Max-Age + Expires, adds SameSite).
+  - **BUG-NEW-01** — `Support/Arrayable.php::get($key,$default)` called `Arr::get($this->data, $default)`, dropping `$key` → always returned the whole array. **FIXED** + regression test.
+- **Remaining P0:** SEC-06..SEC-33 (CSRF rewrite, SQLi sinks, JWT, SSRF/redirect/host/IP, serialization, file/download traversal, mass-assignment doc). Native-session items (SEC-05 verified by code; regenerate/params) get integration coverage after the WRK-08 session rewrite.
+
 ## Severity legend
 CRITICAL / HIGH / MED / LOW — framework-level exploitability or breakage. Some security items depend on how an app calls the primitive (noted).
 
