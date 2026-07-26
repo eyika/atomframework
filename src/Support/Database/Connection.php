@@ -600,8 +600,8 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
    * 
    * @return array
    */
-  public function fetch($sql_or_table, $bind_or_filter = [], $select_what = '*', array|string $operators = '=', array|string $or_ands = "AND", bool $lock = false) {
-    if (!$statement = $this->fetch_cursor($sql_or_table, $bind_or_filter, $select_what, $operators, $or_ands, [], $lock)) {
+  public function fetch($sql_or_table, $bind_or_filter = [], $select_what = '*', array|string $operators = '=', array|string $or_ands = "AND", bool $lock = false, array $joins = []) {
+    if (!$statement = $this->fetch_cursor($sql_or_table, $bind_or_filter, $select_what, $operators, $or_ands, $joins, $lock)) {
       return false;
     }
     $rows = $statement->fetchAll(PDO::FETCH_ASSOC);

@@ -55,6 +55,7 @@ trait QueryBuilder
         $this->for_update = false;
         $this->transaction_mode = false;
         $this->with_model_name = '';
+        $this->joins = [];
     }
 
     public function orderBy($column = "id", $direction = "ASC")
@@ -163,7 +164,7 @@ trait QueryBuilder
     
         $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
     
-        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands, $this->for_update)) {
+        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands, $this->for_update, $this->joins)) {
             $this->resetInstance();
             return false;
         }
@@ -348,7 +349,7 @@ trait QueryBuilder
             $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
         }
 
-        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands, $this->for_update)) {
+        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands, $this->for_update, $this->joins)) {
             $this->resetInstance();
             return false;
         }
@@ -425,7 +426,7 @@ trait QueryBuilder
             $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
         }
     
-        if (!$models = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands, $this->for_update)) {
+        if (!$models = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands, $this->for_update, $this->joins)) {
             $this->resetInstance();
             return false;
         }
@@ -924,7 +925,7 @@ trait QueryBuilder
             $count = DatabaseConnection::update($this->table, $query_arr, $values, $this->operators, $this->or_ands);
         }
 
-        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands, $this->for_update)) {
+        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands, $this->for_update, $this->joins)) {
             $this->resetInstance();
             return false;
         }
