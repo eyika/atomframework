@@ -450,8 +450,14 @@ class DB
     {
         $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
 
-        if ($id !== 0 && count($query_arr) < 1)
+        if ((int) $id > 0 && count($query_arr) < 1)
             $query_arr['id'] = $id;
+
+        // Refuse a filterless/idless delete — it would DELETE the entire table (or,
+        // with a null id, silently match nothing).
+        if (count($query_arr) < 1) {
+            throw new Exception('delete() requires a positive id or a where() filter; refusing to delete every row.');
+        }
 
         $val = DatabaseConnection::remove(static::$table, $query_arr, static::$operators, static::$or_ands);
         static::resetInstance();

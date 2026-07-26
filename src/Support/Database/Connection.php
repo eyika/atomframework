@@ -866,13 +866,10 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
   
   public function remove($table, $filter, string|array $operators = '=', string|array $or_ands = "AND"): bool {
     list($where, $bind) = $this->filter($filter, $or_ands, $operators);
-    if (!$statement = $this->exec("DELETE FROM `{$table}` " . $where, $bind)) {
-      return false;
-    }
-    if ($statement->rowCount() < 1) {
-      return false;
-    }
-    return true;
+    // A DELETE that matched no rows is NOT a failure (the row is already gone) —
+    // only a failed statement returns false. (Previously rowCount()<1 → false made
+    // deleting an absent record look like an error to callers.)
+    return (bool) $this->exec("DELETE FROM " . self::quoteIdent($table) . " " . $where, $bind);
   }
   
   
@@ -915,7 +912,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
     $instance = new static(config('database')); // Create an instance of the class
 
     # get row or column from table
-    if ( $args[0] && (count($args) == 1) && strpos($name, '_') ) {
+    if ( $args[0] && (count($args) == 1) && strpos($name, '_') !== false ) {
       list($table, $col) = explode('_', $name);
       list($where, $bind) = $instance->filter($args[0]);
       $rows = $instance->fetch('SELECT ' . ($col ? "`{$col}`" : '*') . ' FROM `' . $table . '` ' . $where, $bind);
@@ -925,7 +922,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
     }
     
     # get aggregates by filters
-    else if ( $args[0] && (count($args) == 2 || count($args) == 3) && strpos($name, '_') && in_array(strtolower(explode('_', $name)[0] ?? ''), ['min', 'max', 'avg', 'sum', 'group_concat', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor']) ) {
+    else if ( $args[0] && (count($args) == 2 || count($args) == 3) && strpos($name, '_') !== false && in_array(strtolower(explode('_', $name)[0] ?? ''), ['min', 'max', 'avg', 'sum', 'group_concat', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor']) ) {
       list($agr, $col) = explode('_', $name);
       $table = $args[0];
       list($where, $bind) = $instance->filter($args[1]);
@@ -933,7 +930,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
       $row = $instance->fetch('SELECT ' . $agr . "($distinct" . $col . ') FROM `' . $table . '` ' . $where, $bind)[0];
       return array_shift($row);
     }
-    else if ( $args[0] && (count($args) > 1 || count($args) < 6) && strpos($name, '_') && in_array(strtolower(explode('_', $name)[0] ?? ''), ['min', 'max', 'avg', 'sum', 'group_concat', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor']) ) {
+    else if ( $args[0] && (count($args) > 1 || count($args) < 6) && strpos($name, '_') !== false && in_array(strtolower(explode('_', $name)[0] ?? ''), ['min', 'max', 'avg', 'sum', 'group_concat', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor']) ) {
       list($agr, $col) = explode('_', $name);
       $table = $args[0];
       list($where, $bind) = $instance->filter($args[1], $args[3], $args[2]);

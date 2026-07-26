@@ -653,8 +653,14 @@ trait QueryBuilder
         $this->booted($this, 'deleting');
         $this->booting($this, 'deleting');
 
-        if ($id !== 0 && count($query_arr) < 1)
+        if ((int) $id > 0 && count($query_arr) < 1)
             $query_arr['id'] = $id;
+
+        // Refuse a filterless/idless delete — with no id and no where() it would
+        // DELETE the ENTIRE table (or, with a null id, silently match nothing).
+        if (count($query_arr) < 1) {
+            throw new Exception('delete() requires an id or a where() filter; refusing to delete every row.');
+        }
 
         $this->useHashForEncryptedColumnComparisonQueries($query_arr);
 
