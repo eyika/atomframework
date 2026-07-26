@@ -2,19 +2,16 @@
 
 namespace Eyika\Atom\Framework\Support;
 
-use Eyika\Atom\Framework\Exceptions\NotImplementedException;
-
 abstract class ValidatorRule
 {
     public string $error;
 
-    public function passes(string $value): bool
-    {
-        throw new NotImplementedException('this method was not implemented, you should implement it');
-    }
+    // Abstract so a subclass MUST implement it (compile-time error), rather than
+    // inheriting a runtime-throwing stub.
+    abstract public function passes(string $value): bool;
 
     public function getError(): string
     {
-        throw new NotImplementedException('this method was not implemented, you should implement it');
+        return $this->error;
     }
 }

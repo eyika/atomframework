@@ -41,6 +41,7 @@ class Server
 
     public static function handle(): bool
     {
+        $request = null; // defined even if make('request') throws (used in catch)
         try {
             $request = static::$app->make('request');
             static::$app->instance('request', $request);

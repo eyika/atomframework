@@ -612,7 +612,29 @@ class Request
 
     protected function validateSignature(array $ignoredParams = []): bool
     {
-        throw new NotImplementedException('this method validateSignature is not yet implemented');
+        $query = $this->query();
+        $signature = $query['signature'] ?? null;
+        if (empty($signature) || !is_string($signature)) {
+            return false;
+        }
+
+        // Temporary signed URLs carry an `expires` timestamp.
+        if (isset($query['expires']) && (int) $query['expires'] < time()) {
+            return false;
+        }
+
+        unset($query['signature']);
+        foreach ($ignoredParams as $ignored) {
+            unset($query[$ignored]);
+        }
+        ksort($query);
+
+        // Canonical = path + sorted query (minus signature/ignored). Must match the
+        // signer (Support\Url::signedRoute). Keyed by app.key, compared constant-time.
+        $canonical = $this->url() . (empty($query) ? '' : '?' . http_build_query($query));
+        $expected = hash_hmac('sha256', $canonical, (string) config('app.key'));
+
+        return hash_equals($expected, $signature);
     }
 
     public function validate(array $params, string $separator = '|'): bool|array

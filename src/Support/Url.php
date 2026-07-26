@@ -91,49 +91,61 @@ class Url
         return null;
     }
 
-    public static function signedRoute($name, $parameters = [], $secret = 'secret-key')
+    private static function signingKey(): string
     {
-        $url = self::route($name, $parameters);
-
-        if ($url) {
-            $signature = hash_hmac('sha256', $url, $secret);
-            $url .= '?signature=' . $signature;
-        }
-
-        return $url;
+        return (string) config('app.key');
     }
 
-    public static function temporarySignedRoute($name, $expiration, $parameters = [], $secret = 'secret-key')
+    /**
+     * Canonical = path + sorted query (minus `signature`). Signer and validator
+     * MUST build it identically (this matches Http\Request::validateSignature()).
+     */
+    private static function canonical(string $path, array $query): string
     {
-        $parameters['expires'] = $expiration;
-        $url = self::route($name, $parameters);
-
-        if ($url) {
-            $signature = hash_hmac('sha256', $url, $secret);
-            $url .= '?expires=' . $expiration . '&signature=' . $signature;
-        }
-
-        return $url;
+        unset($query['signature']);
+        ksort($query);
+        return $path . (empty($query) ? '' : '?' . http_build_query($query));
     }
 
-    public static function validateSignature($url, $secret = 'secret-key')
+    public static function signedRoute($name, $parameters = [], $expiration = null)
     {
-        $urlParts = parse_url($url);
-        parse_str($urlParts['query'], $query);
+        $path = self::route($name, $parameters);
+        if (!$path) {
+            return $path;
+        }
 
-        $expires = $query['expires'] ?? null;
-        if ($expires && $expires < time()) {
+        $query = [];
+        if ($expiration !== null) {
+            $query['expires'] = (int) $expiration;
+        }
+
+        $query['signature'] = hash_hmac('sha256', self::canonical($path, $query), self::signingKey());
+
+        return $path . '?' . http_build_query($query);
+    }
+
+    public static function temporarySignedRoute($name, $expiration, $parameters = [])
+    {
+        return self::signedRoute($name, $parameters, $expiration);
+    }
+
+    public static function validateSignature($url, $secret = null)
+    {
+        $parts = parse_url($url);
+        $path = $parts['path'] ?? '/';
+        parse_str($parts['query'] ?? '', $query);
+
+        $signature = $query['signature'] ?? null;
+        if (empty($signature)) {
+            return false;
+        }
+        if (isset($query['expires']) && (int) $query['expires'] < time()) {
             return false;
         }
 
-        $originalUrl = $urlParts['scheme'] . '://' . $urlParts['host'] . $urlParts['path'];
-        if (isset($urlParts['query'])) {
-            unset($query['signature']);
-            $originalUrl .= '?' . http_build_query($query);
-        }
+        $expected = hash_hmac('sha256', self::canonical($path, $query), $secret ?? self::signingKey());
 
-        $expectedSignature = hash_hmac('sha256', $originalUrl, $secret);
-        return hash_equals($expectedSignature, $query['signature']);
+        return hash_equals($expected, (string) $signature);
     }
 }
 
