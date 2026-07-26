@@ -59,7 +59,14 @@ trait QueryBuilder
 
     public function orderBy($column = "id", $direction = "ASC")
     {
-        $this->bind_or_filter['ORDER BY'] = "$column $direction";
+        // SECURITY: escape each column identifier and whitelist the direction so a
+        // user-supplied sort column/direction (e.g. from a query string) can't inject.
+        $dir = strtoupper(trim((string) $direction)) === 'DESC' ? 'DESC' : 'ASC';
+        $cols = array_map(
+            fn($c) => \Eyika\Atom\Framework\Support\Database\Connection::quoteQualified(trim($c)),
+            explode(',', (string) $column)
+        );
+        $this->bind_or_filter['ORDER BY'] = implode(', ', $cols) . " $dir";
         return $this;
     }
 
@@ -569,7 +576,7 @@ trait QueryBuilder
             if (gettype($this->operators) === 'string' || empty($this->operators)) {
                 $this->operators = Arr::wrap($this->operators);
             }
-            $this->operators[] = "DISTINCT $column";
+            $this->operators[] = "DISTINCT " . \Eyika\Atom\Framework\Support\Database\Connection::quoteQualified($column);
         }
 
         $method = $method == 'count' ? $method : $method."_".$column;
@@ -668,13 +675,13 @@ trait QueryBuilder
 
     public function _limit($amount)
     {
-        $this->bind_or_filter['LIMIT'] = $amount;
+        $this->bind_or_filter['LIMIT'] = (int) $amount;
         return $this;
     }
 
     public function _offset($postion)
     {
-        $this->bind_or_filter['OFFSET'] = $postion;
+        $this->bind_or_filter['OFFSET'] = (int) $postion;
         return $this;
     }
 
@@ -844,7 +851,8 @@ trait QueryBuilder
 
     public function _distinct($column)
     {
-        is_string($this->operators) ? $this->operators = ["DISTINCT `$column`"] : array_push($this->operators, "DISTINCT `$column`");
+        $distinct = "DISTINCT " . \Eyika\Atom\Framework\Support\Database\Connection::quoteQualified($column);
+        is_string($this->operators) ? $this->operators = [$distinct] : array_push($this->operators, $distinct);
     }
 
     /**

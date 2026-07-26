@@ -24,6 +24,44 @@ class Connection {
       $this->config = $config;
       // $this->connect();
   }
+
+  /**
+   * Escape a single SQL identifier: wrap in backticks and double any embedded
+   * backtick. This is the ONLY safe way to interpolate an identifier that can't be
+   * a bound parameter (columns, tables, ORDER BY targets, JOIN refs, …).
+   */
+  public static function quoteIdent($part): string
+  {
+      return '`' . str_replace('`', '``', (string) $part) . '`';
+  }
+
+  /**
+   * Escape a possibly dotted identifier: "a.b" -> "`a`.`b`".
+   */
+  public static function quoteQualified($col): string
+  {
+      $col = (string) $col;
+      if (strpos($col, '.') !== false) {
+          return implode('.', array_map([self::class, 'quoteIdent'], explode('.', $col)));
+      }
+      return self::quoteIdent($col);
+  }
+
+  /** Whitelist a JOIN type; anything unrecognised falls back to INNER. */
+  public static function safeJoinType($type): string
+  {
+      $type = strtoupper(trim((string) $type));
+      $allowed = ['INNER', 'LEFT', 'RIGHT', 'LEFT OUTER', 'RIGHT OUTER', 'FULL OUTER', 'CROSS'];
+      return in_array($type, $allowed, true) ? $type : 'INNER';
+  }
+
+  /** Whitelist a comparison operator used in ON/join clauses; default '='. */
+  public static function safeComparator($op): string
+  {
+      $op = trim((string) $op);
+      $allowed = ['=', '!=', '<>', '<', '>', '<=', '>=', '<=>'];
+      return in_array($op, $allowed, true) ? $op : '=';
+  }
  
   /* Authentication */
   
@@ -258,23 +296,28 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
       if ( strpos($name, '.') ) {
         $path = explode('.', $name);
         $place_holder = implode('_', $path);
-        $name = array_shift($path);
+        $col = array_shift($path);
         $key = implode('.', $path);
-        $values[] = "`{$name}` = JSON_SET({$name}, '$.{$key}', :{$place_holder}) ";
+        // The JSON path can't be a bound parameter, so validate it strictly.
+        if (!preg_match('/^[A-Za-z0-9_.\[\]]+$/', $key)) {
+          throw new \InvalidArgumentException("Invalid JSON path segment: {$key}");
+        }
+        $qcol = self::quoteIdent($col);
+        $values[] = "{$qcol} = JSON_SET({$qcol}, '$.{$key}', :{$place_holder}) ";
         $bind[":{$place_holder}"] = is_bool($value) ? (int)$value : $value;
       }
       else if ($value !== null && is_string($value) && strtolower($value) === 'now') {
-        $values[] = "`{$name}` = current_timestamp";
+        $values[] = self::quoteIdent($name) . " = current_timestamp";
       } else if ($value === null or $value === 'null') {
-        $values[] = "`{$name}` = NULL";
+        $values[] = self::quoteIdent($name) . " = NULL";
         // $bind[":{$name}"] = null;
       }
       else {
-        $values[] = "`{$name}` = :{$name}";
+        $values[] = self::quoteIdent($name) . " = :{$name}";
         $bind[":{$name}"] = is_bool($value) ? (int)$value : $value;
       }
     }
-    
+
     return implode(', ', $values);
   }
   
@@ -301,8 +344,11 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
           $in[] = ":{$k}_{$i}";
           $params[":{$k}_{$i}"] = $sub_v;
         }
-        
-        $sql = str_replace(':' . $k, implode(', ', $in), $sql);
+
+        // Word-boundary replace so ":id" doesn't also clobber ":id_type" (a naive
+        // str_replace corrupted the query on prefix-overlapping placeholder names).
+        $needle = ':' . ltrim($k, ':');
+        $sql = preg_replace('/' . preg_quote($needle, '/') . '\b/', implode(', ', $in), $sql);
       }
       else {
         if (!str_contains($k, ':')) {
@@ -438,7 +484,16 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
       return '';
 
     return implode(' ', array_map(function ($join) {
-        return "{$join['type']} JOIN {$join['table']} ON {$join['first']} {$join['operator']} {$join['second']}";
+        // SECURITY: identifiers escaped, join type + operator whitelisted — join
+        // args flow from the builder and must never be interpolated raw.
+        return sprintf(
+            '%s JOIN %s ON %s %s %s',
+            self::safeJoinType($join['type'] ?? 'INNER'),
+            self::quoteQualified($join['table']),
+            self::quoteQualified($join['first']),
+            self::safeComparator($join['operator'] ?? '='),
+            self::quoteQualified($join['second'])
+        );
     }, $joins));
   }
   
@@ -459,7 +514,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
     }
     else {
       $select_str = is_array($select_what) ? implode(', ', $select_what) : $select_what;
-      $sql = "SELECT {$select_str} FROM `{$sql_or_table}`";
+      $sql = "SELECT {$select_str} FROM " . self::quoteIdent($sql_or_table);
 
       if ($joins = $this->compileJoins($joins)) {
         $sql .= " $joins";
@@ -488,7 +543,9 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
               continue;
             }
             if ( in_array($k, ['LIMIT', 'OFFSET']) ) {
-              $order_limit_or_offset .= " $k $v";
+              // LIMIT/OFFSET are always integers — cast so a user-supplied value
+              // can never inject (they can't be bound parameters here).
+              $order_limit_or_offset .= " $k " . (int) $v;
               // $j++;
               continue;
             }
@@ -611,7 +668,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
   public function random($table, $filter = [], string|array $operators = '=', string|array $or_ands = "AND")
   {
     list($where, $bind) = $this->filter($filter, $or_ands, $operators);
-    $sql = 'SELECT * FROM `' . $table . '` ' . $where . ' ORDER BY RAND() LIMIT 1';
+    $sql = 'SELECT * FROM ' . self::quoteIdent($table) . ' ' . $where . ' ORDER BY RAND() LIMIT 1';
     return $this->fetch($sql, $bind)[0];
   }
   
