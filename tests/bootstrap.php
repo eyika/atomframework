@@ -1,0 +1,22 @@
+<?php
+
+/*
+ * PHPUnit bootstrap for the framework's OWN test suite (runs standalone, not
+ * inside a host app). Unit tests need only the autoloader + global helpers;
+ * Feature tests additionally boot a fixture Application (see IntegrationTestCase).
+ */
+
+error_reporting(E_ALL);
+
+$autoload = __DIR__ . '/../vendor/autoload.php';
+if (!file_exists($autoload)) {
+    fwrite(STDERR, "Dependencies are not installed. Run `composer install` in the framework repo.\n");
+    exit(1);
+}
+require $autoload;
+
+// The global helper functions in src/helpers.php are not PSR-4 autoloaded; load once.
+require_once __DIR__ . '/../src/helpers.php';
+
+// Point framework path helpers at the fixture "mini app" used by Feature tests.
+$GLOBALS['base_path'] = __DIR__ . '/Fixtures/app';

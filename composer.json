@@ -43,6 +43,11 @@
             "Eyika\\Atom\\Framework\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Eyika\\Atom\\Framework\\Tests\\": "tests/"
+        }
+    },
     "authors": [
         {
             "name": "Abdulbasit",
@@ -58,7 +63,10 @@
         "post-install-cmd": [
         ],
         "post-update-cmd": [
-        ]
+        ],
+        "test": "phpunit",
+        "test:unit": "phpunit --testsuite Unit",
+        "test:feature": "phpunit --testsuite Feature"
     },
     "config": {
         "allow-plugins": {
