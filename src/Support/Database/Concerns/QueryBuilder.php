@@ -422,19 +422,22 @@ trait QueryBuilder
         if ($this->bind_or_filter)
             $query_arr = $this->bind_or_filter;
     
+        // Local copy — see __aggregate: don't mutate instance state for the
+        // softdelete predicate (paginate calls __aggregate then _all).
+        $or_ands = $this->or_ands;
         if ($this->softdeletes) {
             $query_arr['deleted_at'] = "IS NULL";
-            is_array($this->or_ands) ? $this->or_ands[] = "AND" : $this->or_ands = ["AND"];
+            is_array($or_ands) ? $or_ands[] = "AND" : $or_ands = ["AND"];
         }
-    
+
         $this->useHashForEncryptedColumnComparisonQueries($query_arr);
         if (count($select)) {
             $fields = $select;
         } else {
             $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
         }
-    
-        if (!$models = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands, $this->for_update, $this->joins)) {
+
+        if (!$models = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $or_ands, $this->for_update, $this->joins)) {
             $this->resetInstance();
             return false;
         }
@@ -586,24 +589,30 @@ trait QueryBuilder
     {
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
+        // Build the softdelete predicate + DISTINCT on LOCAL copies — mutating
+        // $this->or_ands/$this->operators leaks into a following _all() (as in
+        // _paginate), double-appending "AND" and desyncing the boolean alignment.
+        $or_ands = $this->or_ands;
+        $operators = $this->operators;
+
         if ($this->softdeletes) {
             $query_arr['deleted_at'] = "IS NULL";
-            if (gettype($this->or_ands) === 'string' || empty($this->or_ands)) {
-                $this->or_ands = Arr::wrap($this->or_ands);
+            if (gettype($or_ands) === 'string' || empty($or_ands)) {
+                $or_ands = Arr::wrap($or_ands);
             }
-            array_push($this->or_ands, "AND");
+            array_push($or_ands, "AND");
         }
 
         if ($method == 'count' && $column != '*') {
-            if (gettype($this->operators) === 'string' || empty($this->operators)) {
-                $this->operators = Arr::wrap($this->operators);
+            if (gettype($operators) === 'string' || empty($operators)) {
+                $operators = Arr::wrap($operators);
             }
-            $this->operators[] = "DISTINCT " . \Eyika\Atom\Framework\Support\Database\Connection::quoteQualified($column);
+            $operators[] = "DISTINCT " . \Eyika\Atom\Framework\Support\Database\Connection::quoteQualified($column);
         }
 
         $method = $method == 'count' ? $method : $method."_".$column;
 
-        if (!$aggregate = DatabaseConnection::{$method}($this->table, $query_arr, $this->operators, $this->or_ands)) {
+        if (!$aggregate = DatabaseConnection::{$method}($this->table, $query_arr, $operators, $or_ands)) {
             if ($reset_instance)
                 $this->resetInstance();
             return false;
