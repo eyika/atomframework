@@ -45,6 +45,7 @@ abstract class IntegrationTestCase extends TestCase
     protected function tearDown(): void
     {
         $this->resetRouteState();
+        Facade::clearResolvedInstances();
         $_GET = $_POST = $_COOKIE = $_FILES = [];
         parent::tearDown();
     }
@@ -55,6 +56,79 @@ abstract class IntegrationTestCase extends TestCase
     protected function withRoutes(callable $register): void
     {
         $register();
+    }
+
+    /**
+     * Bind a lightweight in-memory session double (avoids native $_SESSION / save
+     * handlers / DB during unit-style Feature tests).
+     */
+    protected function bindSession(array $data = []): void
+    {
+        $session = new class($data) {
+            public function __construct(private array $data)
+            {
+            }
+            public function has(string $k): bool
+            {
+                return array_key_exists($k, $this->data);
+            }
+            public function get(string $k, mixed $default = null): mixed
+            {
+                return $this->data[$k] ?? $default;
+            }
+            public function set(string $k, mixed $v): void
+            {
+                $this->data[$k] = $v;
+            }
+            public function forget(string $k): void
+            {
+                unset($this->data[$k]);
+            }
+        };
+
+        $this->app->instance('session', $session);
+        // The facade caches resolved instances statically (WRK-04) — drop it so the
+        // freshly-bound session is used rather than a previous test's.
+        Facade::clearResolvedInstances();
+    }
+
+    /**
+     * Fabricate + bind a Request (without dispatching) for tests that call framework
+     * code which resolves the current request via the facade.
+     */
+    protected function bindRequest(string $method = 'GET', string $uri = '/', array $input = [], array $headers = []): Request
+    {
+        $_GET = [];
+        $_POST = $input;
+        $_COOKIE = [];
+        $_FILES = [];
+        $this->purgeServerHeaders();
+        $_SERVER['REQUEST_METHOD'] = strtoupper($method);
+        $_SERVER['REQUEST_URI'] = $uri;
+        $_SERVER['HTTP_HOST'] = 'localhost';
+        foreach ($headers as $key => $value) {
+            $_SERVER['HTTP_' . strtoupper(str_replace('-', '_', $key))] = $value;
+        }
+
+        $request = new Request();
+        $this->app->instance('request', $request);
+        // Drop the facade's cached request (WRK-04) so this fabricated one is used.
+        Facade::clearResolvedInstances();
+
+        return $request;
+    }
+
+    /**
+     * Clear stale HTTP_ and CONTENT_ server keys so a header from a previous
+     * fabricated request doesn't bleed into the next one.
+     */
+    private function purgeServerHeaders(): void
+    {
+        foreach (array_keys($_SERVER) as $key) {
+            if (str_starts_with($key, 'HTTP_') || $key === 'CONTENT_TYPE' || $key === 'CONTENT_LENGTH') {
+                unset($_SERVER[$key]);
+            }
+        }
     }
 
     /**
@@ -73,6 +147,7 @@ abstract class IntegrationTestCase extends TestCase
         $_COOKIE = $cookies;
         $_FILES = [];
 
+        $this->purgeServerHeaders();
         $_SERVER['REQUEST_METHOD'] = strtoupper($method);
         $_SERVER['REQUEST_URI'] = $uri;
         $_SERVER['HTTP_HOST'] = $headers['Host'] ?? 'localhost';
@@ -83,6 +158,7 @@ abstract class IntegrationTestCase extends TestCase
 
         $request = new Request();
         $this->app->instance('request', $request);
+        Facade::clearResolvedInstances();
 
         // Capture whatever the response echoes; nothing should escape the test.
         ob_start();

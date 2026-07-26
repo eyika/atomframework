@@ -18,7 +18,10 @@ Branch: `hardening/framework-audit-fixes` (off `dev`). Goal: fix **all** securit
 - **New finds while fixing (add to scope):**
   - **SEC-01b** — `BaseResponse::setCookie()` passed args to `Cookie` in swapped path/domain order and fed an absolute `$expiry` into the `maxAge` duration slot. **FIXED** (converts to Max-Age + Expires, adds SameSite).
   - **BUG-NEW-01** — `Support/Arrayable.php::get($key,$default)` called `Arr::get($this->data, $default)`, dropping `$key` → always returned the whole array. **FIXED** + regression test.
-- **Remaining P0:** SEC-06..SEC-33 (CSRF rewrite, SQLi sinks, JWT, SSRF/redirect/host/IP, serialization, file/download traversal, mass-assignment doc). Native-session items (SEC-05 verified by code; regenerate/params) get integration coverage after the WRK-08 session rewrite.
+- **Done (P0 CSRF cluster):** SEC-06 (fail-closed token gen, no constant fallback); SEC-07 (single session key `csrf_token`, unified across getter/validator/Request::validateCsrf); SEC-08 (removed the undefined-`$token`/query-only bug); SEC-09 (ALL unsafe verbs verified, not POST-only); SEC-10 (`Request::validateCsrf` delegates → `hash_equals`). Also fixed `setCsrfToken` emitting a broken literal PHP tag → real hidden field. Tests: `CsrfTokenTest` (unit) + `CsrfValidationTest` (feature, 7 cases incl. PUT/PATCH/DELETE).
+  - **SEC-11** — base `Kernel` ships empty middleware BY DESIGN (apps extend it and define their own stack); forcing CSRF there would be overridden and would break the API-first app. Framework now ships a CORRECT `VerifyCsrfToken`; enabling it is app config. No framework change.
+  - Harness gained `bindSession`/`bindRequest` + facade-cache clear (surfaced WRK-04 live) + stale-header purge.
+- **Remaining P0:** SEC-12..SEC-33 (SQLi sinks, JWT, SSRF/redirect/host/IP, serialization, file/download traversal, mass-assignment doc). Native-session items get integration coverage after the WRK-08 session rewrite.
 
 ## Severity legend
 CRITICAL / HIGH / MED / LOW — framework-level exploitability or breakage. Some security items depend on how an app calls the primitive (noted).

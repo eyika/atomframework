@@ -57,10 +57,9 @@ class VerifyCsrfToken implements MiddlewareInterface
      */
     protected function verifyCsrfToken(Request $request): void
     {
-        if (!FacadeRequest::isMethod('POST')) {
-            return;
-        }
-
+        // Csrf::csrfIsValid() itself exempts read-only verbs and verifies ALL
+        // state-changing ones (POST/PUT/PATCH/DELETE), closing the prior
+        // POST-only gap that let PUT/PATCH/DELETE bypass CSRF entirely.
         if (!Csrf::csrfIsValid()) {
             throw new AccessDeniedHttpException('Invalid CSRF token.');
         }

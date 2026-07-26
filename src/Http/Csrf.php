@@ -7,87 +7,94 @@ use Eyika\Atom\Framework\Support\Facade\Session;
 
 class Csrf
 {
-    private static string $phpTag = '<?php '; // hello hello hello.
     private static string $delimeter = '-|-';
 
+    /** Session key under which the token is stored (single source of truth). */
+    public const SESSION_KEY = 'csrf_token';
+
+    /** Read-only verbs that don't mutate state and are exempt from verification. */
+    private const READ_METHODS = ['GET', 'HEAD', 'OPTIONS'];
+
     /**
-     * Returns the current token. if there is not a token then it generates a new one.
-     * It could require an open session.
-     *
-     * @param bool   $fullToken It returns a token with the current ip.
-     * @param string $tokenId   [optional] Name of the token.
-     *
-     * @return string
+     * Return the current token, generating + storing one if absent.
+     * Requires an open session.
      */
-    public static function getCsrfToken($fullToken = false, $tokenId = 'csrf_token'): string
+    public static function getCsrfToken(bool $fullToken = false, string $tokenId = self::SESSION_KEY): string
     {
         if (Session::has($tokenId)) {
-            $csrf = Session::get($tokenId);
-            return strstr($csrf, static::$delimeter, false) ?: $csrf;
+            $stored = Session::get($tokenId);
+            // Return only the raw token part (strip any "-|-ip" binding suffix).
+            return strstr($stored, static::$delimeter, true) ?: $stored;
         }
-        $csrf = static::regenerateToken($tokenId);
 
+        $csrf = static::regenerateToken();
         Session::set($tokenId, $fullToken ? $csrf . static::$delimeter . Request::clientIp() : $csrf);
+
         return $csrf;
     }
 
     /**
-     * Regenerates the csrf token and stores in the session.
-     * It requires an open session.
-     * 
-     * @return string
+     * Generate a fresh random token. Fails CLOSED — on RNG failure random_bytes()
+     * throws and propagates rather than returning a predictable constant (the old
+     * behaviour returned a fixed '123…' string, making tokens guessable).
      */
     public static function regenerateToken(): string
     {
-        try {
-            return \bin2hex(\random_bytes(10));
-        } catch (\Throwable $e) {
-            return '123456789012345678901234567890'; // unable to generates a random token.
-        }
-    }
-
-    // public static function setCsrf()
-    // {
-    //     return '<input type="hidden" name="csrf_token" value="' . static::getCsrf() . '">';
-    // }
-
-    public static function setCsrfToken($expression = 'csrf_token'): string
-    {
-        $tag = static::$phpTag;
-        $csrf_token = static::getCsrfToken();
-        return "<input type='hidden' name='{$tag} echo '$expression'; ?>' value='{$tag}echo '$csrf_token'; " . "?>'/>";
+        return bin2hex(random_bytes(32));
     }
 
     /**
-     * Validates if the csrf token is valid or not.<br>
-     * It requires an open session.
-     *
-     * @param bool   $alwaysRegenerate [optional] Default is false.<br>
-     *                                 If **true** then it will generate a new token regardless
-     *                                 of the method.<br>
-     *                                 If **false**, then it will generate only if the method is POST.<br>
-     *                                 Note: You must not use true if you want to use csrf with AJAX.
-     *
-     * @param string $tokenId          [optional] Name of the token.
-     *
-     * @return bool It returns true if the token is valid, or it is generated. Otherwise, false.
+     * Render a hidden form field carrying the current token.
      */
-    public static function csrfIsValid($alwaysRegenerate = false, $tokenId = '_token'): bool
+    public static function field(string $tokenId = self::SESSION_KEY): string
     {
-        $session_token = Session::get($tokenId, '');
+        $token = htmlspecialchars(static::getCsrfToken(false, $tokenId), ENT_QUOTES);
+        return '<input type="hidden" name="_token" value="' . $token . '">';
+    }
 
-        if (Request::isMethod('POST') && $alwaysRegenerate === false) {
-            $csrf_token = Request::headers('X-CSRF-TOKEN') ?? Request::input($tokenId);
-            $csrf_token = $token ?? Request::query($tokenId);
-            $isFullToken = str_contains($session_token, static::$delimeter);
-            $csrf_token = $isFullToken ? $csrf_token . static::$delimeter . Request::clientIp() : $csrf_token;
+    /**
+     * Back-compat alias for field() (previously emitted a broken literal PHP tag).
+     */
+    public static function setCsrfToken(string $tokenId = self::SESSION_KEY): string
+    {
+        return static::field($tokenId);
+    }
 
-            return hash_equals($csrf_token, $session_token);
+    /**
+     * Validate the request's CSRF token against the session.
+     *
+     * Read-method requests (GET/HEAD/OPTIONS) are always allowed; every
+     * state-changing verb (POST/PUT/PATCH/DELETE/…) must present a matching token.
+     * The token is accepted from the X-CSRF-TOKEN header, the `_token` field, the
+     * configured session key field, or the `_token` query param. Comparison is
+     * constant-time and fails CLOSED when no server-side token exists.
+     */
+    public static function csrfIsValid(string $tokenId = self::SESSION_KEY): bool
+    {
+        if (in_array(strtoupper(Request::method()), self::READ_METHODS, true)) {
+            return true;
         }
-        if ($session_token == '' || $alwaysRegenerate) {
-            // if no token then we generate a new one
-            static::regenerateToken($tokenId);
+
+        $sessionToken = Session::get($tokenId, '');
+        if (!is_string($sessionToken) || $sessionToken === '') {
+            return false; // nothing to compare against → reject
         }
-        return true;
+
+        $provided = Request::headers('X-CSRF-TOKEN')
+            ?? Request::input('_token')
+            ?? Request::input($tokenId)
+            ?? Request::query('_token');
+
+        if (!is_string($provided) || $provided === '') {
+            return false;
+        }
+
+        // If the stored token is IP-bound (token-|-ip), the client sends only the raw
+        // token, so reconstruct the bound form before comparing.
+        $candidate = str_contains($sessionToken, static::$delimeter)
+            ? $provided . static::$delimeter . Request::clientIp()
+            : $provided;
+
+        return hash_equals($sessionToken, $candidate);
     }
 }

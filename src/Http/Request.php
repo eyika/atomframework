@@ -609,16 +609,10 @@ class Request
 
     public function validateCsrf()
     {
-        $session_csrf = FacadeSession::get('csrf');
-        $request_csrf = $this->input('csrf');
-
-        if (!$session_csrf || !$request_csrf) {
-            return false;
-        }
-        if ($session_csrf != $request_csrf) {
-            return false;
-        }
-        return true;
+        // Delegate to the single CSRF implementation so the session key, token
+        // sources and constant-time comparison stay consistent (this previously
+        // used a third session key 'csrf' and a loose, non-constant-time `!=`).
+        return Csrf::csrfIsValid();
     }
 }
 
