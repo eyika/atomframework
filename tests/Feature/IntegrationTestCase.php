@@ -158,12 +158,20 @@ abstract class IntegrationTestCase extends TestCase
 
         $request = new Request();
         $this->app->instance('request', $request);
+        // Fresh response instances per request: the Response facade is a shared
+        // mutable singleton, so a prior request's state (e.g. _responseSent) would
+        // otherwise leak into this one.
+        $this->app->instance('response', new Response());
+        $this->app->instance('json_response', new JsonResponse());
         Facade::clearResolvedInstances();
 
         // Capture whatever the response echoes; nothing should escape the test.
         ob_start();
-        $status = Route::dispatch($request);
-        $output = ob_get_clean() ?: '';
+        try {
+            $status = Route::dispatch($request);
+        } finally {
+            $output = ob_get_clean() ?: '';
+        }
 
         return new TestResponse($output, $status);
     }

@@ -48,7 +48,7 @@ class Server
             // ErrorHandler::register();
             if (preg_match('/^.*$/i', $request->requestUri())) {
                 //register controllers
-                if (!str_contains($request->pathInfo(), '/api') && !$request->wantsJson() && !$request->isXmlHttpRequest() && !$request->isOptions()) {
+                if (!preg_match('#^/api(/|$)#', strtok($request->pathInfo(), '?')) && !$request->wantsJson() && !$request->isXmlHttpRequest() && !$request->isOptions()) {
                     static::loadMiddlewares('web');
                     ///TODO: load all default web middlewares
                     require_once base_path().'/routes/web.php';

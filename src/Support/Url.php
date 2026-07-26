@@ -80,7 +80,8 @@ class Url
             foreach ($routes as $route => $data) {
                 if ($data['name'] === $name) {
                     foreach ($parameters as $key => $value) {
-                        $route = str_replace('$' . $key, $value, $route);
+                        // Routes use {key}/{key?} placeholders, not $key.
+                        $route = str_replace(['{' . $key . '}', '{' . $key . '?}'], $value, $route);
                     }
                     return $route;
                 }

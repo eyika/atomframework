@@ -160,31 +160,36 @@ class Route
     
         // Find matching route and set route parameters
         $parameters = [];
-        $routeMatched = false;
-    
-        foreach (self::$routes[$requestMethod] ?? [] as $route => $data) {
+        $matched = null;
+
+        // Try method-specific routes first, then method-agnostic ANY routes. The `+`
+        // union keeps method routes first and winning on any path clash, so
+        // Route::any() routes (filed under 'ANY') now actually dispatch.
+        $candidates = (self::$routes[$requestMethod] ?? []) + (self::$routes['ANY'] ?? []);
+        foreach ($candidates as $route => $data) {
             if (self::matchesRoute($route, $requestUri, $parameters)) {
                 $request->route_params = Arr::wrap(sanitize_data($parameters));
                 self::$currentRoute = $route;
-                $routeMatched = true;
+                $matched = $data;
                 break;
             }
         }
-    
-        // Set up the middleware pipeline
+
+        // Reuse the matched route's own middlewares — no second full route scan.
         $middlewares = array_merge(
             static::$defaultMiddlewares,
-            static::findRouteMiddlewares($requestMethod, $requestUri)
+            $matched['middlewares'] ?? []
         );
-    
+
         // Core handler for the pipeline
-        $coreHandler = function ($request) use ($routeMatched, $requestMethod, $requestUri) {
-            // If no route matches, set up a 404 handler
-            if (!$routeMatched) {
-                return self::handleNotFound($request)->send();
+        $coreHandler = function ($request) use ($matched) {
+            // If no route matches, hand off to the not-found handler. Return its
+            // result (don't ->send() here) so it flows through the same response
+            // wrapping as a matched route below.
+            if ($matched === null) {
+                return self::handleNotFound($request);
             }
-            $callback = self::$routes[$requestMethod][self::$currentRoute]['callback'];
-            return self::executeCallback($callback, $request, $request->route_params ?? []);
+            return self::executeCallback($matched['callback'], $request, $request->route_params ?? []);
         };
     
         // Run the pipeline
@@ -210,7 +215,8 @@ class Route
             foreach ($routes as $route => $data) {
                 if ($data['name'] === $name) {
                     foreach ($parameters as $key => $value) {
-                        $route = str_replace('$' . $key, $value, $route);
+                        // Routes are declared with {key}/{key?} placeholders, not $key.
+                        $route = str_replace(['{' . $key . '}', '{' . $key . '?}'], $value, $route);
                     }
                     return empty($route) ? '/' : $route;
                 }
@@ -300,17 +306,6 @@ class Route
         return new static();
     }
 
-    // Helper method to find middlewares for a specific route
-    protected static function findRouteMiddlewares($requestMethod, $requestUri)
-    {
-        foreach (self::$routes[$requestMethod] ?? [] as $route => $data) {
-            if (self::matchesRoute($route, $requestUri)) {
-                return $data['middlewares'] ?? [];
-            }
-        }
-        return [];
-    }
-
     // Helper method to check if a route matches the request URI
     protected static function matchesRoute($route, $requestUri, &$parameters = [])
     {
@@ -325,7 +320,14 @@ class Route
 
         $parameters = [];
         for ($i = 0; $i < count($requestUriParts); $i++) {
-            if (preg_match("/^{([^}]+)\??}$/", $routeParts[$i], $matches)) {
+            // Request has more segments than the route → not a match (avoids an
+            // undefined-index warning on $routeParts[$i]).
+            if (!array_key_exists($i, $routeParts)) {
+                return false;
+            }
+            // Capture the param NAME without the trailing "?" of an optional segment
+            // (the old [^}]+ greedily captured "id?" for {id?}).
+            if (preg_match('/^\{([^}?]+)\??\}$/', $routeParts[$i], $matches)) {
                 // URL-decode route parameter values so things like "Simple%20RSI"
                 // become "Simple RSI" before they reach controllers / DB queries.
                 $parameters[$matches[1]] = rawurldecode($requestUriParts[$i]);
