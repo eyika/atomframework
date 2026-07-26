@@ -368,32 +368,35 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
     // echo $sql.PHP_EOL.PHP_EOL;
     
     $statement = $this->db->prepare($sql);
-    foreach ($params as $key => &$value) {
+    // bindValue (not bindParam) + a no-arg execute(): passing $params to execute()
+    // makes PDO re-bind everything as strings, discarding the typing below; and
+    // bindParam-by-reference in a loop binds every param to the last value.
+    foreach ($params as $key => $value) {
       switch (true) {
           case is_int($value):
-              $statement->bindParam($key, $value, PDO::PARAM_INT);
+              $statement->bindValue($key, $value, PDO::PARAM_INT);
               break;
           case is_bool($value):
-              $statement->bindParam($key, $value, PDO::PARAM_BOOL);
+              $statement->bindValue($key, $value, PDO::PARAM_BOOL);
               break;
           case is_null($value):
-              $statement->bindParam($key, $value, PDO::PARAM_NULL);
+              $statement->bindValue($key, $value, PDO::PARAM_NULL);
               break;
           case is_double($value):
           case is_float($value):
               // PDO doesn't have a specific type for floats, so we treat them as strings.
-              $statement->bindParam($key, $value, PDO::PARAM_STR);
+              $statement->bindValue($key, $value, PDO::PARAM_STR);
               break;
           case is_resource($value):
               // For BLOB data
-              $statement->bindParam($key, $value, PDO::PARAM_LOB);
+              $statement->bindValue($key, $value, PDO::PARAM_LOB);
               break;
           default:
-              $statement->bindParam($key, $value, PDO::PARAM_STR);
+              $statement->bindValue($key, $value, PDO::PARAM_STR);
               break;
       }
     }
-    $statement->execute($params);
+    $statement->execute();
     
     return $statement;
   }
@@ -981,8 +984,9 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
       return $value;
     }
     catch (PDOException $e) {
-      // echo $e->getMessage().PHP_EOL;
-      return;
+      // Surface the error instead of silently returning null (BUG-34).
+      error_log('Atom DB get(): ' . $e->getMessage());
+      return null;
     }
   }
   
@@ -1024,7 +1028,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
     try {
       $this->remove($table, ['key' => $key]);
     }
-    catch (PDOException $e) {}
+    catch (PDOException $e) { error_log('Atom DB error: ' . $e->getMessage()); }
   }
 
   /**
@@ -1042,7 +1046,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
     try {
       $this->exec($sql);
     }
-    catch (PDOException $e) {}
+    catch (PDOException $e) { error_log('Atom DB error: ' . $e->getMessage()); }
   }
  
   /* Cache storage */
@@ -1072,9 +1076,10 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
           ]);
         }
         catch ( PDOException $e ) {
+          error_log('Atom DB cache populate: ' . $e->getMessage());
           return false;
         }
-        
+
         return $populate;
       }
     } else {
@@ -1096,6 +1101,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
       return true;
     }
     catch ( PDOException $e ) {
+      error_log('Atom DB uncache(): ' . $e->getMessage());
       return false;
     }
   }
@@ -1130,7 +1136,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
       
       return $return;
     }
-    catch ( PDOException $e ) {}
+    catch ( PDOException $e ) { error_log('Atom DB error: ' . $e->getMessage()); }
   }
     
   public function popjob($event) {
@@ -1147,7 +1153,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
       
       return $return;
     }
-    catch ( PDOException $e ) {}
+    catch ( PDOException $e ) { error_log('Atom DB error: ' . $e->getMessage()); }
   }
   
   public function on($event, $cb) {
