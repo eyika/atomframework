@@ -172,7 +172,9 @@ class Validator {
                 break;
             case 'integer':
             case 'int':
-                $stat = is_int($paramval) || (is_numeric($paramval) && strpos((string)$paramval, '.') === false);
+                // FILTER_VALIDATE_INT rejects "1e3"/"0x1A"/"10.5" that the old
+                // is_numeric + no-dot check let through as integers.
+                $stat = is_int($paramval) || (is_string($paramval) && filter_var($paramval, FILTER_VALIDATE_INT) !== false);
                 $resp = !$stat ? "$param should be an integer" : '';
                 break;
             case 'numeric':
@@ -291,10 +293,14 @@ class Validator {
                     $resp = $paramval == $items[1] ? "{$param} should not be same as " . str_replace('_confirm', '', $param) : '';
                     break;
                 case 'in':
-                    $resp = !Arr::exists(array_map('trim', explode(',', $items[1])), $paramval, true) ? "{$param} should contain one of {$items[1]}" : '';
+                    // Scalar-guard + string-compare against the string list (an array
+                    // value can't be "one of" the options; 5 must match "5").
+                    $allowed = array_map('trim', explode(',', $items[1]));
+                    $resp = (is_scalar($paramval) && Arr::exists($allowed, (string) $paramval, true)) ? '' : "{$param} should contain one of {$items[1]}";
                     break;
                 case 'not_in':
-                    $resp = Arr::exists(array_map('trim', explode(',', $items[1])), $paramval, true) ? "{$param} should not contain any of {$items[1]}" : '';
+                    $allowed = array_map('trim', explode(',', $items[1]));
+                    $resp = (is_scalar($paramval) && Arr::exists($allowed, (string) $paramval, true)) ? "{$param} should not contain any of {$items[1]}" : '';
                     break;
                 case 'exist':
                     $_items = array_map('trim', explode(',', $items[1]));
@@ -313,17 +319,25 @@ class Validator {
                     $resp = !$stat ? "{$param} should be an array that has $items[1]" : '';
                     break;
                 case 'mimes':
+                    // Guard instanceof File FIRST — the old code called
+                    // ->uploadProperties() on a non-File value (fatal).
+                    if (!$paramval instanceof File) {
+                        $resp = "$param should be a file";
+                        break;
+                    }
                     $mimes = array_map('trim', explode(',', $items[1]));
                     $mimeParts = explode('/', mime_content_type($paramval->uploadProperties()->tmpName()));
                     $mime = $mimeParts[1] ?? '';
-                    $is_valid_mime = $paramval instanceof File && Arr::exists($mimes, $mime);
-                    $resp = $is_valid_mime ? '' : "$param should be a file with one of " . $items[1] ."mime";
+                    $resp = Arr::exists($mimes, $mime) ? '' : "$param should be a file with one of " . $items[1] . " mime";
                     break;
                 case 'mimetypes':
+                    if (!$paramval instanceof File) {
+                        $resp = "$param should be a file";
+                        break;
+                    }
                     $mimes = array_map('trim', explode(',', $items[1]));
                     $mimeType = mime_content_type($paramval->uploadProperties()->tmpName());
-                    $is_valid_mime = $paramval instanceof File && Arr::exists($mimes, $mimeType);
-                    $resp = $is_valid_mime ? '' : "$param should be a file with one of " . $items[1] ."mime type";
+                    $resp = Arr::exists($mimes, $mimeType) ? '' : "$param should be a file with one of " . $items[1] . " mime type";
                     break;
                 default:
                     $resp = '';
