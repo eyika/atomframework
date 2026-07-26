@@ -122,7 +122,14 @@ class DB
 
     public function orderBy($column = "id", $direction = "ASC")
     {
-        static::$bind_or_filter['ORDER BY'] = "$column $direction";
+        // SECURITY: escape column identifier(s) + whitelist direction (mirrors
+        // QueryBuilder::orderBy) — a user-supplied sort must not inject.
+        $dir = strtoupper(trim((string) $direction)) === 'DESC' ? 'DESC' : 'ASC';
+        $cols = array_map(
+            fn($c) => Connection::quoteQualified(trim($c)),
+            explode(',', (string) $column)
+        );
+        static::$bind_or_filter['ORDER BY'] = implode(', ', $cols) . " $dir";
         return $this;
     }
 
@@ -382,7 +389,7 @@ class DB
         $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
 
         if ($method == 'count' && $column != '*') {
-            static::$operators[] = "DISTINCT $column";
+            static::$operators[] = "DISTINCT " . Connection::quoteQualified($column);
         }
 
         $method = $method == 'count' ? $method : $method."_".$column;
@@ -446,13 +453,13 @@ class DB
 
     public function limit($amount)
     {
-        static::$bind_or_filter['LIMIT'] = $amount;
+        static::$bind_or_filter['LIMIT'] = (int) $amount;
         return $this;
     }
 
     public function offset($postion)
     {
-        static::$bind_or_filter['OFFSET'] = $postion;
+        static::$bind_or_filter['OFFSET'] = (int) $postion;
         return $this;
     }
 
@@ -696,7 +703,8 @@ class DB
 
     public function distinct($column)
     {
-        is_string(static::$operators) ? static::$operators = ["DISTINCT `$column`"] : array_push(static::$operators, "DISTINCT `$column`");
+        $distinct = "DISTINCT " . Connection::quoteQualified($column);
+        is_string(static::$operators) ? static::$operators = [$distinct] : array_push(static::$operators, $distinct);
 
         return $this;
     }
