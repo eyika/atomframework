@@ -21,18 +21,19 @@ class MysqlSessionHandler implements SessionHandlerInterface, SessionIdInterface
         // $dbname = env('DB_DATABASE');
         // $dbhost = env('DB_HOST');
         // $dbadapter = env('DB_ADAPTER');
-        $this->table = config('session.table');
+        $this->table = config('session.table', 'sessions');
         $this->dbConnection = new Connection(config('database'));
     }
 
     public function open($sessionSavePath, $sessionName): bool
     {
-        $this->table = $sessionName;
+        // Do NOT overwrite the configured table with the PHP session name
+        // (e.g. "PHPSESSID") — that pointed writes/reads at the wrong table.
         return true;
     }
 
-    public function close(): bool{
-        $this->table = 'session';
+    public function close(): bool
+    {
         return true;
     }
 
@@ -58,12 +59,11 @@ class MysqlSessionHandler implements SessionHandlerInterface, SessionIdInterface
     {
         try {
             $query = "DELETE FROM `{$this->table}` WHERE session_last_updated < DATE_SUB(NOW(), INTERVAL :max_lifetime SECOND)";
-            // $statement = $this->dbConnection->prepare($query);
-            // $statement->bindParam(':max_lifetime', $maxLifetime, PDO::PARAM_INT);
-            // $result = $statement->execute();
-            // $statement->closeCursor();
+            // Bind :max_lifetime — it was unbound, so gc() always errored (and the
+            // catch below retried it forever).
+            $result = DB::table($this->table)->raw($query, ['max_lifetime' => (int) $maximumLifetime]);
 
-            return DB::table($this->table)->raw($query);
+            return $result ? $result->rowCount() : false;
         } catch (PDOException $ex) {
             $this->handle_exception($ex);
             return $this->gc($maximumLifetime);
@@ -79,9 +79,11 @@ class MysqlSessionHandler implements SessionHandlerInterface, SessionIdInterface
             // $sessionData = $statement->fetchColumn();
             // $statement->closeCursor();
 
-            $sessionData = DB::table($this->table)->where('id', $sessionId)->first('session_data');
+            // first() returns the ROW (assoc array), not the scalar column value —
+            // extract session_data or '' (read() must return a string).
+            $row = DB::table($this->table)->where('id', $sessionId)->first('session_data');
 
-            return $sessionData ?: '';
+            return is_array($row) ? (string) ($row['session_data'] ?? '') : '';
         } catch (PDOException $ex) {
             $this->handle_exception($ex);
             return $this->read($sessionId);
@@ -97,9 +99,11 @@ class MysqlSessionHandler implements SessionHandlerInterface, SessionIdInterface
             // $result = $statement->execute();
             // $statement->closeCursor();
 
-            $result = DB::table($this->table)->raw($query, ['id' => $sessionId]);
+            // Bind BOTH :id and :session_data — :session_data was unbound, so the
+            // session payload was never persisted.
+            $result = DB::table($this->table)->raw($query, ['id' => $sessionId, 'session_data' => $sessionData]);
 
-            return $result;
+            return (bool) $result;
         } catch (PDOException $ex) {
             $this->handle_exception($ex);
             return $this->write($sessionId, $sessionData);
@@ -140,7 +144,7 @@ class MysqlSessionHandler implements SessionHandlerInterface, SessionIdInterface
             return DB::table($this->table)->where('id', $sessionId)->update(['session_last_updated' => 'now']);
         } catch (PDOException $ex) {
             $this->handle_exception($ex);
-            return $this->gc($sessionId, $sessionData);
+            return $this->updateTimestamp($sessionId, $sessionData); // was retrying gc() with wrong args
         }
     }
 
