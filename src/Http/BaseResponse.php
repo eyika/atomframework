@@ -143,26 +143,21 @@ class BaseResponse
 
     protected function _send($terminate = true)
     {
-        if (FacadeRequest::isNotHtml()) {
-            http_response_code($this->statusCode);
-            $this->sendHeaders();
-            echo $this->body;
-            if ($terminate)
-                return true;
-
-            return false;
+        // Mark the response sent so a second send() is a no-op (prevents
+        // double-emitting headers/body); previously only terminate() did this.
+        if ($terminate) {
+            $this->_responseSent = true;
         }
 
+        // File download and redirects take precedence over content-negotiation —
+        // otherwise an API/XHR request (isNotHtml) swallowed them by echoing body.
         if ($this->isFileResponse) {
             http_response_code($this->statusCode);
             $this->sendHeaders();
             ob_clean();
             flush();
             readfile($this->file_path);
-            if ($terminate)
-                return true;
-
-            return false;
+            return $terminate;
         }
 
         if ($this->isRedirect) {
@@ -175,11 +170,15 @@ class BaseResponse
 
             http_response_code($this->statusCode);
             $this->sendHeaders();
+            return $terminate;
+        }
 
-            if ($terminate)
-                return true;
-
-            return false;
+        // JSON / XHR: emit the body as-is (no view compilation).
+        if (FacadeRequest::isNotHtml()) {
+            http_response_code($this->statusCode);
+            $this->sendHeaders();
+            echo $this->body;
+            return $terminate;
         }
 
         if ($this->shouldCompileView) {
@@ -189,10 +188,7 @@ class BaseResponse
         http_response_code($this->statusCode);
         $this->sendHeaders();
         echo $this->body;
-        if ($terminate)
-            return true;
-
-        return false;
+        return $terminate;
     }
 
     public function getInstance()
@@ -278,12 +274,14 @@ class BaseResponse
         foreach ($data as $key => $value) {
             if (is_object($value)) {
                 $objectId = spl_object_hash($value);
-    
-                // if (isset($seen[$objectId])) {
-                //     $data[$key] = 'Circular Reference Detected';
-                //     continue;
-                // }
-    
+
+                // Guard against back-references (e.g. a model relation pointing at
+                // its parent) so serialization can't recurse into infinite loop/OOM.
+                if (isset($seen[$objectId])) {
+                    $data[$key] = 'Circular Reference Detected';
+                    continue;
+                }
+
                 $seen[$objectId] = true;
     
                 if ($customHandler) {

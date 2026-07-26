@@ -15,8 +15,6 @@ use Eyika\Atom\Framework\Support\Storage\File;
 use Eyika\Atom\Framework\Support\Storage\FileUploadProperties;
 use Eyika\Atom\Framework\Support\Validator;
 
-use function PHPUnit\Framework\isNull;
-
 class Request
 {
     public const HEADER_X_FORWARDED_FOR = 'HTTP_X_FORWARDED_FOR';
@@ -65,7 +63,7 @@ class Request
 
     protected function setRequestBodyAndFiles()
     {
-        if ($this->isMethod('PUT') && strpos($this->headers['Content-Type'] ?? '', 'multipart/form-data') === 0) {
+        if ($this->isMethod('PUT') && strpos((string) $this->headers('Content-Type'), 'multipart/form-data') === 0) {
             $this->body = $this->parseMultipartRequest();
         } elseif ($this->isJson()) {
             // Read raw JSON input if content-type is JSON
@@ -314,7 +312,11 @@ class Request
 
     public function has($key)
     {
-        return $this->input($key) !== null || $this->query($key) !== null;
+        // Existence check (a present-but-null value counts), consistent with __isset.
+        return array_key_exists($key, $this->input)
+            || array_key_exists($key, $this->query)
+            || array_key_exists($key, $this->attributes)
+            || array_key_exists($key, $this->route_params);
     }
 
     public function hasHeader($key)
@@ -324,7 +326,9 @@ class Request
 
     public function hasBody()
     {
-        return $this->server('CONTENT_LENGTH') ?? 0 > env('CONTENT_LENGTH_MIN');
+        // Parenthesised: `>` binds tighter than `??`, so the original returned the
+        // length string (or a stray bool) instead of "body larger than the min".
+        return (int) $this->server('CONTENT_LENGTH', 0) > (int) env('CONTENT_LENGTH_MIN', 0);
     }
 
     /**
@@ -345,7 +349,7 @@ class Request
 
     public function hasFile(string $key)
     {
-        return !(isNull($this->file($key)));
+        return !is_null($this->file($key));
     }
 
     /**
@@ -402,7 +406,9 @@ class Request
 
     public function isJson()
     {
-        return $this->headers('Content-Type') === 'application/json';
+        // Match the media type regardless of parameters (e.g. "; charset=utf-8") —
+        // an exact === comparison dropped the body of every such JSON request.
+        return str_contains(strtolower((string) $this->headers('Content-Type')), 'application/json');
     }
 
     public function isOptions()
@@ -466,12 +472,20 @@ class Request
     }
 
     /**
-     * check if the request uri matches this regex string
+     * Check whether the current path matches the given pattern ("*" wildcard),
+     * e.g. is('admin/*'). Was previously a no-op (no return + a never-true compare).
      */
-    public function is(string $regex)
+    public function is(string $pattern): bool
     {
-        // preg_match($regex, $this->pathInfo(), $matches);
-        strpos($this->pathInfo(), $regex) === true;
+        $path = trim($this->url(), '/');
+        $pattern = trim($pattern, '/');
+
+        if ($pattern === $path) {
+            return true;
+        }
+
+        $regex = '#^' . str_replace('\*', '.*', preg_quote($pattern, '#')) . '$#';
+        return (bool) preg_match($regex, $path);
     }
 
     public function url()

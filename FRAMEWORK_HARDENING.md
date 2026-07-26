@@ -31,7 +31,11 @@ Branch: `hardening/framework-audit-fixes` (off `dev`). Goal: fix **all** securit
   - **Accepted low-risk / documented (no code change now):** SEC-29 (`Route` string-callback `include_once` — only dev-registered string routes, not user input; realpath-guard is a low-pri follow-up); SEC-31 (multipart post-size DoS — a `ValidatePostSize` middleware exists but is app-enabled); SEC-33 (mass-assignment — `fillable` is the only write gate; document, don't auto-guard). FileCache/ArrayCache/DbStorage `unserialize` left as-is (local FS / in-process / lower exposure than the queue) — signing them is a follow-up.
 
 ### ✅ P0 (Security) COMPLETE
-All high/critical security items fixed with tests; the three above are documented low-risk. **Suite: 62 tests / 118 assertions green.** Next: **P1 (correctness bugs)** — start with the request/response body handling (BUG-01 JSON drop, BUG-03 PHPUnit import) and routing (BUG-10/11/12).
+All high/critical security items fixed with tests; the three above are documented low-risk. **Suite: 62 tests / 118 assertions green.**
+
+### P1 (Correctness) — in progress
+- **Done (Request/Response body handling):** BUG-01 (`isJson` matches `application/json; charset=…` → JSON bodies no longer silently dropped); BUG-02 (multipart-PUT checks the lowercased `content-type` header); BUG-03 (removed the `use function PHPUnit\Framework\isNull` prod import — `hasFile()` no longer fatals); BUG-04 (`hasBody()` precedence); BUG-05 (`is()` actually matches, wildcard-aware); BUG-06 (`has()` counts a present-null + checks attributes/route_params); BUG-07 (`send()` idempotent — sets `_responseSent`); BUG-08 (`_send` reordered so file/redirect responses aren't swallowed by the JSON/XHR branch); BUG-09 (re-enabled the circular-reference guard in `convertObjectsToArray`). Tests: `RequestParsingTest`, `ResponseSendTest`. **Suite: 68 tests / 130 assertions green.**
+- **Next P1:** routing (BUG-10 `route()` name-gen `$key`→`{key}`, BUG-11 optional `{param?}` regex, BUG-12 `Route::any()` never dispatched, BUG-13/14), then ORM/DB (BUG-20..36), container (BUG-37..40), validation (BUG-41..46), unimplemented API (BUG-47..53), session-handler binds (BUG-54..56).
 
 ## Severity legend
 CRITICAL / HIGH / MED / LOW — framework-level exploitability or breakage. Some security items depend on how an app calls the primitive (noted).
