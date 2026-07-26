@@ -50,7 +50,7 @@ class ExceptionHandler implements ContractExceptionHandler
     public function render(?Request $request, \Throwable $exception): BaseResponse
     {
         if ($request === null) {
-            $message = config('app.debug') ? $exception->getMessage() : 'An error occured, contact administrator';
+            $message = config('app.debug', false) ? $exception->getMessage() : 'An error occured, contact administrator';
             return response()->json([
                 'success' => false,
                 'message' => $message,
@@ -59,7 +59,7 @@ class ExceptionHandler implements ContractExceptionHandler
 
         if ($request->wantsJson()) {
             $code = $exception->getCode();
-            $message = config('app.debug') ? $exception->getMessage() : 'An error occured, contact administrator';
+            $message = config('app.debug', false) ? $exception->getMessage() : 'An error occured, contact administrator';
             if ($code < 100 || $code >= 600) {
                 $code = BaseResponse::STATUS_INTERNAL_SERVER_ERROR;
             }

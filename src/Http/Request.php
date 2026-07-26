@@ -143,7 +143,7 @@ class Request
                 if ($fileName) {
                     // It's a file
                     $files[$fieldName] = [
-                        'name' => $fileName,
+                        'name' => basename($fileName), // strip client-supplied path (traversal)
                         'type' => $headers['content-type'] ?? 'application/octet-stream',
                         'tmp_name' => $this->saveTempFile($content),
                         'size' => strlen($content),
@@ -177,7 +177,7 @@ class Request
                 foreach ($fileData['name'] as $index => $name) {
                     $file = new File();
                     $file->setUploadProperties(new FileUploadProperties(
-                        $name,
+                        basename($name), // strip any client-supplied path (traversal)
                         $fileData['type'][$index],
                         $fileData['tmp_name'][$index],
                         $fileData['size'][$index],
@@ -189,7 +189,7 @@ class Request
                 // Single file upload
                 $file = new File();
                 $file->setUploadProperties(new FileUploadProperties(
-                    $fileData['name'],
+                    basename($fileData['name']), // strip any client-supplied path (traversal)
                     $fileData['type'],
                     $fileData['tmp_name'],
                     $fileData['size'],

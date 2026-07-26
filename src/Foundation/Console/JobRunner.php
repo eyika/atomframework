@@ -35,7 +35,7 @@ class JobRunner {
                 $payload = $job['payload'];
     
                 try {
-                    $job_obj = unserialize($payload);
+                    $job_obj = \Eyika\Atom\Framework\Support\SignedPayload::verify($payload);
     
                     if ($job_obj instanceof QueueInterface) {
                         $job_obj->setJob($job);
@@ -52,7 +52,7 @@ class JobRunner {
                 $payload = $job['payload'];
 
                 try {
-                    $job_obj = unserialize($payload);
+                    $job_obj = \Eyika\Atom\Framework\Support\SignedPayload::verify($payload);
     
                     if ($job_obj instanceof QueueInterface) {
                         $job_obj->setJob($job);

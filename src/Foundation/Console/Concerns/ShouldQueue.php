@@ -115,14 +115,14 @@ trait ShouldQueue
     {
         $id = $this->job['id'];
         unset($this->job);
-        $sclass = serialize($this);
+        $sclass = \Eyika\Atom\Framework\Support\SignedPayload::sign($this);
         $this->delay = $delay ?? $this->delay;
         return $this::$queue->buryJob(['payload' => $sclass, 'id' => $id], $this->delay);
     }
 
     public function run(): void
     {
-        $sclass = serialize($this);
+        $sclass = \Eyika\Atom\Framework\Support\SignedPayload::sign($this);
         $this::$queue->addJob($sclass, $this->delay, $this->priority, $this->delay);
     }
 }

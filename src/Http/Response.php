@@ -90,17 +90,26 @@ class Response extends BaseResponse
     {
         $status = self::STATUS_OK;
 
-        if (!file_exists($file_path)) {
+        // Resolve the real path (collapses ../) and, when a download base dir is
+        // configured, confine to it — prevents traversal to arbitrary files when
+        // the path is influenced by user input.
+        $real = realpath($file_path);
+        $base = config('filesystem.download_base');
+        $confined = $base ? (is_string($real) && str_starts_with($real, realpath($base) . DIRECTORY_SEPARATOR)) : true;
+
+        if ($real === false || !is_file($real) || !$confined) {
             $status = self::STATUS_NOT_FOUND;
-            return $this->body('File not found.')->setHeader('Content-Type', 'text/plan', $status);
+            return $this->body('File not found.')->setHeader('Content-Type', 'text/plain', $status);
         }
 
-        $file_name = $file_name ?? basename($file_path);
+        // Sanitise the download filename (basename + strip CR/LF and quotes) to
+        // avoid header injection / path leakage in Content-Disposition.
+        $file_name = str_replace(["\r", "\n", '"'], '', basename($file_name ?? basename($real)));
 
-        return $this->status($status)->setIsFileResponse($file_path)
+        return $this->status($status)->setIsFileResponse($real)
             ->setHeader('Content-Description', 'File Transfer')
             ->setHeader('Content-Type', 'application/octet-stream', $status)
-            ->setHeader('Content-Disposition', 'attachment; filename=' . $file_name)
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $file_name . '"')
             ->setHeader('Content-Transfer-Encoding', 'binary')
             ->setHeader('Expires', '0')
             ->setHeader('Cache-Control', 'must-revalidate')
