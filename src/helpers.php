@@ -305,13 +305,9 @@ if (! function_exists('getIpAddress')) {
      */
     function getIpAddress()
     {
-        if (Request::server('HTTP_CLIENT_IP')) {
-            return Request::server('HTTP_CLIENT_IP');
-        } elseif (Request::server('HTTP_X_FORWARDED_FOR')) {
-            return Request::server('HTTP_X_FORWARDED_FOR');
-        } else {
-            return Request::server('REMOTE_ADDR');
-        }
+        // Route through the trusted-proxy-gated resolver instead of trusting
+        // client-spoofable HTTP_CLIENT_IP / X-Forwarded-For unconditionally.
+        return Request::clientIp();
     }
 }
 

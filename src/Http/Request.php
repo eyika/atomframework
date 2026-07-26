@@ -506,10 +506,24 @@ class Request
     public function host()
     {
         if ($this->isFromTrustedProxy() && $this->headers('X-Forwarded-Host')) {
-            return $this->headers('X-Forwarded-Host');
+            $host = $this->headers('X-Forwarded-Host');
+        } else {
+            $host = $this->server('HTTP_HOST');
         }
 
-        return $this->server('HTTP_HOST');
+        // Host-header poisoning guard (opt-in): when a trusted-hosts allowlist is
+        // configured, an unrecognised Host falls back to the configured app host so
+        // it can't poison generated URLs / password-reset links / emails.
+        $trusted = array_map('strtolower', config('app.trusted_hosts', []));
+        if (!empty($trusted)) {
+            $bare = strtolower(preg_replace('/:\d+$/', '', (string) $host));
+            if (!in_array($bare, $trusted, true)) {
+                $appHost = parse_url((string) config('app.url', ''), PHP_URL_HOST);
+                return $appHost ?: ($trusted[0] ?? $host);
+            }
+        }
+
+        return $host;
     }
 
     public function address()
@@ -519,9 +533,20 @@ class Request
 
     public function clientIp()
     {
-        if (\preg_match('/^(d{1,3}).(d{1,3}).(d{1,3}).(d{1,3})$/', $this->server('HTTP_X_FORWARDED_FOR', ''))) {
-            return $this->server('HTTP_X_FORWARDED_FOR');
+        // Only trust X-Forwarded-For when the request actually came through a
+        // configured trusted proxy; otherwise it is client-spoofable. (The previous
+        // regex used a literal `d` instead of `\d`, so it never matched anyway.)
+        if ($this->isFromTrustedProxy()) {
+            $forwarded = $this->server('HTTP_X_FORWARDED_FOR', '');
+            if ($forwarded !== '') {
+                // XFF is a comma list; the left-most entry is the original client.
+                $ip = trim(explode(',', $forwarded)[0]);
+                if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                    return $ip;
+                }
+            }
         }
+
         return $this->address();
     }
 

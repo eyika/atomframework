@@ -47,6 +47,8 @@ class Response extends BaseResponse
 
     public function redirect(string $to, int $code = self::STATUS_FOUND, int|null $delay = null): self
     {
+        // Strip CR/LF to prevent response-header injection via the redirect target.
+        $to = str_replace(["\r", "\n"], '', $to);
         $this->isRedirect = true;
 
         if ($delay) {
@@ -60,14 +62,21 @@ class Response extends BaseResponse
     {
         $to = null;
 
-        // Redirect to the previous page
-        if (!empty(FacadeRequest::headers('HTTP_REFERER'))) {
-            $to = filter_var(FacadeRequest::headers('HTTP_REFERER'), FILTER_VALIDATE_URL);
+        // Only honour the Referer when it is same-origin — an attacker-set Referer
+        // must never become an open redirect off-site.
+        $referer = FacadeRequest::headers('HTTP_REFERER') ?: FacadeRequest::headers('Referer');
+        if (!empty($referer) && filter_var($referer, FILTER_VALIDATE_URL)) {
+            $refHost = strtolower((string) parse_url($referer, PHP_URL_HOST));
+            $appHost = strtolower((string) FacadeRequest::host());
+            if ($refHost !== '' && $refHost === $appHost) {
+                $to = $referer;
+            }
         }
-        // Fallback if the referrer is not valid
+        // Fallback if the referrer is missing/cross-origin/invalid.
         if (!$to) {
-            $to = Route::previous();
+            $to = Route::previous() ?: '/';
         }
+        $to = str_replace(["\r", "\n"], '', (string) $to);
         $this->isRedirect = true;
 
         if ($delay) {
