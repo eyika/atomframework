@@ -188,29 +188,40 @@ trait QueryBuilder
      */
     private function processRelationship ($models, string $with_model_name, bool $is_protected)
     {
-        $key_name = Str::snake($with_model_name);
+        $isList = is_array($models);
+        $parents = $isList ? array_values($models) : [$models];
+        if (empty($parents)) {
+            return $models;
+        }
 
-        if (is_array($models)) {
-            foreach ($models as &$model) {
-                if (empty($model->{$key_name."_id"})) {
-                    $model->{$with_model_name} = null;
-                    continue;
-                }
-                $item = $model->{$with_model_name}();
-                $model->{$with_model_name} = $item;
-                $model->relationshipItems[] = $with_model_name;
+        // The relation method returns a Relation descriptor (or, for legacy relations
+        // like belongsToMany, the resolved data directly).
+        $descriptor = $parents[0]->{$with_model_name}();
+
+        if ($descriptor instanceof \Eyika\Atom\Framework\Support\Database\Relation) {
+            // Batched eager load: ONE whereIn for every parent (no N+1).
+            $map = $descriptor->eagerLoad($parents);
+            foreach ($parents as $parent) {
+                $key = $parent->{$descriptor->parentKey()} ?? null;
+                $parent->{$with_model_name} = ($key !== null && isset($map[$key]))
+                    ? $map[$key]
+                    : ($descriptor->isMany() ? [] : null);
+                $parent->relationshipItems[] = $with_model_name;
             }
-            return $models;
+        } else {
+            // Legacy relation that executes per-parent (belongsToMany): assign the
+            // already-resolved value for the first, re-resolve for the rest.
+            $parents[0]->{$with_model_name} = $descriptor;
+            $parents[0]->relationshipItems[] = $with_model_name;
+            for ($i = 1, $n = count($parents); $i < $n; $i++) {
+                $parents[$i]->{$with_model_name} = $parents[$i]->{$with_model_name}();
+                $parents[$i]->relationshipItems[] = $with_model_name;
+            }
         }
 
-        if (empty($models->{$key_name."_id"})) {
-            $models->{$with_model_name} = null;
-            return $models;
+        if (!$isList) {
+            $this->resetInstance();
         }
-        $item = $models->{$with_model_name}();
-        $models->{$with_model_name} = $item;
-        $models->relationshipItems[] = $with_model_name;
-        $this->resetInstance();
 
         return $models;
     }

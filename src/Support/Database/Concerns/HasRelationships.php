@@ -5,79 +5,55 @@ namespace Eyika\Atom\Framework\Support\Database\Concerns;
 use Eyika\Atom\Framework\Support\Str;
 use Exception;
 use Eyika\Atom\Framework\Support\Database\DB;
+use Eyika\Atom\Framework\Support\Database\Relation;
 
 trait HasRelationships
 {
-    public function hasOne(string $class_name, $foreign_key = null, $local_key = null, callable|string|null $with = null)
+    // NOTE: hasOne/belongsTo/hasMany now RETURN a Relation descriptor instead of
+    // eagerly executing + returning data. This lets with() batch-load with a single
+    // whereIn (no N+1). Access results via with('rel') + $model->rel, or lazily via
+    // $model->getRelation('rel'). (belongsToMany is still the legacy eager form.)
+    public function hasOne(string $class_name, $foreign_key = null, $local_key = null)
     {
-        //TODO: is_protected feature should be dynamic for relationships
-        try {
-            $foreign_model = new $class_name;
-            $classname = get_called_class();
-            $classname = basename(str_replace('\\', '/', $classname));
-
-            $foreign_key = $foreign_key ?? Str::snake($classname) . '_id';
-            $local_key = $local_key ?? 'id';
-
-            $foreign_model = $foreign_model->where($foreign_key, $this->{$local_key})->first(true);
-
-            if (!$foreign_model) {
-                return null;
-            }
-            return $foreign_model;
-        } catch (Exception $e) {
-            logger()->error("got the following error: ".$e->getMessage(), $e->getTrace());
-            return null;
-        }
+        $parent = basename(str_replace('\\', '/', get_called_class()));
+        return new Relation(
+            Relation::HAS_ONE,
+            $class_name,
+            $foreign_key ?? Str::snake($parent) . '_id',
+            $local_key ?? 'id'
+        );
     }
 
     public function belongsTo(string $class_name, $foreign_key = null, $local_key = null)
     {
-        //TODO: is_protected feature should be dynamic for relationships
-        try {
-            $parent_model = new $class_name;
-            $class_name = basename(str_replace('\\', '/', $class_name));
-
-            $foreign_key = $foreign_key ?? Str::snake($class_name) . '_id';
-            $local_key = $local_key ?? 'id';
-
-            $parent_model = $parent_model->where($local_key, $this->{$foreign_key})->first(false);
-
-            if (!$parent_model) {
-                return null;
-            }
-            return $parent_model;
-        } catch (Exception $e) {
-            logger()->error("got the following error: ".$e->getMessage(), $e->getTrace());
-            return null;
-        }
+        $related = basename(str_replace('\\', '/', $class_name));
+        return new Relation(
+            Relation::BELONGS_TO,
+            $class_name,
+            $foreign_key ?? Str::snake($related) . '_id',
+            $local_key ?? 'id'
+        );
     }
 
     public function hasMany(string $class_name, $foreign_key = null, $local_key = null)
     {
-        //TODO: is_protected feature should be dynamic for relationships
-        try {
-            $foreign_model = new $class_name;
-            $classname = get_called_class();
-            $classname = basename(str_replace('\\', '/', $classname));
+        $parent = basename(str_replace('\\', '/', get_called_class()));
+        return new Relation(
+            Relation::HAS_MANY,
+            $class_name,
+            $foreign_key ?? Str::snake($parent) . '_id',
+            $local_key ?? 'id'
+        );
+    }
 
-            $foreign_key = $foreign_key ?? Str::snake($classname) . '_id';
-            $local_key = $local_key ?? 'id';
+    /**
+     * Lazily resolve a relation defined by a method on this model (single parent).
+     */
+    public function getRelation(string $name): mixed
+    {
+        $relation = $this->{$name}();
 
-            $foreign_models = $foreign_model->where($foreign_key, $this->{$local_key})->all(true);
-
-            if (!$foreign_models) {
-                return null;
-            }
-
-            // foreach ($foreign_models as &$model) {
-            //     $model = $class_name::getBuilder()->fill($model, true);
-            // }
-            return $foreign_models;
-        } catch (Exception $e) {
-            logger()->error("got the following error: ".$e->getMessage(), $e->getTrace());
-            return null;
-        }
+        return $relation instanceof Relation ? $relation->getResults($this) : $relation;
     }
     /**
      * Basic many-to-many without joins.

@@ -57,7 +57,13 @@ All high/critical security items fixed with tests; the three above are documente
 ### Clearing deferred items (before app validation)
 - **Done — BUG-20 (model events):** `InitsModelEvents` was all stubs (events never fired). Now `boot()` dispatches per-class registered listeners; a "before" listener (creating/saving/deleting) returning FALSE aborts the write (checked in `_save`/`__update`/`_delete`); Laravel-style registration (`Model::creating(fn)`, `on()`, `flushEventListeners()`); interface updated. DB test: `ModelEventTest` (fires with model, abort-on-false, created/retrieved fire).
   - **RESOLVED the earlier "save-persistence" flag:** it was a TEST-MODEL error — the framework reads the `fillable` **const**, but the test model declared a `$fillable` **property** (ignored), so `name` was non-fillable and dropped from writes. Framework is correct; test models must use `const fillable`.
-- **Still to clear:** BUG-21 (eager loading — `whereIn` batching), BUG-31 (static DB rewrite — big), BUG-23 (`first()`→`null` + app audit), BUG-41 (validator static→worker-safety), BUG-48 (Config::clearCache). **Suite: 115 tests / 216 assertions green.**
+- **Done — BUG-21 (eager loading / N+1):** hasOne/belongsTo/hasMany now RETURN a `Relation` descriptor (new `Support\Database\Relation`) instead of executing per-row; `with()` batch-loads every parent with a single `whereIn`. Added `getRelation($name)` for lazy single-parent resolution. **Also found `HasRelationships` was a DEAD trait (never included anywhere) — now `use`d by `Model`.** DB test: `EagerLoadTest` (belongsTo/hasMany batched, lazy getRelation).
+- **Still to clear:** BUG-31 (static DB rewrite — big), BUG-23 (`first()`→`null` + app audit), BUG-41 (validator static→worker-safety), BUG-48 (Config::clearCache). **Suite: 118 tests / 223 assertions green.**
+
+### ⚠️ APP REWRITES NEEDED (fx-data-server, after phases — user's plan)
+- **BUG-21 relationships:** `$model->rel()` now returns a `Relation`, NOT resolved data. App must switch to `with('rel')` + `$model->rel` (property) or `$model->getRelation('rel')`. (Direct `$post->author()` expecting a User now gets a Relation.) belongsToMany still returns data.
+- **BUG-23 (pending):** `first()`/`find()` will change to return `null` (not `false`) — audit + fix `=== false`/`!== false` callers.
+- **Model definitions:** custom `fillable`/`guarded` must be declared as `const fillable = [...]` (a `$fillable` PROPERTY is ignored by the framework).
 - **Test count:** 74 tests / 143 assertions green.
 
 ## Severity legend

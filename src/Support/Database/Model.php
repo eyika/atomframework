@@ -6,6 +6,7 @@ use Exception;
 use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Auth\User;
 use Eyika\Atom\Framework\Support\Concerns\DeepClonesSelf;
+use Eyika\Atom\Framework\Support\Database\Concerns\HasRelationships;
 use Eyika\Atom\Framework\Support\Database\Concerns\InitsModelEvents;
 use Eyika\Atom\Framework\Support\Database\Concerns\QueryBuilder;
 use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
@@ -81,7 +82,7 @@ use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
 
 abstract class Model implements ModelInterface
 {
-    use QueryBuilder, InitsModelEvents, DeepClonesSelf;
+    use QueryBuilder, InitsModelEvents, DeepClonesSelf, HasRelationships;
 
     protected const DYNAMIC_STATIC_METHODS = [
         'create', 'find', 'findByEmail', 'findByUsername', 'findOr', 'first', 'firstOr', 'firstWhere', 'firstOrCreate', 'findBy',
