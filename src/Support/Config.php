@@ -120,9 +120,21 @@ class Config
      */
     public static function clearCache()
     {
-        throw new NotImplementedException('clear feature is not yet implemented');
-        // this should be reimplemented to only clear the config cache items
-        // self::$cache->clear();
+        // Drop the in-memory config + singleton so the next access reloads from disk.
+        self::$config = [];
+        self::$instance = null;
+
+        // Best-effort clear of the persistent config cache (prefix-scoped where the
+        // backend supports it; else a full clear — config keys are prefixed).
+        if (self::$cacheEnabled && isset(self::$cache)) {
+            if (method_exists(self::$cache, 'deleteByPrefix')) {
+                self::$cache->deleteByPrefix(self::$cache_prefix);
+            } elseif (method_exists(self::$cache, 'clear')) {
+                self::$cache->clear();
+            }
+        }
+
+        return true;
     }
 }
 
