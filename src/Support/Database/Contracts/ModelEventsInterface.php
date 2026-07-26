@@ -6,21 +6,29 @@ use Eyika\Atom\Framework\Support\Contracts\CanBeDeepCloned;
 
 interface ModelEventsInterface extends CanBeDeepCloned
 {
-    public static function boot(ModelInterface | UserModelInterface | null $model, string $event);
+    public static function boot($model, string $event);
 
-    public static function booting(ModelInterface | UserModelInterface | null $model, string $event);
+    public static function booting($model, string $event);
 
-    public static function booted(ModelInterface | UserModelInterface | null $model, string $event);
+    public static function booted($model, string $event);
 
-    public static function creating($model, string $event, callable $callback);
+    public static function on(string $event, callable $callback): void;
 
-    public static function created($model, string $event, callable $callback);
+    public static function creating(callable $callback): void;
 
-    public static function saving($model, string $event, callable $callback);
+    public static function created(callable $callback): void;
 
-    public static function saved($model, string $event, callable $callback);
+    public static function updating(callable $callback): void;
 
-    public static function deleting($model, string $event, callable $callback);
+    public static function updated(callable $callback): void;
 
-    public static function deleted($model, string $event, callable $callback);
+    public static function saving(callable $callback): void;
+
+    public static function saved(callable $callback): void;
+
+    public static function deleting(callable $callback): void;
+
+    public static function deleted(callable $callback): void;
+
+    public static function retrieved(callable $callback): void;
 }

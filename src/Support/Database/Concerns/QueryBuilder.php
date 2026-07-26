@@ -667,9 +667,11 @@ trait QueryBuilder
         
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
-        $this->boot($this, 'deleting');
-        $this->booted($this, 'deleting');
-        $this->booting($this, 'deleting');
+        // A 'deleting' listener returning false aborts the delete.
+        if ($this->boot($this, 'deleting') === false) {
+            $this->resetInstance();
+            return false;
+        }
 
         if ((int) $id > 0 && count($query_arr) < 1)
             $query_arr['id'] = $id;
@@ -927,17 +929,21 @@ trait QueryBuilder
 
         $create = $create_if_not_exist && !DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands);
         if ($create) {
-            $this->boot($this, 'creating');
-            $this->booted($this, 'creating');
-            $this->booting($this, 'creating');
+            // A 'creating' listener returning false aborts the insert.
+            if ($this->boot($this, 'creating') === false) {
+                $this->resetInstance();
+                return false;
+            }
 
             $values = array_merge($values, Arr::except($query_arr, array_merge(array_keys($values), ['updated_at', 'created_at', 'deleted_at'])));
 
             DatabaseConnection::insert($this->table, $values);
         } else {
-            $this->boot($this, 'saving');
-            $this->booted($this, 'saving');
-            $this->booting($this, 'saving');
+            // A 'saving' listener returning false aborts the update.
+            if ($this->boot($this, 'saving') === false) {
+                $this->resetInstance();
+                return false;
+            }
 
             $count = DatabaseConnection::update($this->table, $query_arr, $values, $this->operators, $this->or_ands);
         }
@@ -1059,9 +1065,10 @@ trait QueryBuilder
             return $this;
         }
 
-        $this->boot($this, 'creating');
-        $this->booted($this, 'creating');
-        $this->booting($this, 'creating');
+        // A 'creating' listener returning false aborts the insert.
+        if ($this->boot($this, 'creating') === false) {
+            return false;
+        }
 
         $values = Arr::where($this->_toArray(false, ignore: ['deleted_at', $this->primaryKey]), function ($v, $k) {      // to be used to filter out empty values in future
             return true;
