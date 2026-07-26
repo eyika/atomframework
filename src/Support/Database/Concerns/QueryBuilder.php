@@ -1032,8 +1032,12 @@ trait QueryBuilder
             if (!$model)
                 return false;
 
-            $this->{$this::UPDATED_AT} = $model[0][$this->{$this::UPDATED_AT}] ?? null;
-            $this->{$this->primaryKey} = $model[0][$this->{$this->primaryKey}] ?? null;
+            // __update(should_fill:false) returns a FLAT assoc array (toArray()).
+            // Index it by the column NAME (not `[0]` / the property value) and keep
+            // the current value if absent — the old code nulled updated_at + the PK
+            // after every save.
+            $this->{$this::UPDATED_AT} = $model[$this::UPDATED_AT] ?? $this->{$this::UPDATED_AT};
+            $this->{$this->primaryKey} = $model[$this->primaryKey] ?? $this->{$this->primaryKey};
 
             return $this;
         }
