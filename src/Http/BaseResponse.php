@@ -206,7 +206,10 @@ class BaseResponse
     protected function sendHeaders()
     {
         $this->cookies->each(function (Cookie $cookie) {
-            header("{$cookie->getName()}: {$cookie->getValue()}");
+            // Emit a real Set-Cookie header (with all attributes/flags) rather than a
+            // plain "name: value" header. `false` = don't replace, so multiple cookies
+            // each get their own Set-Cookie line.
+            header('Set-Cookie: ' . $cookie->toString(), false);
         });
         foreach ($this->headers as $header) {
             foreach ($header as $key => $value) {

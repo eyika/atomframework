@@ -49,6 +49,13 @@ class Cookie
     private $expires;
 
     /**
+     * SameSite attribute: 'Lax' | 'Strict' | 'None' | '' (omit).
+     *
+     * @var string
+     */
+    private $sameSite;
+
+    /**
      * @param string         $name
      * @param string|null    $value
      * @param int|null       $maxAge
@@ -57,6 +64,7 @@ class Cookie
      * @param bool           $secure
      * @param bool           $httpOnly
      * @param \DateTime|null $expires  Expires attribute is HTTP 1.0 only and should be avoided.
+     * @param string         $sameSite 'Lax' (default) | 'Strict' | 'None' | '' to omit.
      *
      * @throws \InvalidArgumentException if name, value or max age is not valid
      */
@@ -68,7 +76,8 @@ class Cookie
         $path = null,
         $secure = false,
         $httpOnly = false,
-        ?\DateTime $expires = null
+        ?\DateTime $expires = null,
+        $sameSite = 'Lax'
     ) {
         if ($this->isJsonObjectOrArray($value)) {
             $value = urlencode($value);
@@ -85,6 +94,35 @@ class Cookie
         $this->path = $this->normalizePath($path);
         $this->secure = (bool) $secure;
         $this->httpOnly = (bool) $httpOnly;
+        $this->sameSite = $this->normalizeSameSite($sameSite);
+    }
+
+    private function normalizeSameSite($sameSite): string
+    {
+        $sameSite = ucfirst(strtolower((string) $sameSite));
+
+        return in_array($sameSite, ['Lax', 'Strict', 'None'], true) ? $sameSite : '';
+    }
+
+    /**
+     * Returns the SameSite attribute value.
+     */
+    public function getSameSite(): string
+    {
+        return $this->sameSite;
+    }
+
+    /**
+     * Sets the SameSite attribute.
+     *
+     * @return Cookie
+     */
+    public function withSameSite($sameSite)
+    {
+        $new = clone $this;
+        $new->sameSite = $this->normalizeSameSite($sameSite);
+
+        return $new;
     }
 
     /**
@@ -510,19 +548,37 @@ class Cookie
         return $this->name === $cookie->name && $this->domain === $cookie->domain and $this->path === $cookie->path;
     }
 
-    // Convert the cookie object to a string suitable for `Set-Cookie` header
+    // Convert the cookie object to a string suitable for the `Set-Cookie` header.
     public function toString()
     {
-        return sprintf(
-            '%s=%s; Expires=%s; Path=%s; Domain=%s; %s%s',
-            $this->name,
-            urlencode($this->value),
-            gmdate('D, d-M-Y H:i:s T', $this->maxAge),
-            $this->path,
-            $this->domain ?: '',
-            $this->secure ? 'Secure; ' : '',
-            $this->httpOnly ? 'HttpOnly' : ''
-        );
+        $str = $this->name . '=' . urlencode((string) $this->value);
+
+        // Expires/Max-Age: an explicit \DateTime wins; otherwise maxAge is a DURATION
+        // in seconds (was previously fed to gmdate() as an absolute timestamp — a bug
+        // that made every cookie expire in 1970).
+        if (isset($this->expires)) {
+            $str .= '; Expires=' . gmdate('D, d-M-Y H:i:s T', $this->expires->getTimestamp());
+            $str .= '; Max-Age=' . max(0, $this->expires->getTimestamp() - time());
+        } elseif (isset($this->maxAge)) {
+            $str .= '; Expires=' . gmdate('D, d-M-Y H:i:s T', time() + $this->maxAge);
+            $str .= '; Max-Age=' . $this->maxAge;
+        }
+
+        $str .= '; Path=' . $this->path;
+        if (!empty($this->domain)) {
+            $str .= '; Domain=' . $this->domain;
+        }
+        if ($this->secure) {
+            $str .= '; Secure';
+        }
+        if ($this->httpOnly) {
+            $str .= '; HttpOnly';
+        }
+        if (!empty($this->sameSite)) {
+            $str .= '; SameSite=' . $this->sameSite;
+        }
+
+        return $str;
     }
 
     private function isJsonObjectOrArray(string $string): bool
