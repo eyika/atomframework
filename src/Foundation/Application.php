@@ -4,6 +4,7 @@ namespace Eyika\Atom\Framework\Foundation;
 
 use Eyika\Atom\Framework\Foundation\Concerns\ServiceContainer;
 use Eyika\Atom\Framework\Foundation\Contracts\ApplicationInterface;
+use Eyika\Atom\Framework\Foundation\Contracts\DeferrableProvider;
 use Eyika\Atom\Framework\Support\Arrayable;
 use Eyika\Atom\Framework\Support\NamespaceHelper;
 
@@ -81,20 +82,66 @@ class Application implements ApplicationInterface
         )));
 
         foreach ($providers as $provider) {
-            if (!$this->loadedProviders()->keyExists($provider)) {
-                $instance = new $provider($this);
-                /** @var ServiceProvider $instance */
-                $instance->register();
-                $this->loadProvider($provider, $instance);
+            if ($this->loadedProviders()->keyExists($provider)) {
+                continue;
+            }
 
-                // Automatically register facades
-                foreach ($instance->getFacades() as $alias => $class) {
-                    $this->instance($alias, new $class);
+            // Deferred providers (PKG-04): don't register/boot now — record the
+            // services they provide so they register lazily on first resolution.
+            if (is_a($provider, DeferrableProvider::class, true)) {
+                $instance = new $provider($this);
+                foreach ($instance->provides() as $service) {
+                    $this->deferredServices[$service] = $provider;
                 }
+                continue;
+            }
+
+            $instance = new $provider($this);
+            /** @var ServiceProvider $instance */
+            $instance->register();
+            $this->loadProvider($provider, $instance);
+
+            // Automatically register facades
+            foreach ($instance->getFacades() as $alias => $class) {
+                $this->instance($alias, new $class);
             }
         }
 
         $this->bootProviders();
+    }
+
+    /**
+     * Register (and boot) the deferred provider that supplies $service, then drop its
+     * deferred entries so it is not triggered again (PKG-04). Overrides the container's
+     * no-op hook, called from make() on first resolution of a deferred service.
+     */
+    protected function loadDeferredService(string $service): void
+    {
+        if (!isset($this->deferredServices[$service])) {
+            return;
+        }
+
+        $provider = $this->deferredServices[$service];
+        if ($this->loadedProviders()->keyExists($provider)) {
+            return;
+        }
+
+        $instance = new $provider($this);
+        /** @var ServiceProvider $instance */
+        $instance->register();
+        $this->loadProvider($provider, $instance);
+
+        foreach ($instance->getFacades() as $alias => $class) {
+            $this->instance($alias, new $class);
+        }
+
+        $instance->boot();
+
+        if ($instance instanceof DeferrableProvider) {
+            foreach ($instance->provides() as $provided) {
+                unset($this->deferredServices[$provided]);
+            }
+        }
     }
 
     protected function bootProviders(): void

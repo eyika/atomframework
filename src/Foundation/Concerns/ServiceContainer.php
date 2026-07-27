@@ -15,6 +15,9 @@ trait ServiceContainer
     protected $aliases = [];
     protected $resolved = [];
 
+    /** abstract => deferred provider class, registered lazily on first make() (PKG-04). */
+    protected $deferredServices = [];
+
     // Bind a service to the container
     public function bind(string $key, $resolver): void
     {
@@ -87,6 +90,12 @@ trait ServiceContainer
     {
         $key = $this->getAlias($key);
 
+        // A deferred provider's service is bound on first resolution (PKG-04): register
+        // the owning provider now, then fall through to the freshly-created binding.
+        if (isset($this->deferredServices[$key]) && !isset($this->instances[$key]) && !isset($this->bindings[$key])) {
+            $this->loadDeferredService($key);
+        }
+
         if (isset($this->instances[$key])) {
             return $this->instances[$key];
         }
@@ -96,6 +105,15 @@ trait ServiceContainer
         }
 
         return $this->resolve($key);
+    }
+
+    /**
+     * Register the deferred provider that supplies $key. No-op in the base container;
+     * the Application overrides this to register + boot the provider on demand.
+     */
+    protected function loadDeferredService(string $key): void
+    {
+        // overridden by Application (PKG-04)
     }
 
     // ---------------------------------------------------------------------------
