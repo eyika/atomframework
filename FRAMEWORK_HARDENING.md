@@ -258,7 +258,7 @@ CRITICAL / HIGH / MED / LOW — framework-level exploitability or breakage. Some
 | ID | Impact | Location | Fix |
 |----|--------|----------|-----|
 | PERF-10 | HIGH | `Support/Config.php:40` | ✅ DONE — compiled config cache (`Config::cache()` → `bootstrap/cache/config.php`, loaded in one require at boot) + `config:cache`/`config:clear` commands; `clearCache()` deletes the artifact. `ConfigCacheTest`. |
-| PERF-11 | HIGH | `Http/Server.php:54,59` | IN PROGRESS (architectural, closure-aware hybrid) — route cache; closure routes stay dynamic (path-1 decision, no closure serialization). |
+| PERF-11 | HIGH | `Http/Server.php:54,59` | ✅ DONE (closure-aware, per-file) — `route:cache`/`route:clear` compile each closure-free route file to `bootstrap/cache/routes-{web,api}.php`; `Server` loads the cache if present else requires the source. A file with closures is skipped (its closures stay dynamic) — no closure serialization (path-1). `Route::buildRouteCacheData`/`loadRoutesFile`. `RouteCacheTest`. NOTE: fx-data-server's web.php + api.php each currently have closure routes (root/`/devops`; `/_v_script.js`, `{slug:.+}`), so neither caches until those ~4 are converted to controllers. |
 | PERF-12 | MED | `Http/Route.php:315` | ✅ DONE (static fast-path) — static routes match by exact string equality (no explode+regex), iteration order preserved so first-registered-wins precedence is unchanged. `DispatcherStaticFastPathTest`. Combined dynamic-regex compilation DEFERRED (would change match precedence). |
 | PERF-13 | MED | `Foundation/Application.php:73`, `Http/Server.php:95` | → **P4** (worker-safety) — deferred/lazy providers + lazy facades. |
 | PERF-14 | HIGH | `HasRelationships.php` | ✅ DONE (= BUG-21) — Relation descriptors + `with()` whereIn batching. |

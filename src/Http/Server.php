@@ -52,12 +52,12 @@ class Server
                 if (!preg_match('#^/api(/|$)#', strtok($request->pathInfo(), '?')) && !$request->wantsJson() && !$request->isXmlHttpRequest() && !$request->isOptions()) {
                     static::loadMiddlewares('web');
                     ///TODO: load all default web middlewares
-                    require_once base_path().'/routes/web.php';
+                    Route::loadRoutesFile('web', base_path().'/routes/web.php');
                 } else {
                     Route::isApiRequest(true);
                     static::loadMiddlewares('api');
                     ///TODO: load all default api middlewares
-                    require_once base_path().'/routes/api.php';
+                    Route::loadRoutesFile('api', base_path().'/routes/api.php');
                 }
                 $status = Route::dispatch($request);
                 // Only remember the "previous URL" for web GET navigation. Storing it

@@ -247,6 +247,84 @@ class Route
         url()->storeCurrent();
     }
 
+    /** The full registered route table (used by route:cache). */
+    public static function getRoutes(): array
+    {
+        return self::$routes;
+    }
+
+    /**
+     * Reset registration-time state so a route file can be (re)loaded cleanly when
+     * compiling the cache. Leaves dispatch-time state (default middlewares, aliases,
+     * priority) alone — that comes from the Kernel at request time.
+     */
+    public static function clearRegistered(): void
+    {
+        self::$routes = [];
+        self::$groupPrefix = '';
+        self::$groupDomains = [];
+        self::$middlewares = [];
+        self::$routeName = '';
+    }
+
+    /** Path to a route file's compiled cache artifact, or null if base_path is unavailable. */
+    public static function routeCachePath(string $name): ?string
+    {
+        if (!function_exists('base_path')) {
+            return null;
+        }
+        return base_path("bootstrap/cache/routes-{$name}.php");
+    }
+
+    /**
+     * Load a route file into the table: from its compiled cache when present
+     * (PERF-11), otherwise by requiring the source. A file containing closure routes
+     * is never cached (see buildRouteCacheData), so it is always required and its
+     * closures stay dynamically registered.
+     */
+    public static function loadRoutesFile(string $name, string $sourceFile): void
+    {
+        $cacheFile = self::routeCachePath($name);
+        if ($cacheFile !== null && is_file($cacheFile)) {
+            $cached = require $cacheFile;
+            if (is_array($cached)) {
+                foreach ($cached as $method => $routes) {
+                    self::$routes[$method] = array_merge(self::$routes[$method] ?? [], $routes);
+                }
+                return;
+            }
+        }
+
+        require_once $sourceFile;
+    }
+
+    /**
+     * Compile a route file for caching: load it in isolation and return its route
+     * table plus any closure routes found (closures can't be var_export'd, so a file
+     * with closures is not cacheable). Restores a clean registration state after.
+     *
+     * @return array{routes: array, closures: string[]}
+     */
+    public static function buildRouteCacheData(string $sourceFile): array
+    {
+        self::clearRegistered();
+        require $sourceFile;
+
+        $routes = self::$routes;
+        $closures = [];
+        foreach ($routes as $method => $rs) {
+            foreach ($rs as $uri => $data) {
+                if (($data['callback'] ?? null) instanceof \Closure) {
+                    $closures[] = "$method $uri";
+                }
+            }
+        }
+
+        self::clearRegistered();
+
+        return ['routes' => $routes, 'closures' => $closures];
+    }
+
     public static function previous(bool $store = false)
     {
         return url()->previous($store);
