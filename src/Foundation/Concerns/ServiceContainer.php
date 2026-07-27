@@ -85,6 +85,8 @@ trait ServiceContainer
     //    auto-resolved classes into de-facto singletons.)
     public function make(string $key): mixed
     {
+        $key = $this->getAlias($key);
+
         if (isset($this->instances[$key])) {
             return $this->instances[$key];
         }
@@ -94,6 +96,135 @@ trait ServiceContainer
         }
 
         return $this->resolve($key);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Container niceties (PKG-07)
+    // ---------------------------------------------------------------------------
+
+    protected $tags = [];
+
+    /** Register an alias so make($alias) resolves to $abstract. */
+    public function alias(string $abstract, string $alias): void
+    {
+        if ($alias !== $abstract) {
+            $this->aliases[$alias] = $abstract;
+        }
+    }
+
+    /** Follow the alias chain to the concrete key (cycle-guarded). */
+    protected function getAlias(string $abstract): string
+    {
+        $seen = [];
+        while (isset($this->aliases[$abstract])) {
+            if (isset($seen[$abstract])) {
+                throw new BaseException("Container alias cycle detected for [$abstract].");
+            }
+            $seen[$abstract] = true;
+            $abstract = $this->aliases[$abstract];
+        }
+
+        return $abstract;
+    }
+
+    /**
+     * Decorate a resolved service (decorator pattern). The closure receives the
+     * resolved instance and the container, and returns the (possibly wrapped) service.
+     */
+    public function extend(string $abstract, Closure $closure): void
+    {
+        $abstract = $this->getAlias($abstract);
+
+        if (isset($this->instances[$abstract])) {
+            $this->instances[$abstract] = $closure($this->instances[$abstract], $this);
+            return;
+        }
+
+        if (isset($this->bindings[$abstract])) {
+            $resolver = $this->bindings[$abstract];
+            $this->bindings[$abstract] = fn ($app = null) => $closure($resolver($app ?? $this), $this);
+            return;
+        }
+
+        // Unbound: decorate a fresh auto-resolution. resolve() does not re-enter the
+        // binding lookup, so binding it here cannot recurse.
+        $this->bindings[$abstract] = function () use ($abstract, $closure) {
+            return $closure($this->resolve($abstract), $this);
+        };
+    }
+
+    /** Assign one or more abstracts to one or more tags. */
+    public function tag($abstracts, $tags): void
+    {
+        foreach ((array) $tags as $tag) {
+            foreach ((array) $abstracts as $abstract) {
+                $this->tags[$tag][] = $abstract;
+            }
+        }
+    }
+
+    /** Resolve every abstract registered under a tag. */
+    public function tagged($tag): array
+    {
+        $resolved = [];
+        foreach ($this->tags[$tag] ?? [] as $abstract) {
+            $resolved[] = $this->make($abstract);
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * Invoke a callable, resolving its parameters from the container; entries in
+     * $parameters (by name) take precedence over autowiring. Accepts a Closure,
+     * "Class@method", [object, 'method'], a function name, or an invokable object.
+     */
+    public function call($callback, array $parameters = [])
+    {
+        if (is_string($callback) && str_contains($callback, '@')) {
+            [$class, $method] = explode('@', $callback, 2);
+            $callback = [$this->make($class), $method];
+        }
+
+        if (is_array($callback)) {
+            $reflector = new \ReflectionMethod($callback[0], $callback[1]);
+        } elseif (is_object($callback) && !$callback instanceof Closure) {
+            $reflector = new \ReflectionMethod($callback, '__invoke');
+        } else {
+            $reflector = new \ReflectionFunction($callback);
+        }
+
+        $args = [];
+        foreach ($reflector->getParameters() as $param) {
+            $name = $param->getName();
+            if (array_key_exists($name, $parameters)) {
+                $args[] = $parameters[$name];
+                continue;
+            }
+
+            $type = $param->getType();
+            if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
+                try {
+                    $args[] = $this->make($type->getName());
+                    continue;
+                } catch (\Throwable $e) {
+                    // fall through to defaults below
+                }
+            }
+
+            if ($param->isVariadic()) {
+                continue;
+            }
+            if ($param->isDefaultValueAvailable()) {
+                $args[] = $param->getDefaultValue();
+            } elseif ($type && $type->allowsNull()) {
+                $args[] = null;
+            } else {
+                throw new BaseException("Cannot resolve parameter \${$name} for call().");
+            }
+        }
+
+        return $callback(...$args);
     }
 
     /**
