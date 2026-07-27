@@ -4,6 +4,7 @@ namespace Eyika\Atom\Framework\Tests\Feature;
 
 use Eyika\Atom\Framework\Http\Route;
 use Eyika\Atom\Framework\Support\Auth\Auth;
+use Eyika\Atom\Framework\Support\Validator;
 use ReflectionProperty;
 
 /**
@@ -33,6 +34,7 @@ class WorkerFlushTest extends IntegrationTestCase
         $jwt->setValue(null, 'leaked-token');
         Route::get('/leak', fn () => 'x');
         $this->assertArrayHasKey('GET', Route::getRoutes());
+        Validator::$errors = ['field' => 'previous error']; // WRK-06 residue
 
         $this->app->flushRequestState();
 
@@ -42,6 +44,8 @@ class WorkerFlushTest extends IntegrationTestCase
         $this->assertSame('', Auth::getJwt());
         // Route table cleared.
         $this->assertSame([], Route::getRoutes());
+        // Validation residue cleared.
+        $this->assertSame([], Validator::$errors);
         // App-level singleton preserved.
         $this->assertSame('PERSISTENT', $this->app->make('app.singleton'));
     }

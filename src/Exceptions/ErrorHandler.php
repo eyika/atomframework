@@ -55,7 +55,6 @@ class ErrorHandler
      */
     public static function handleShutdown(): void
     {
-        logger()->info('got here now ... 2');
         $error = error_get_last();
 
         if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
@@ -73,14 +72,17 @@ class ErrorHandler
      */
     public static function handleException(\Throwable $exception): void
     {
-        logger()->info('got here now ... 3');
-        http_response_code(500);
+        if (!headers_sent()) {
+            http_response_code(500);
+        }
 
         error_log($exception);
 
         echo 'An unexpected error occurred. Please try again later.';
 
-        // Optionally rethrow or terminate
-        exit(1);
+        // Do NOT exit() here (WRK-10): under a persistent worker that would kill the
+        // whole process and drop every subsequent request. Return so the worker can
+        // finish this response and serve the next request. (Under FPM the script ends
+        // after this handler anyway.)
     }
 }

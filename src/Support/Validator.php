@@ -105,6 +105,23 @@ class Validator {
         static::$errorCode = $errorCode;
     }
 
+    /**
+     * Reset the static validation state (WRK-06/BUG-41). validate() already re-inits
+     * everything on each call (via `new self()`), so this only clears the residue the
+     * LAST request left behind — the worker calls it between requests so a stray read
+     * of Validator::$errors before the next validate() can't leak across users.
+     */
+    public static function flush(): void
+    {
+        self::$req_data = [];
+        self::$req_files = [];
+        self::$errors = [];
+        self::$validated = [];
+        self::$confirms = [];
+        self::$errorMessage = '';
+        self::$errorCode = 422;
+    }
+
     private function validateValue(string $param, array $validations): null|array
     {
         $errors = [];

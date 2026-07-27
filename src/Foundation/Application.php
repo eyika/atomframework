@@ -154,6 +154,7 @@ class Application implements ApplicationInterface
     {
         \Eyika\Atom\Framework\Support\Auth\Auth::flush();          // WRK-03 identity leak
         \Eyika\Atom\Framework\Http\Route::flushRequestState();    // WRK-05 route table
+        \Eyika\Atom\Framework\Support\Validator::flush();         // WRK-06 validation state
         \Eyika\Atom\Framework\Support\Facade\Facade::clearResolvedInstances(); // WRK-04
         $this->forgetScopedInstances();                            // WRK-09 scoped bindings
     }
