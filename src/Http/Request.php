@@ -32,6 +32,11 @@ class Request
     /** Files parsed from a PUT multipart body — kept on the instance instead of
      *  mutating the $_FILES global (WRK-13). */
     protected array $rawFiles = [];
+    // Injectable request source (WRK-01) — captured from superglobals + php://input by
+    // default, so a Request never reads process globals directly after construction.
+    protected array $postData = [];
+    protected array $filesSource = [];
+    protected ?string $rawBody = null;
     protected $server;
     protected array $headers;
     protected $proxyheader;
@@ -41,29 +46,60 @@ class Request
 
     public AuthenticatableInterface|User|null $auth_user;
 
-    public function __construct()
+    /**
+     * @param array|null $source WRK-01 injectable request source. Keys: server, query,
+     *   post, cookies, files, headers, rawBody. When null (default) each is captured
+     *   from the matching PHP superglobal / php://input — so `new Request()` is
+     *   unchanged, while a worker or test can pass explicit data and never touch
+     *   process globals.
+     */
+    public function __construct(?array $source = null)
     {
         $this->auth_user = null;
         $this->cookies = new Arrayable();
         $this->isAssetRequest = false;
 
+        $source ??= [];
+        $server  = $source['server']  ?? $_SERVER;
+        $query   = $source['query']   ?? $_GET;
+        $post    = $source['post']    ?? $_POST;
+        $cookies = $source['cookies'] ?? $_COOKIE;
+        $files   = $source['files']   ?? $_FILES;
+        $headers = $source['headers'] ?? getallheaders();
+        // Present-but-'' means an empty injected body; absent means read php://input.
+        $this->rawBody = array_key_exists('rawBody', $source) ? (string) $source['rawBody'] : null;
+
+        $this->server = $server;
+        $this->headers = array_change_key_case($headers, CASE_LOWER);
+        $this->query = $query;
+        $this->postData = $post;
+        $this->filesSource = $files;
+
         // Fetch the whitelist once, not once per cookie (PERF-07).
         $whitelistedCookies = config('cookies.whitelisted_cookies', []);
-        foreach ($_COOKIE as $name => $value) {
-            // Create a new Cookie instance for each $_COOKIE element
+        foreach ($cookies as $name => $value) {
             if (!in_array($name, $whitelistedCookies)) {
                 $this->cookies->set($name, new Cookie($name, $value));
             }
         }
-        $this->server = $_SERVER;
-        $this->headers = array_change_key_case(getallheaders(), CASE_LOWER);
-        $this->query = $_GET;
+
         $this->setRequestBodyAndFiles();
         $this->input = [...$this->body, ...$this->files];
-        // $this->body = $_POST;
         $this->attributes = [];
         $this->route_params = [];
         $this->proxyheader = 0;
+    }
+
+    /**
+     * The raw request body (php://input) — read once and cached (the stream is
+     * one-shot), or the injected body when a source was provided (WRK-01).
+     */
+    public function rawBody(): string
+    {
+        if ($this->rawBody === null) {
+            $this->rawBody = file_get_contents('php://input') ?: '';
+        }
+        return $this->rawBody;
     }
 
     protected function setRequestBodyAndFiles()
@@ -71,15 +107,15 @@ class Request
         if ($this->isMethod('PUT') && strpos((string) $this->headers('Content-Type'), 'multipart/form-data') === 0) {
             $this->body = $this->parseMultipartRequest();
         } elseif ($this->isJson()) {
-            // Read raw JSON input if content-type is JSON
-            $jsonData = json_decode(file_get_contents('php://input'), true);
+            // Read raw JSON input if content-type is JSON (from the injectable source).
+            $jsonData = json_decode($this->rawBody(), true);
             if (json_last_error() === JSON_ERROR_NONE) {
                 $this->body = $jsonData ?? [];
             } else {
                 $this->body = [];
             }
         } else {
-            $this->body = $_POST;
+            $this->body = $this->postData;
         }
     
         $this->initRequestFiles();
@@ -87,8 +123,8 @@ class Request
 
     protected function parseMultipartRequest()
     {
-        $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-    
+        $contentType = $this->server['CONTENT_TYPE'] ?? '';
+
         // Ensure it's a multipart/form-data request
         if (strpos($contentType, 'multipart/form-data') !== 0) {
             return ['error' => 'Invalid Content-Type'];
@@ -102,7 +138,7 @@ class Request
         $boundary = $matches[1];
     
         // Read raw input
-        $rawData = file_get_contents("php://input");
+        $rawData = $this->rawBody();
     
         // Split by boundary
         $parts = explode("--" . $boundary, $rawData);
@@ -177,8 +213,8 @@ class Request
         $this->files = [];
 
         // Prefer files parsed from a PUT multipart body (kept on the instance) over
-        // the $_FILES superglobal (WRK-13).
-        $source = $this->rawFiles ?: $_FILES;
+        // the injected/captured files source (WRK-13 + WRK-01).
+        $source = $this->rawFiles ?: $this->filesSource;
         foreach ($source as $fieldName => $fileData) {
             // Normalize multiple file uploads
             if (is_array($fileData['name'])) {

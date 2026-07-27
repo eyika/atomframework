@@ -294,7 +294,7 @@ Under PHP-FPM these are latent; under a persistent worker (the Octane package) t
 
 | ID | Location | Issue → Fix |
 |----|----------|-------------|
-| WRK-01 | `Http/Request.php:49-79` | Built from `$_GET/$_POST/$_SERVER/$_COOKIE/$_FILES` + `getallheaders()` + `php://input` → adapter/injectable request source. |
+| WRK-01 | `Http/Request.php:49-79` | ✅ DONE — `new Request(?array $source)` builds from an injectable source (keys: server/query/post/cookies/files/headers/rawBody); null = capture superglobals + php://input (backward-compatible). All 9 superglobal touch-points now read the source; `rawBody()` caches php://input. Integration harness gained JSON-body injection (`postJson()`) — unblocks JSON-body Feature tests (the old WRK-01 limitation). `RequestInjectionTest`. |
 | WRK-02 | `Http/BaseResponse.php:132-214` | Native `header()`/`http_response_code()`/`echo`/`readfile()` → route through the response object. |
 | WRK-03 | `Support/Auth/Auth.php:14,90` | ✅ DONE — `Auth::flush()` clears static `$user/$jwt/$sid/$guardName/$impersonator*/$guards` (config kept); called by `Application::flushRequestState()`. Closes the cross-user identity leak. `AuthFlushTest`. |
 | WRK-04 | `Support/Facade/Facade.php:27,257` | ✅ DONE — `Facade::clearResolvedInstances()` (already existed) now called by `Application::flushRequestState()` each request; `WorkerFlushTest`. |

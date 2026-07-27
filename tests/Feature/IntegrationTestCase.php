@@ -140,7 +140,8 @@ abstract class IntegrationTestCase extends TestCase
         array $query = [],
         array $body = [],
         array $headers = [],
-        array $cookies = []
+        array $cookies = [],
+        ?array $json = null
     ): TestResponse {
         $_GET = $query;
         $_POST = $body;
@@ -155,8 +156,26 @@ abstract class IntegrationTestCase extends TestCase
         foreach ($headers as $key => $value) {
             $_SERVER['HTTP_' . strtoupper(str_replace('-', '_', $key))] = $value;
         }
+        if ($json !== null) {
+            $_SERVER['CONTENT_TYPE'] = 'application/json';
+        }
 
-        $request = new Request();
+        // WRK-01: build the request from an injectable source. This is what lets us
+        // inject a JSON body — php://input can't be written under the CLI SAPI, which
+        // previously blocked JSON-body Feature tests.
+        $source = [
+            'server'  => $_SERVER,
+            'query'   => $query,
+            'post'    => $body,
+            'cookies' => $cookies,
+            'files'   => [],
+            'headers' => getallheaders(),
+        ];
+        if ($json !== null) {
+            $source['rawBody'] = json_encode($json);
+        }
+
+        $request = new Request($source);
         $this->app->instance('request', $request);
         // Fresh response instances per request: the Response facade is a shared
         // mutable singleton, so a prior request's state (e.g. _responseSent) would
@@ -184,6 +203,12 @@ abstract class IntegrationTestCase extends TestCase
     protected function post(string $uri, array $body = [], array $headers = []): TestResponse
     {
         return $this->call('POST', $uri, [], $body, $headers);
+    }
+
+    /** POST a JSON body (injected via the request source — WRK-01). */
+    protected function postJson(string $uri, array $json = [], array $headers = []): TestResponse
+    {
+        return $this->call('POST', $uri, [], [], $headers, [], $json);
     }
 
     /**
