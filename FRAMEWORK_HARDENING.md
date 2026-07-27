@@ -306,7 +306,7 @@ Under PHP-FPM these are latent; under a persistent worker (the Octane package) t
 | WRK-10 | `Exceptions/ErrorHandler.php:84` (+ dd helpers) | ✅ DONE — `ErrorHandler::handleException()` no longer `exit(1)`s (killed the worker on any uncaught error); it renders 500 + returns (+ removed leftover `got here now` debug logs). `ErrorHandlerTest`. The `dd()`/`ddHeaders()` helpers KEEP exit-on-die BY DESIGN — they're dev dump-and-die tools; an Octane-style worker restarts on a `dd`, so they're correct as-is. |
 | WRK-11 | `JwtGuard.php:157`, `Support/Url.php:28`, `Http/Middlewares/ServePublicAssets.php:27` | Read `$_SERVER` directly → go through Request. |
 | WRK-12 | `Support/Database/DB.php:47` | Transaction state in `$_SESSION` → connection object. (= PERF-16) |
-| WRK-13 | `Http/Request.php:158` | Writes `$_FILES` global → keep on the request instance. |
+| WRK-13 | `Http/Request.php:158` | ✅ DONE — PUT-multipart parsing stashes files on `$this->rawFiles` instead of writing the `$_FILES` global; `initRequestFiles()` reads `rawFiles ?: $_FILES`. Behavior-preserving (full suite green); PUT-multipart-path test gated on WRK-01 (injectable php://input). |
 | PERF-15 | — | (folded from P2) `opcache.preload` script for framework core + models — most valuable under persistent workers; ship with the Octane demo. |
 
 ---

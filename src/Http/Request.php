@@ -29,6 +29,9 @@ class Request
     protected $attributes;
     protected Arrayable $cookies;
     protected array $files;
+    /** Files parsed from a PUT multipart body — kept on the instance instead of
+     *  mutating the $_FILES global (WRK-13). */
+    protected array $rawFiles = [];
     protected $server;
     protected array $headers;
     protected $proxyheader;
@@ -155,9 +158,11 @@ class Request
             }
         }
     
-        $_FILES = $files;
+        // Keep the parsed files on the instance instead of writing the $_FILES global
+        // (WRK-13); initRequestFiles() reads them from here.
+        $this->rawFiles = $files;
         return $fields;
-    }    
+    }
 
     // Save file to a temporary location
     protected function saveTempFile($content)
@@ -171,7 +176,10 @@ class Request
     {
         $this->files = [];
 
-        foreach ($_FILES as $fieldName => $fileData) {
+        // Prefer files parsed from a PUT multipart body (kept on the instance) over
+        // the $_FILES superglobal (WRK-13).
+        $source = $this->rawFiles ?: $_FILES;
+        foreach ($source as $fieldName => $fileData) {
             // Normalize multiple file uploads
             if (is_array($fileData['name'])) {
                 foreach ($fileData['name'] as $index => $name) {
