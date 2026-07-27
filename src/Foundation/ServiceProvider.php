@@ -12,7 +12,8 @@ abstract class ServiceProvider
 {
     protected ApplicationInterface $app;
 
-    protected Arrayable $publishables;
+    /** @var array<string, array<string,string>> Publishable groups: tag => [source => destination]. */
+    protected array $publishables = [];
     protected array $facades = [];
 
     // Package-development registries (PKG-01). Providers push into these during
@@ -26,7 +27,6 @@ abstract class ServiceProvider
     public function __construct(ApplicationInterface $app)
     {
         $this->app = $app;
-        $this->publishables = new Arrayable();
     }
 
     /**
@@ -43,34 +43,29 @@ abstract class ServiceProvider
     }
 
     /**
-     * Return default framework providers.
-     */
-    public static function defaultProviders(): Arrayable
-    {
-        return new Arrayable([
-            \App\Providers\CacheServiceProvider::class,
-            \App\Providers\RouteServiceProvider::class,
-            \App\Providers\ConsoleServiceProvider::class,
-            \App\Providers\EventServiceProvider::class,
-            \App\Providers\ViewServiceProvider::class,
-            \App\Providers\DatabaseServiceProvider::class,
-        ]);
-    }
-
-    /**
-     * Register files to be published with an optional tag.
+     * Register files to be published (source => destination) under a tag. Repeated
+     * calls with the same tag accumulate. (PKG-05: was pushing onto a list while
+     * getPublishables read it as a tag-keyed map, and Arrayable's []-access is a
+     * no-op — so tag filtering never worked.)
      */
     protected function publishes(array $paths, string $tag = 'default'): void
     {
-        $this->publishables->push([$tag => $paths]);
+        $this->publishables[$tag] = array_merge($this->publishables[$tag] ?? [], $paths);
     }
 
     /**
-     * Retrieve all publishable paths by tag.
+     * Retrieve publishable paths as an Arrayable of tag => [source => destination].
+     * With a $tag, only that group is returned.
      */
     public function getPublishables(string|null $tag = null): Arrayable
     {
-        return $tag ? new Arrayable($this->publishables[$tag] ? [$tag => $this->publishables[$tag]] : []) : $this->publishables;
+        if ($tag === null) {
+            return new Arrayable($this->publishables);
+        }
+
+        return new Arrayable(
+            isset($this->publishables[$tag]) ? [$tag => $this->publishables[$tag]] : []
+        );
     }
 
     /**

@@ -278,8 +278,8 @@ CRITICAL / HIGH / MED / LOW — framework-level exploitability or breakage. Some
 | PKG-02 | `Foundation/Application.php:73` | ✅ DONE — `PackageManifest` discovers providers/aliases from installed.json `extra.atom`; `registerProviders()` merges them with `config('app.providers')`; `package:discover` caches to `bootstrap/cache/packages.php`. `PackageManifestTest`. App-safe (boot smoke green; empty manifest = no-op). Alias auto-instantiation left out (fragile `new $class`); accessor exposed for future. |
 | PKG-03 | `Foundation/ConsoleKernel.php:141` | Implement `loadLibrariesCommands()` so package commands surface. |
 | PKG-04 | `Foundation/ServiceProvider.php` | Deferred providers (`provides()` / `DeferrableProvider`). |
-| PKG-05 | `Foundation/ServiceProvider.php:54,62` | Fix `publishes()` tag signature + `getPublishables` tag filtering. |
-| PKG-06 | `Support/ServiceProvider.php`, `Foundation/ServiceProvider.php:41` | Remove dead stub; `defaultProviders()` hardcodes `\App\Providers\*`. |
+| PKG-05 | `Foundation/ServiceProvider.php:54,62` | ✅ DONE — `publishes()` now accumulates into a tag-keyed map and `getPublishables($tag)` filters correctly (was list-push vs map-read, compounded by Arrayable's no-op `[]` access). `$publishables` is a plain array now. `ServiceProviderHelpersTest`. |
+| PKG-06 | `Support/ServiceProvider.php`, `Foundation/ServiceProvider.php:41` | ✅ DONE — deleted the 0-byte `Support/ServiceProvider.php` stub; removed `defaultProviders()` (framework no longer hardcodes `\App\Providers\*`). **APP REWRITE:** fx-data-server `config/app.php` now inlines its 6 providers instead of `ServiceProvider::defaultProviders()->merge(...)`. Boot smoke green. |
 | PKG-07 | `…/Concerns/ServiceContainer.php` | Container niceties: contextual binding, tags, scoped, `call()` injection, `extend()`, populate `$aliases`. |
 | PKG-08 | `Foundation/Console/Commands/Make/*` | `make:` scaffolds: provider/command/middleware/event/listener/job/mail/rule/policy/request/resource/cast. |
 | PKG-09 | `Support/View/*` | Namespaced package views (`view('pkg::x')`). |

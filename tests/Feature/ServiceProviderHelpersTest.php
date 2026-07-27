@@ -44,6 +44,11 @@ class PkgTestProvider extends ServiceProvider
     {
         $this->commands($commands);
     }
+
+    public function pubPublishes(array $paths, string $tag = 'default'): void
+    {
+        $this->publishes($paths, $tag);
+    }
 }
 
 /**
@@ -151,5 +156,27 @@ PHP);
             ['Pkg\\Console\\FooCommand', 'Pkg\\Console\\BarCommand'],
             ServiceProvider::packageCommands()
         );
+    }
+
+    public function test_publishes_accumulate_and_filter_by_tag(): void
+    {
+        // PKG-05: previously tag filtering never worked (list-push vs map-read, plus
+        // Arrayable's no-op array access).
+        $p = $this->provider();
+        $p->pubPublishes(['/pkg/config/a.php' => '/app/config/a.php'], 'config');
+        $p->pubPublishes(['/pkg/config/b.php' => '/app/config/b.php'], 'config'); // accumulate
+        $p->pubPublishes(['/pkg/views' => '/app/views'], 'views');
+
+        $this->assertSame([
+            'config' => ['/pkg/config/a.php' => '/app/config/a.php', '/pkg/config/b.php' => '/app/config/b.php'],
+            'views' => ['/pkg/views' => '/app/views'],
+        ], $p->getPublishables()->toArray());
+
+        $this->assertSame(
+            ['config' => ['/pkg/config/a.php' => '/app/config/a.php', '/pkg/config/b.php' => '/app/config/b.php']],
+            $p->getPublishables('config')->toArray()
+        );
+
+        $this->assertSame([], $p->getPublishables('nonexistent')->toArray());
     }
 }
