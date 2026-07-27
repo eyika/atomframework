@@ -311,5 +311,14 @@ Under PHP-FPM these are latent; under a persistent worker (the Octane package) t
 
 ---
 
+## Demo packages (prove packaging + worker-safety end-to-end)
+
+| Package | Status |
+|---------|--------|
+| **eyika/atom-octane** | ✅ BUILT — Octane-style persistent worker (sibling repo `eyika/atom-octane`). `Worker` boots the app ONCE then serves many injected requests: restore route snapshot → fresh Response/JsonResponse → build Request from source (WRK-01) → dispatch with output captured (WRK-02) → read captured status/headers/body → `flushRequestState()` (WRK-03..09). Transport-agnostic; `HttpServer` is a dependency-free `stream_socket_server` HTTP/1.1 front end (swap for Swoole/FrankenPHP in prod). Auto-discovered via `extra.atom.providers` → `octane:serve` command. Proven by `OctaneWorkerTest` (boot-once + per-request isolation + 404 survival + HTTP parse/build) and a live 3-request socket smoke. Supporting framework additions: `BaseResponse` static capture mirror (`capturedStatus/Headers/Body` + `resetCapture`), `Route::setRoutes()` (restore boot snapshot), fixture `filesystems`+`cache` configs. |
+| **eyika/atom-reverb** | ⏳ NEXT — Laravel-Reverb-style WebSocket broadcast server demo. |
+
+---
+
 ## Audit provenance
 Five parallel audits (2026-07-26): worker-safety/Octane, Laravel-parity/packaging, security, correctness bugs, performance. Counts: ~33 security, ~56 correctness, ~19 performance, ~11 packaging, ~13 worker-safety items (with cross-references de-duplicated above).

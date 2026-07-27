@@ -320,6 +320,18 @@ class Route
     }
 
     /**
+     * Restore a previously captured route table. A persistent worker loads its routes
+     * once at boot (require_once runs the route file a single time), snapshots them with
+     * getRoutes(), and restores that snapshot here after each request's flushRequestState
+     * — so the immutable route table survives without re-requiring the (already-required)
+     * source file.
+     */
+    public static function setRoutes(array $routes): void
+    {
+        self::$routes = $routes;
+    }
+
+    /**
      * Reset registration-time state so a route file can be (re)loaded cleanly when
      * compiling the cache. Leaves dispatch-time state (default middlewares, aliases,
      * priority) alone — that comes from the Kernel at request time.

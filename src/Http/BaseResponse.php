@@ -240,16 +240,33 @@ class BaseResponse
     protected array $sentHeaders = [];
     protected string $sentBody = '';
 
+    // Static mirror of the capture: whichever response instance a controller sends
+    // (Response vs JsonResponse), a worker can read the result from ONE place here and
+    // doesn't have to know which object was used. Reset per request via resetCapture().
+    protected static ?int $capturedStatus = null;
+    protected static array $capturedHeaders = [];
+    protected static string $capturedBody = '';
+
     /** Turn response capture on/off (a worker enables it per request). */
     public static function captureOutput(bool $capture = true): void
     {
         self::$captureOutput = $capture;
     }
 
+    /** Clear the static capture buffer (a worker calls this before each request). */
+    public static function resetCapture(): void
+    {
+        self::$capturedStatus = null;
+        self::$capturedHeaders = [];
+        self::$capturedBody = '';
+    }
+
     protected function emitStatus(int $code): void
     {
         $this->sentStatus = $code;
-        if (!self::$captureOutput) {
+        if (self::$captureOutput) {
+            self::$capturedStatus = $code;
+        } else {
             http_response_code($code);
         }
     }
@@ -257,7 +274,9 @@ class BaseResponse
     protected function emitHeader(string $header, bool $replace = true, ?int $code = null): void
     {
         $this->sentHeaders[] = $header;
-        if (!self::$captureOutput) {
+        if (self::$captureOutput) {
+            self::$capturedHeaders[] = $header;
+        } else {
             $code !== null ? header($header, $replace, $code) : header($header, $replace);
         }
     }
@@ -265,7 +284,9 @@ class BaseResponse
     protected function emitBody(string $body): void
     {
         $this->sentBody .= $body;
-        if (!self::$captureOutput) {
+        if (self::$captureOutput) {
+            self::$capturedBody .= $body;
+        } else {
             echo $body;
         }
     }
@@ -273,12 +294,32 @@ class BaseResponse
     protected function emitFile(string $path): void
     {
         if (self::$captureOutput) {
-            $this->sentBody .= (file_get_contents($path) ?: '');
+            $chunk = (file_get_contents($path) ?: '');
+            $this->sentBody .= $chunk;
+            self::$capturedBody .= $chunk;
             return;
         }
         ob_clean();
         flush();
         readfile($path);
+    }
+
+    /** The captured status code across whichever response was sent (worker mode). */
+    public static function capturedStatus(): ?int
+    {
+        return self::$capturedStatus;
+    }
+
+    /** The captured header lines across whichever response was sent. @return string[] */
+    public static function capturedHeaders(): array
+    {
+        return self::$capturedHeaders;
+    }
+
+    /** The captured body across whichever response was sent (worker mode). */
+    public static function capturedBody(): string
+    {
+        return self::$capturedBody;
     }
 
     /** The captured status code (worker mode). */
