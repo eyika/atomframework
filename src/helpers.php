@@ -820,11 +820,15 @@ if (!function_exists('getCallableName')) {
 }
 
 if (!function_exists('event')) {
-    function event($event)
+    /**
+     * Dispatch an event: an object event, or a string name with a payload.
+     * event('user.registered', [$user]) or event(new UserRegistered($user)).
+     */
+    function event($event, $payload = [], $halt = false)
     {
-        $dispatcher = app('events');
         /** @var Dispatcher $dispatcher */
-        $dispatcher->dispatch($event);
+        $dispatcher = app('events');
+        return $dispatcher->dispatch($event, $payload, $halt);
     }
 }
 

@@ -40,6 +40,13 @@ class Application implements ApplicationInterface
         $this->pushDefaultAliases();
         $this->loadedProviders = new Arrayable();
         $this->isRunningInTestEnv = $isRunningInTestEnv;
+
+        // Default event dispatcher so the Event facade / event() helper / framework
+        // route+model events always resolve, even without an app EventServiceProvider
+        // (an app provider may still rebind 'events' — its instance then wins).
+        if (!$this->bound('events')) {
+            $this->singleton('events', fn () => new \Eyika\Atom\Framework\Foundation\Event\Dispatcher());
+        }
     }
 
     private function pushDefaultAliases()
