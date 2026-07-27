@@ -88,4 +88,49 @@ class ContainerNicetiesTest extends TestCase
 
         $this->assertSame('ada:7', $result);
     }
+
+    public function test_scoped_memoizes_within_a_request(): void
+    {
+        $c = new NicetiesContainer();
+        $count = 0;
+        $c->scoped('svc', function () use (&$count) {
+            $count++;
+            return (object) ['n' => $count];
+        });
+
+        $a = $c->make('svc');
+        $b = $c->make('svc');
+
+        $this->assertSame($a, $b);   // resolved once
+        $this->assertSame(1, $count);
+    }
+
+    public function test_forget_scoped_instances_reresolves_next_request(): void
+    {
+        $c = new NicetiesContainer();
+        $count = 0;
+        $c->scoped('svc', function () use (&$count) {
+            $count++;
+            return (object) ['n' => $count];
+        });
+
+        $first = $c->make('svc');
+        $c->forgetScopedInstances();     // simulate end of request
+        $second = $c->make('svc');
+
+        $this->assertNotSame($first, $second);
+        $this->assertSame(2, $count);
+    }
+
+    public function test_flush_clears_all_bindings(): void
+    {
+        $c = new NicetiesContainer();
+        $c->instance('x', 'X');
+        $c->bind('y', fn () => 'Y');
+
+        $c->flush();
+
+        $this->assertFalse($c->bound('x'));
+        $this->assertFalse($c->bound('y'));
+    }
 }

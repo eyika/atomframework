@@ -245,6 +245,59 @@ trait ServiceContainer
         return $callback(...$args);
     }
 
+    // ---------------------------------------------------------------------------
+    // Worker-safety: scoped bindings + reset (WRK-09)
+    // ---------------------------------------------------------------------------
+
+    /** @var string[] Keys whose resolved instance is request-scoped (flushed per request). */
+    protected $scopedInstances = [];
+
+    /**
+     * Bind a REQUEST-SCOPED service: resolved once and memoized (like a singleton),
+     * but dropped by forgetScopedInstances() between requests under a worker — so
+     * request-bound services (auth user, current request/response) don't leak.
+     */
+    public function scoped(string $key, $resolver): void
+    {
+        if (!in_array($key, $this->scopedInstances, true)) {
+            $this->scopedInstances[] = $key;
+        }
+
+        $this->bindings[$key] = function ($app = null) use ($key, $resolver) {
+            $app = $app ?? $this;
+            if (!array_key_exists($key, $this->instances)) {
+                $this->instances[$key] = is_callable($resolver) ? $resolver($app) : new $resolver;
+            }
+            return $this->instances[$key];
+        };
+    }
+
+    /** Drop every request-scoped instance so the next request re-resolves them (WRK-09). */
+    public function forgetScopedInstances(): void
+    {
+        foreach ($this->scopedInstances as $key) {
+            unset($this->instances[$key]);
+        }
+    }
+
+    /** Drop a single resolved instance. */
+    public function forgetInstance(string $key): void
+    {
+        unset($this->instances[$key]);
+    }
+
+    /** Full container reset (worker shutdown / tests) — clears ALL bindings + state. */
+    public function flush(): void
+    {
+        $this->bindings = [];
+        $this->instances = [];
+        $this->aliases = [];
+        $this->resolved = [];
+        $this->scopedInstances = [];
+        $this->tags = [];
+        $this->deferredServices = [];
+    }
+
     /**
      * Determine if a given offset exists.
      *

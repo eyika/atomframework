@@ -144,6 +144,20 @@ class Application implements ApplicationInterface
         }
     }
 
+    /**
+     * Reset all PER-REQUEST state so a persistent worker doesn't leak one request's
+     * state into the next (WRK). The worker loop calls this between requests. App-level
+     * singletons (db.connection, config) are preserved; only request-scoped identity,
+     * routing, facade-resolved instances, and scoped bindings are cleared.
+     */
+    public function flushRequestState(): void
+    {
+        \Eyika\Atom\Framework\Support\Auth\Auth::flush();          // WRK-03 identity leak
+        \Eyika\Atom\Framework\Http\Route::flushRequestState();    // WRK-05 route table
+        \Eyika\Atom\Framework\Support\Facade\Facade::clearResolvedInstances(); // WRK-04
+        $this->forgetScopedInstances();                            // WRK-09 scoped bindings
+    }
+
     protected function bootProviders(): void
     {
         $this->loadedProviders()->each(function (&$index, ServiceProvider &$instance) {

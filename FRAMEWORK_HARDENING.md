@@ -296,13 +296,13 @@ Under PHP-FPM these are latent; under a persistent worker (the Octane package) t
 |----|----------|-------------|
 | WRK-01 | `Http/Request.php:49-79` | Built from `$_GET/$_POST/$_SERVER/$_COOKIE/$_FILES` + `getallheaders()` + `php://input` → adapter/injectable request source. |
 | WRK-02 | `Http/BaseResponse.php:132-214` | Native `header()`/`http_response_code()`/`echo`/`readfile()` → route through the response object. |
-| WRK-03 | `Support/Auth/Auth.php:14,90` | Static `$user/$jwt/$sid/$impersonator*` → **cross-user identity leak**; reset per request. |
-| WRK-04 | `Support/Facade/Facade.php:27,257` | Static resolved-instance cache of request/response/session → `clearResolvedInstances()` + rebind per request. |
-| WRK-05 | `Http/Route.php:11-23`, `Http/Server.php:54` | Static route/current-route state + `require_once` route load → reset per request; rethink one-shot load. |
+| WRK-03 | `Support/Auth/Auth.php:14,90` | ✅ DONE — `Auth::flush()` clears static `$user/$jwt/$sid/$guardName/$impersonator*/$guards` (config kept); called by `Application::flushRequestState()`. Closes the cross-user identity leak. `AuthFlushTest`. |
+| WRK-04 | `Support/Facade/Facade.php:27,257` | ✅ DONE — `Facade::clearResolvedInstances()` (already existed) now called by `Application::flushRequestState()` each request; `WorkerFlushTest`. |
+| WRK-05 | `Http/Route.php:11-23`, `Http/Server.php:54` | ✅ DONE — `Route::flushRequestState()` resets per-request route table / current-route / api flag / group state (maps KEPT); called by the coordinator. `WorkerFlushTest`. |
 | WRK-06 | `Support/Validator.php:12` | Static → instance state. (= BUG-41) |
 | WRK-07 | `Support/Database/DB.php` | ✅ DONE — Static query-builder state → now instance state (= BUG-31). Only `$transaction_mode`/`$instantiated` remain static (process-level). |
 | WRK-08 | `Http/Session.php` | Native `$_SESSION`/`session_start` = process-global shared across users → request-scoped store. |
-| WRK-09 | `…/Concerns/ServiceContainer.php` | No `flush()`/`forgetScoped()`/scoped bindings → add reset + scoped concept. |
+| WRK-09 | `…/Concerns/ServiceContainer.php` | ✅ DONE — added `scoped()` (request-scoped memoized bindings), `forgetScopedInstances()`, `forgetInstance()`, `flush()` (full reset). `ContainerNicetiesTest`. Coordinator `Application::flushRequestState()` (Auth+Route+Facade+scoped) is the per-request worker reset. |
 | WRK-10 | `Exceptions/ErrorHandler.php:84`, `Http/Client/{Response.php:434,458,PendingRequest.php:757}`, `Support/Stringable.php:710`, `…/EnumeratesValues.php:213` | `exit()/die()` in request path kill the worker → throw/handle instead. |
 | WRK-11 | `JwtGuard.php:157`, `Support/Url.php:28`, `Http/Middlewares/ServePublicAssets.php:27` | Read `$_SERVER` directly → go through Request. |
 | WRK-12 | `Support/Database/DB.php:47` | Transaction state in `$_SESSION` → connection object. (= PERF-16) |

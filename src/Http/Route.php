@@ -293,6 +293,26 @@ class Route
         self::$maps = [];
     }
 
+    /**
+     * Reset PER-REQUEST routing state (WRK-05) so a persistent worker doesn't carry a
+     * previous request's route table / current-route / api flag into the next one.
+     * The provider-registered maps are KEPT (they're wired once at boot); the Kernel
+     * re-populates default middlewares each request.
+     */
+    public static function flushRequestState(): void
+    {
+        self::$routes = [];
+        self::$currentRoute = '';
+        self::$apiRequest = false;
+        self::$groupPrefix = '';
+        self::$groupDomains = [];
+        self::$routeName = '';
+        self::$lastInsertedRouteKeys = '';
+        self::$middlewares = [];
+        self::$lastGroupMiddleware = [];
+        self::$defaultMiddlewares = [];
+    }
+
     /** The full registered route table (used by route:cache). */
     public static function getRoutes(): array
     {

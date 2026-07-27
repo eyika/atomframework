@@ -177,6 +177,26 @@ final class Auth
         return static::$sid;
     }
 
+    /**
+     * Reset ALL per-request identity state (WRK-03). Under a persistent worker the
+     * static resolved user/jwt/sid/impersonation would otherwise leak into the next
+     * request — a cross-user identity leak. The worker calls this between requests.
+     * Configuration ($config) is intentionally left intact; the guard name is cleared
+     * so it is re-derived from the next request.
+     */
+    public static function flush(): void
+    {
+        static::$user = null;
+        static::$jwt = '';
+        static::$sid = '';
+        // Untyped → null makes isset() false, so init() re-derives the guard from the
+        // next request (a static property cannot be unset()).
+        static::$guardName = null;
+        static::$isImpersonating = false;
+        static::$impersonatorId = null;
+        static::$guards = [];
+    }
+
     public static function setImpersonation(bool $isImpersonating, ?int $impersonatorId = null): void
     {
         static::$isImpersonating = $isImpersonating;
