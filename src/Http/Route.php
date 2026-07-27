@@ -167,12 +167,23 @@ class Route
         // Route::any() routes (filed under 'ANY') now actually dispatch.
         $candidates = (self::$routes[$requestMethod] ?? []) + (self::$routes['ANY'] ?? []);
         foreach ($candidates as $route => $data) {
-            if (self::matchesRoute($route, $requestUri, $parameters)) {
-                $request->route_params = Arr::wrap(sanitize_data($parameters));
-                self::$currentRoute = $route;
-                $matched = $data;
-                break;
+            // Static routes (no "{param}") match by exact string equality — skip the
+            // explode + per-segment preg_match that matchesRoute() runs (PERF-12).
+            // The loop still iterates in registration order, so first-registered-wins
+            // precedence (a static/dynamic route clash) is unchanged.
+            if (strpos($route, '{') === false) {
+                if ($route !== $requestUri) {
+                    continue;
+                }
+                $parameters = [];
+            } elseif (!self::matchesRoute($route, $requestUri, $parameters)) {
+                continue;
             }
+
+            $request->route_params = Arr::wrap(sanitize_data($parameters));
+            self::$currentRoute = $route;
+            $matched = $data;
+            break;
         }
 
         // Reuse the matched route's own middlewares — no second full route scan.

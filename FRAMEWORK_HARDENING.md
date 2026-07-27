@@ -257,9 +257,9 @@ CRITICAL / HIGH / MED / LOW — framework-level exploitability or breakage. Some
 ### 2.2 Structural
 | ID | Impact | Location | Fix |
 |----|--------|----------|-----|
-| PERF-10 | HIGH | `Support/Config.php:40` | PENDING (architectural) — compiled config-cache artifact + `config:cache`/`config:clear` commands. `clearCache()` already implemented (BUG-48). |
-| PERF-11 | HIGH | `Http/Server.php:54,59` | PENDING (architectural) — route cache (stop re-parsing `routes/*.php` each request); needs a build/clear command + invalidation. |
-| PERF-12 | MED | `Http/Route.php:315` | PENDING (architectural) — compiled dispatcher: static-route hash + combined dynamic regex. |
+| PERF-10 | HIGH | `Support/Config.php:40` | ✅ DONE — compiled config cache (`Config::cache()` → `bootstrap/cache/config.php`, loaded in one require at boot) + `config:cache`/`config:clear` commands; `clearCache()` deletes the artifact. `ConfigCacheTest`. |
+| PERF-11 | HIGH | `Http/Server.php:54,59` | IN PROGRESS (architectural, closure-aware hybrid) — route cache; closure routes stay dynamic (path-1 decision, no closure serialization). |
+| PERF-12 | MED | `Http/Route.php:315` | ✅ DONE (static fast-path) — static routes match by exact string equality (no explode+regex), iteration order preserved so first-registered-wins precedence is unchanged. `DispatcherStaticFastPathTest`. Combined dynamic-regex compilation DEFERRED (would change match precedence). |
 | PERF-13 | MED | `Foundation/Application.php:73`, `Http/Server.php:95` | → **P4** (worker-safety) — deferred/lazy providers + lazy facades. |
 | PERF-14 | HIGH | `HasRelationships.php` | ✅ DONE (= BUG-21) — Relation descriptors + `with()` whereIn batching. |
 | PERF-15 | MED | — | PENDING — `opcache.preload` script for framework core + models (ops artifact). |
