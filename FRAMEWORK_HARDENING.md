@@ -262,7 +262,7 @@ CRITICAL / HIGH / MED / LOW — framework-level exploitability or breakage. Some
 | PERF-12 | MED | `Http/Route.php:315` | ✅ DONE (static fast-path) — static routes match by exact string equality (no explode+regex), iteration order preserved so first-registered-wins precedence is unchanged. `DispatcherStaticFastPathTest`. Combined dynamic-regex compilation DEFERRED (would change match precedence). |
 | PERF-13 | MED | `Foundation/Application.php:73`, `Http/Server.php:95` | → **P4** (worker-safety) — deferred/lazy providers + lazy facades. |
 | PERF-14 | HIGH | `HasRelationships.php` | ✅ DONE (= BUG-21) — Relation descriptors + `with()` whereIn batching. |
-| PERF-15 | MED | — | PENDING — `opcache.preload` script for framework core + models (ops artifact). |
+| PERF-15 | MED | — | → **P4** (worker-safety/deploy) — `opcache.preload` script for framework core + models (ops artifact; preloading matters most for persistent workers). |
 | PERF-16 | MED | `DB.php:47` | → **P4** (worker-safety, = WRK-12) — move transaction state off `$_SESSION` onto the connection. |
 | PERF-17 | MED | `Application.php:29`, `NamespaceHelper.php:14` | ✅ DONE — `NamespaceHelper` memoizes parsed `composer.json` per path (+ `flushComposerCache()`). `NamespaceHelperCacheTest`. |
 | PERF-18 | MED | `Http/Server.php:63`, `Url.php:60` | ✅ DONE — `storeCurrent()` gated to non-API GET (was a session/DB write every request; overwriting on POST was wrong). |
@@ -274,7 +274,7 @@ CRITICAL / HIGH / MED / LOW — framework-level exploitability or breakage. Some
 ## PHASE 3 — PACKAGING / DX (enables reusable packages, incl. the Octane demo)
 | ID | Location | Gap → Fix |
 |----|----------|-----------|
-| PKG-01 | `Foundation/ServiceProvider.php` | Add `loadRoutesFrom()`/`loadMigrationsFrom()`/`loadViewsFrom()`/`mergeConfigFrom()`/`loadTranslationsFrom()`/`commands()`. |
+| PKG-01 | `Foundation/ServiceProvider.php` | ✅ DONE — added `loadRoutesFrom`/`mergeConfigFrom` (app overrides pkg), `loadMigrationsFrom` (wired into `Db\Migrate::gatherMigrations`), `commands` (wired into `ConsoleKernel::loadPackageCommands`), `loadViewsFrom`/`loadTranslationsFrom` (registries + accessors; view resolver = PKG-09, translator = future). `flushPackageRegistrations()`. `ServiceProviderHelpersTest`. NOTE: sibling migrate cmds (fresh/reset/rollback/status) still only scan the app dir — adopt `ServiceProvider::migrationPaths()` there too as a follow-up. |
 | PKG-02 | `Foundation/Application.php:73` | `PackageManifest` reading installed `composer.json` `extra` → auto-register providers (the `composer require`-and-done experience). |
 | PKG-03 | `Foundation/ConsoleKernel.php:141` | Implement `loadLibrariesCommands()` so package commands surface. |
 | PKG-04 | `Foundation/ServiceProvider.php` | Deferred providers (`provides()` / `DeferrableProvider`). |
@@ -283,7 +283,7 @@ CRITICAL / HIGH / MED / LOW — framework-level exploitability or breakage. Some
 | PKG-07 | `…/Concerns/ServiceContainer.php` | Container niceties: contextual binding, tags, scoped, `call()` injection, `extend()`, populate `$aliases`. |
 | PKG-08 | `Foundation/Console/Commands/Make/*` | `make:` scaffolds: provider/command/middleware/event/listener/job/mail/rule/policy/request/resource/cast. |
 | PKG-09 | `Support/View/*` | Namespaced package views (`view('pkg::x')`). |
-| PKG-10 | — | `route:cache` / `config:cache` commands (with PERF-10/11). |
+| PKG-10 | — | ✅ DONE (P2) — `config:cache`/`config:clear` (PERF-10) + `route:cache`/`route:clear` (PERF-11) commands built. |
 | PKG-11 | `Support/Database/Schema/*` | (Optional) grammar abstraction — schema is MySQL-hardcoded; note portability limit. |
 
 ---
@@ -306,6 +306,7 @@ Under PHP-FPM these are latent; under a persistent worker (the Octane package) t
 | WRK-11 | `JwtGuard.php:157`, `Support/Url.php:28`, `Http/Middlewares/ServePublicAssets.php:27` | Read `$_SERVER` directly → go through Request. |
 | WRK-12 | `Support/Database/DB.php:47` | Transaction state in `$_SESSION` → connection object. (= PERF-16) |
 | WRK-13 | `Http/Request.php:158` | Writes `$_FILES` global → keep on the request instance. |
+| PERF-15 | — | (folded from P2) `opcache.preload` script for framework core + models — most valuable under persistent workers; ship with the Octane demo. |
 
 ---
 

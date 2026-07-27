@@ -6,6 +6,7 @@ use Exception;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 use Eyika\Atom\Framework\Foundation\Concerns\ClassDependencyResolver;
 use Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel as ContractsConsoleKernel;
+use Eyika\Atom\Framework\Foundation\ServiceProvider;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\NamespaceHelper;
 use Eyika\Atom\Framework\Foundation\Console\Command;
@@ -65,6 +66,9 @@ class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
     public function run(string|callable|QueueInterface $signature, array $arguments = [], bool $requireConsoleRoute = true)
     {
         app()->registerProviders();
+        // Register commands contributed by packages via ServiceProvider::commands()
+        // (PKG-01) — providers have just booted, so the registry is populated.
+        $this->loadPackageCommands();
         //Load console route command definitions into $commands array
         if ($requireConsoleRoute)
             require base_path('routes/console.php');
@@ -130,6 +134,24 @@ class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
     /**
      * Load all the defined project commands into console kernel registry
      */
+    /**
+     * Register console commands contributed by packages through
+     * ServiceProvider::commands() (PKG-01), in addition to the framework + app
+     * command directories.
+     */
+    public function loadPackageCommands(): void
+    {
+        foreach (ServiceProvider::packageCommands() as $commandClass) {
+            if (!is_string($commandClass) || !class_exists($commandClass)) {
+                continue;
+            }
+            $command = new $commandClass();
+            if ($command instanceof Command) {
+                $this->register($command->signature, $command, [], $command->description);
+            }
+        }
+    }
+
     public function loadProjectCommands()
     {
         $this->loadCommands(base_path('app/Console/Commands'), project_namespace(), 'app');

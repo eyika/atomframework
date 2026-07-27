@@ -6,6 +6,7 @@ use Exception;
 use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
 use Eyika\Atom\Framework\Foundation\Console\Concerns\RunsOnConsole;
 use Eyika\Atom\Framework\Foundation\Console\Command;
+use Eyika\Atom\Framework\Foundation\ServiceProvider;
 use Eyika\Atom\Framework\Support\Database\DB;
 use Eyika\Atom\Framework\Support\Database\Schema\Migrations\CreateMigrationsTable;
 use Eyika\Atom\Framework\Support\Database\Schema\Migrations\Migration;
@@ -36,7 +37,9 @@ class Migrate extends Command
             }
 
             $migrationPath = $options['basepath'] ?? base_path('database/migrations');
-            $migrations = $path ? [$path] : glob($migrationPath . '/*.php');
+            // Include package migration directories registered via
+            // ServiceProvider::loadMigrationsFrom() (PKG-01) alongside the app's.
+            $migrations = $path ? [$path] : $this->gatherMigrations($migrationPath);
     
             // Ensure migrations table exists
             (new CreateMigrationsTable())->up();
@@ -80,5 +83,23 @@ class Migrate extends Command
             return false;
         }
         return true;
+    }
+
+    /**
+     * Collect migration files from the app's directory plus every package directory
+     * registered via ServiceProvider::loadMigrationsFrom() (PKG-01). Each directory
+     * is sorted by filename; the app's run first, then packages in registration order.
+     *
+     * @return string[]
+     */
+    private function gatherMigrations(string $basePath): array
+    {
+        $files = glob($basePath . '/*.php') ?: [];
+
+        foreach (ServiceProvider::migrationPaths() as $packagePath) {
+            $files = array_merge($files, glob(rtrim($packagePath, '/\\') . '/*.php') ?: []);
+        }
+
+        return $files;
     }
 }
