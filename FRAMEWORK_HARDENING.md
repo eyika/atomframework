@@ -70,7 +70,8 @@ All high/critical security items fixed with tests; the three above are documente
 - **BUG-23 (`first()`/`find()`→null):** SAFE — the app has ZERO `=== false`/`!== false` comparisons on finder results (grep-verified; all guards are `if (!$x)`/`instanceof`, which work identically for null).
 - **Model definitions (`const fillable`):** already satisfied — all 46 app models use `const fillable` (no `$fillable` properties).
 - **Validation performed:** (1) class-load sweep — 199/199 live App\/Database\ classes load cleanly against the hardened vendor (no signature/trait fatal); (2) reflection + instantiation of every relation-bearing model; (3) live boot smoke — `Application` boots, providers register, routing + middleware chain + JSON responses all work with 0 PHP warnings (public + protected routes return correct JSON 400/404; the only TypeError seen was a CLI-fabrication artifact from omitting `REMOTE_ADDR`, harmless in real requests). Framework redirect/Response pipeline covered by the framework suite.
-- **PRE-EXISTING app findings (NOT hardening-related, dormant — reported, not fixed):** `DocumentsController` has `namespace App\Http\ControllersApi` (typo; unrouted orphan); `PermissonMiddleware.php` filename misspelled (only in commented-out Kernel lines); `app/Providers/BroadcastServiceProvider.php` declares `namespace Eyika\...\Providers` instead of `App\Providers` (registration commented out).
+- **PRE-EXISTING app findings (NOT hardening-related — now FIXED, fx-data-server `9482a94`):** `DocumentsController` namespace `App\Http\ControllersApi`→`App\Http\Controllers\Api`; `PermissonMiddleware.php`→`PermissionMiddleware.php` (class was already correct); app `BroadcastServiceProvider` namespace `Eyika\...\Providers`→`App\Providers`. (`DataStoragePathDto` inside `FxDataController.php` left as-is — a private in-file DTO, not autoloaded by name.)
+- **fx-data-server commits (branch `go-live`):** `b4f8148` (relation adaptation) + `9482a94` (PSR-4 typo fixes).
 - **Framework test count:** 132 tests / 259 assertions green.
 
 ## Severity legend
@@ -242,16 +243,16 @@ CRITICAL / HIGH / MED / LOW — framework-level exploitability or breakage. Some
 ### 2.1 Quick wins (local, high payoff)
 | ID | Impact | Location | Fix |
 |----|--------|----------|-----|
-| PERF-01 | HIGH | `SubstituteBindings.php:90` | Cache model key→class map (kill per-request `app/Models` walk). = BUG-17. |
-| PERF-02 | HIGH | `Http/Route.php:177,304` | `findRouteMiddlewares` re-scans all routes after dispatch already matched — reuse `self::$currentRoute` middlewares. |
-| PERF-03 | MED | `Connection.php:87` | Enable `PDO::ATTR_PERSISTENT` (flagged). |
-| PERF-04 | MED | `MysqlSessionHandler.php:25` | Reuse container `db.connection` instead of opening a 2nd PDO. |
+| PERF-01 | HIGH | `SubstituteBindings.php:90` | ✅ DONE — model key→class map memoized on a static (`modelMap()`/`flushModelMap()`); no per-param `app/Models` walk. `SubstituteBindingsModelMapTest`. |
+| PERF-02 | HIGH | `Http/Route.php:177,304` | ✅ DONE (P1 routing) — dispatch reuses the matched route's own middlewares; no second scan. |
+| PERF-03 | MED | `Connection.php:87` | ✅ DONE — opt-in `PDO::ATTR_PERSISTENT` via `database.connections.<driver>.persistent` (off by default). `ConnectionOptionsTest`. |
+| PERF-04 | MED | `MysqlSessionHandler.php:25` | ✅ DONE — removed the dead 2nd `new Connection(...)`; every method already uses the shared `DB` facade connection. |
 | PERF-05 | MED | `QueryBuilder.php:881,898,1040` | Drop post-write confirmation `SELECT`; use `RETURNING`/`lastInsertId`. |
-| PERF-06 | MED | `QueryBuilder.php:416` | Fire lifecycle hooks once (currently 3×/row no-op). |
-| PERF-07 | LOW | `Http/Request.php:49,56,59` | Hoist `config()` out of cookie loop; lazy `input`/`headers`. |
+| PERF-06 | MED | `QueryBuilder.php:416` | ✅ DONE — removed 16 dead `booted()`/`booting()` per-row calls (empty no-ops post-BUG-20); `boot()` still dispatches once per event. |
+| PERF-07 | LOW | `Http/Request.php:49,56,59` | ✅ DONE (loop hoist) — `config('cookies.whitelisted_cookies')` fetched once, not per cookie. (Lazy `input`/`headers` = deferred follow-up.) |
 | PERF-08 | MED | `QueryBuilder.php:69` | Skip decode-then-encode cast round-trip on writes. |
 | PERF-09 | MED | `Connection.php:553` | Precompute JSON columns instead of per-column `_json` `strpos` scan. |
-| PERF-19 | LOW | `Route.php:167`, `SubstituteBindings.php:36` | `sanitize_data` applied to params twice — do once (or at output). |
+| PERF-19 | LOW | `Route.php:167`, `SubstituteBindings.php:36` | ✅ DONE — removed the redundant second `sanitize_data()` in `SubstituteBindings` (params already sanitized at `Route::dispatch`). |
 
 ### 2.2 Structural
 | ID | Impact | Location | Fix |

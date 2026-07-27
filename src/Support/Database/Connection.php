@@ -124,11 +124,22 @@ class Connection {
    */
   protected function getOptions(): array
   {
-      return [
+      $options = [
           PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
           PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
           PDO::ATTR_EMULATE_PREPARES   => false,
       ];
+
+      // Opt-in persistent connections (PERF-03): reuse pooled PDO handles across
+      // requests to skip the connect handshake. OFF by default — a persistent handle
+      // can carry transaction/temp-table/session state between requests, so enable it
+      // only for stateless-per-request deployments, via
+      // config: database.connections.<driver>.persistent = true.
+      if (!empty($this->config['connections'][$this->driver]['persistent'])) {
+          $options[PDO::ATTR_PERSISTENT] = true;
+      }
+
+      return $options;
   }
 
   /**

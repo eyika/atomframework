@@ -175,8 +175,6 @@ trait QueryBuilder
 
         // Trigger "retrieved" event for the main model
         $this->boot($this, 'retrieved');
-        $this->booted($this, 'retrieved');
-        $this->booting($this, 'retrieved');
     
         return $this->fetchRelationship($this, true, $is_protected);
     }
@@ -379,8 +377,6 @@ trait QueryBuilder
 
         // Trigger "retrieved" event for the main model
         $this->boot($this, 'retrieved');
-        $this->booted($this, 'retrieved');
-        $this->booting($this, 'retrieved');
     
         return $this->fetchRelationship($this, true, $is_protected);
     }
@@ -421,8 +417,6 @@ trait QueryBuilder
     
         // Trigger "retrieved" event for the main model
         $this->boot($this, 'retrieved');
-        $this->booted($this, 'retrieved');
-        $this->booting($this, 'retrieved');
     
         return $this->fetchRelationship($this, true, $is_protected);
     }
@@ -457,8 +451,6 @@ trait QueryBuilder
             $this->decryptValues($model);
             $model = $this->fill($model, true);
             $this->boot($model, 'retrieved');
-            $this->booted($model, 'retrieved');
-            $this->booting($model, 'retrieved');
         }
 
         return $this->fetchRelationship($models, true, is_protected: $is_protected);
@@ -707,8 +699,6 @@ trait QueryBuilder
         $val = DatabaseConnection::remove($this->table, $query_arr, $this->operators, $this->or_ands);
 
         $this->boot($this, 'deleted');
-        $this->booted($this, 'deleted');
-        $this->booting($this, 'deleted');
         $this->resetInstance();
         return $val;
     }
@@ -972,12 +962,8 @@ trait QueryBuilder
 
         if ($create) {
             $this->boot($model, 'created');
-            $this->booted($model, 'created');
-            $this->booting($model, 'created');
         } else {
             $this->boot($model, 'saved');
-            $this->booted($model, 'saved');
-            $this->booting($model, 'saved');
         }
 
         return $should_fill ? $model : $model->toArray($is_protected);
@@ -1114,8 +1100,6 @@ trait QueryBuilder
         $this->fill($model);
 
         $this->boot($this, 'created');
-        $this->booted($this, 'created');
-        $this->booting($this, 'created');
 
         return $this;
     }

@@ -2,7 +2,6 @@
 
 namespace Eyika\Atom\Framework\Support\Session;
 
-use Eyika\Atom\Framework\Support\Database\Connection;
 use Eyika\Atom\Framework\Support\Database\DB;
 use Eyika\Atom\Framework\Support\Database\Schema\Blueprint;
 use Eyika\Atom\Framework\Support\Database\Schema\Schema;
@@ -14,15 +13,13 @@ use SessionUpdateTimestampHandlerInterface;
 class MysqlSessionHandler implements SessionHandlerInterface, SessionIdInterface, SessionUpdateTimestampHandlerInterface
 {
     private $table;
-    private Connection $dbConnection;
 
     public function __construct()
     {
-        // $dbname = env('DB_DATABASE');
-        // $dbhost = env('DB_HOST');
-        // $dbadapter = env('DB_ADAPTER');
+        // Reuse the container's shared db.connection via the DB facade (used by every
+        // method below) instead of opening a second PDO here (PERF-04). The previous
+        // `new Connection(config('database'))` was assigned but never read.
         $this->table = config('session.table', 'sessions');
-        $this->dbConnection = new Connection(config('database'));
     }
 
     public function open($sessionSavePath, $sessionName): bool

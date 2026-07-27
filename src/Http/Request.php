@@ -44,9 +44,11 @@ class Request
         $this->cookies = new Arrayable();
         $this->isAssetRequest = false;
 
+        // Fetch the whitelist once, not once per cookie (PERF-07).
+        $whitelistedCookies = config('cookies.whitelisted_cookies', []);
         foreach ($_COOKIE as $name => $value) {
             // Create a new Cookie instance for each $_COOKIE element
-            if (!in_array($name, config('cookies.whitelisted_cookies', []))) {
+            if (!in_array($name, $whitelistedCookies)) {
                 $this->cookies->set($name, new Cookie($name, $value));
             }
         }
