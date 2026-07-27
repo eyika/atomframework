@@ -275,7 +275,7 @@ CRITICAL / HIGH / MED / LOW — framework-level exploitability or breakage. Some
 | ID | Location | Gap → Fix |
 |----|----------|-----------|
 | PKG-01 | `Foundation/ServiceProvider.php` | ✅ DONE — added `loadRoutesFrom`/`mergeConfigFrom` (app overrides pkg), `loadMigrationsFrom` (wired into `Db\Migrate::gatherMigrations`), `commands` (wired into `ConsoleKernel::loadPackageCommands`), `loadViewsFrom`/`loadTranslationsFrom` (registries + accessors; view resolver = PKG-09, translator = future). `flushPackageRegistrations()`. `ServiceProviderHelpersTest`. NOTE: sibling migrate cmds (fresh/reset/rollback/status) still only scan the app dir — adopt `ServiceProvider::migrationPaths()` there too as a follow-up. |
-| PKG-02 | `Foundation/Application.php:73` | `PackageManifest` reading installed `composer.json` `extra` → auto-register providers (the `composer require`-and-done experience). |
+| PKG-02 | `Foundation/Application.php:73` | ✅ DONE — `PackageManifest` discovers providers/aliases from installed.json `extra.atom`; `registerProviders()` merges them with `config('app.providers')`; `package:discover` caches to `bootstrap/cache/packages.php`. `PackageManifestTest`. App-safe (boot smoke green; empty manifest = no-op). Alias auto-instantiation left out (fragile `new $class`); accessor exposed for future. |
 | PKG-03 | `Foundation/ConsoleKernel.php:141` | Implement `loadLibrariesCommands()` so package commands surface. |
 | PKG-04 | `Foundation/ServiceProvider.php` | Deferred providers (`provides()` / `DeferrableProvider`). |
 | PKG-05 | `Foundation/ServiceProvider.php:54,62` | Fix `publishes()` tag signature + `getPublishables` tag filtering. |

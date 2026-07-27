@@ -72,7 +72,13 @@ class Application implements ApplicationInterface
 
     public function registerProviders(): void
     {
-        $providers = config('app.providers', []);
+        // Merge the app's configured providers with those auto-discovered from
+        // installed packages' composer.json extra.atom.providers (PKG-02). The
+        // per-provider keyExists guard below prevents any double registration.
+        $providers = array_values(array_unique(array_merge(
+            config('app.providers', []),
+            (new PackageManifest())->providers()
+        )));
 
         foreach ($providers as $provider) {
             if (!$this->loadedProviders()->keyExists($provider)) {
