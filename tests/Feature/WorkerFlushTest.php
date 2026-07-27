@@ -49,4 +49,16 @@ class WorkerFlushTest extends IntegrationTestCase
         // App-level singleton preserved.
         $this->assertSame('PERSISTENT', $this->app->make('app.singleton'));
     }
+
+    public function test_flush_request_state_clears_the_session_global(): void
+    {
+        // WRK-08: a leaked $_SESSION from a previous request must be cleared so the
+        // next worker request loads its own session fresh.
+        $_SESSION = ['leaked' => 'user-A'];
+        $this->app->instance('session', new \Eyika\Atom\Framework\Http\Session());
+
+        $this->app->flushRequestState();
+
+        $this->assertSame([], $_SESSION);
+    }
 }

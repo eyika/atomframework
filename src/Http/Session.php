@@ -131,4 +131,19 @@ class Session
     {
         return session_status() === PHP_SESSION_ACTIVE;
     }
+
+    /**
+     * Reset the session between requests under a persistent worker (WRK-08). PHP's
+     * $_SESSION + session_start are process-global; a worker calls this after handling
+     * each request to persist + close the current session and clear the global, so the
+     * NEXT request's start() loads that user's session fresh (no cross-user leak). Only
+     * ever invoked by Application::flushRequestState() — never under FPM.
+     */
+    public function flush(): void
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+        $_SESSION = [];
+    }
 }

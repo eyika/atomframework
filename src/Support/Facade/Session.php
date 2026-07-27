@@ -13,6 +13,7 @@ namespace Eyika\Atom\Framework\Support\Facade;
  * @method static void destroy()
  * @method static void regenerate()
  * @method static bool active()
+ * @method static void flush()
  */
 class Session extends Facade
 {
