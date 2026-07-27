@@ -4,6 +4,15 @@ namespace Eyika\Atom\Framework\Support;
 
 class NamespaceHelper
 {
+    /**
+     * Parsed composer.json keyed by path (PERF-17). The Application constructor
+     * calls getBaseNamespace() three times per boot (app/test/database namespaces),
+     * each of which previously re-read and re-decoded the file.
+     *
+     * @var array<string,array>
+     */
+    protected static array $composerCache = [];
+
     public static function getBaseNamespace(?string $composerJsonPath = null, ?string $folderName = null): string
     {
         if (!$composerJsonPath) {
@@ -11,7 +20,10 @@ class NamespaceHelper
         }
 
         if ($composerJsonPath && file_exists($composerJsonPath)) {
-            $composerJson = json_decode(file_get_contents($composerJsonPath), true);
+            if (!isset(self::$composerCache[$composerJsonPath])) {
+                self::$composerCache[$composerJsonPath] = json_decode(file_get_contents($composerJsonPath), true) ?: [];
+            }
+            $composerJson = self::$composerCache[$composerJsonPath];
 
             if (isset($composerJson['autoload']['psr-4'])) {
                 $namespaces = array_keys($composerJson['autoload']['psr-4']);
@@ -38,6 +50,14 @@ class NamespaceHelper
         }
 
         throw new \RuntimeException("Base namespace could not be determined.");
+    }
+
+    /**
+     * Drop the memoized composer.json cache (test isolation / worker reload).
+     */
+    public static function flushComposerCache(): void
+    {
+        self::$composerCache = [];
     }
 
     public static function loadAndPerformActionOnClasses(string $namespace, string $fullPath, callable $method, $base_folder = 'src')

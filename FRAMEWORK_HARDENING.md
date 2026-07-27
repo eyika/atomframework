@@ -257,15 +257,15 @@ CRITICAL / HIGH / MED / LOW — framework-level exploitability or breakage. Some
 ### 2.2 Structural
 | ID | Impact | Location | Fix |
 |----|--------|----------|-----|
-| PERF-10 | HIGH | `Support/Config.php:40` | Compiled config-cache artifact (implement `clearCache`, BUG-48). |
-| PERF-11 | HIGH | `Http/Server.php:54,59` | Route cache (stop re-parsing `routes/*.php` each request). |
-| PERF-12 | MED | `Http/Route.php:315` | Compiled dispatcher: static-route hash + combined dynamic regex. |
-| PERF-13 | MED | `Foundation/Application.php:73`, `Http/Server.php:95` | Deferred/lazy providers + lazy facades (stop registering+booting all per request). |
-| PERF-14 | HIGH | `HasRelationships.php` | Real eager loading (`whereIn` batching). = BUG-21. |
-| PERF-15 | MED | — | `opcache.preload` script for framework core + models. |
-| PERF-16 | MED | `DB.php:47` | Move transaction state off `$_SESSION` onto the connection. = WRK-12. |
-| PERF-17 | MED | `Application.php:29`, `NamespaceHelper.php:14` | `composer.json` read+parsed 4× per request — cache the namespaces. |
-| PERF-18 | MED | `Http/Server.php:63`, `Url.php:60` | `storeCurrent()` writes session every non-asset request — gate to web GET. |
+| PERF-10 | HIGH | `Support/Config.php:40` | PENDING (architectural) — compiled config-cache artifact + `config:cache`/`config:clear` commands. `clearCache()` already implemented (BUG-48). |
+| PERF-11 | HIGH | `Http/Server.php:54,59` | PENDING (architectural) — route cache (stop re-parsing `routes/*.php` each request); needs a build/clear command + invalidation. |
+| PERF-12 | MED | `Http/Route.php:315` | PENDING (architectural) — compiled dispatcher: static-route hash + combined dynamic regex. |
+| PERF-13 | MED | `Foundation/Application.php:73`, `Http/Server.php:95` | → **P4** (worker-safety) — deferred/lazy providers + lazy facades. |
+| PERF-14 | HIGH | `HasRelationships.php` | ✅ DONE (= BUG-21) — Relation descriptors + `with()` whereIn batching. |
+| PERF-15 | MED | — | PENDING — `opcache.preload` script for framework core + models (ops artifact). |
+| PERF-16 | MED | `DB.php:47` | → **P4** (worker-safety, = WRK-12) — move transaction state off `$_SESSION` onto the connection. |
+| PERF-17 | MED | `Application.php:29`, `NamespaceHelper.php:14` | ✅ DONE — `NamespaceHelper` memoizes parsed `composer.json` per path (+ `flushComposerCache()`). `NamespaceHelperCacheTest`. |
+| PERF-18 | MED | `Http/Server.php:63`, `Url.php:60` | ✅ DONE — `storeCurrent()` gated to non-API GET (was a session/DB write every request; overwriting on POST was wrong). |
 
 **Verified good (no action):** `Config` is a per-request singleton; `db.connection` is one lazily-opened PDO reused within a request.
 

@@ -60,7 +60,11 @@ class Server
                     require_once base_path().'/routes/api.php';
                 }
                 $status = Route::dispatch($request);
-                if (!$request->isAssetRequest())
+                // Only remember the "previous URL" for web GET navigation. Storing it
+                // for API, AJAX/JSON, or non-GET requests forced a needless session
+                // write — a DB write under the MySQL session handler — on every
+                // request, and overwriting it on POST is wrong anyway (PERF-18).
+                if (!$request->isAssetRequest() && $request->isMethod('GET') && !Route::isApiRequest())
                     Route::storeCurrent();
 
                 return $status;
