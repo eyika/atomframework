@@ -65,11 +65,13 @@ All high/critical security items fixed with tests; the three above are documente
   - **BUG-41 (Validator static state):** belongs to the **P4 worker-safety** cluster (Facade reset, Auth static, session-off-native, DB static, container flush). Fine under PHP-FPM; deferred with P4.
 - **Suite: 128 tests / 251 assertions green.**
 
-### ⚠️ APP REWRITES NEEDED (fx-data-server, after phases — user's plan)
-- **BUG-21 relationships:** `$model->rel()` now returns a `Relation`, NOT resolved data. App must switch to `with('rel')` + `$model->rel` (property) or `$model->getRelation('rel')`. (Direct `$post->author()` expecting a User now gets a Relation.) belongsToMany still returns data.
-- **BUG-23 (pending):** `first()`/`find()` will change to return `null` (not `false`) — audit + fix `=== false`/`!== false` callers.
-- **Model definitions:** custom `fillable`/`guarded` must be declared as `const fillable = [...]` (a `$fillable` PROPERTY is ignored by the framework).
-- **Test count:** 74 tests / 143 assertions green.
+### ✅ APP REWRITES (fx-data-server) — DONE & VALIDATED
+- **BUG-21 relationships — RECONCILED via a new `Concerns\ResolvesRelations` trait (framework).** Rather than rewrite 40+ `$model->rel()` call sites, the trait overrides hasOne/hasMany/belongsTo to resolve to DATA on a direct call (delegates to `parent::` then `->getResults($this)`), while the base Model keeps returning `Relation` for `with()` batching. Applied to the framework `Auth\User` (so `App\Models\User` inherits it — fixes the typed `plan(): Plan|null` etc. that would TypeError on a Relation) and to `App\Models\Model` (all other models). Removed the direct `use HasRelationships;` from the 10 app models that had it (they inherit the resolved variant from `App\Models\Model`). belongsToMany unchanged (still returns data). Test: `ResolvesRelationsTest` (belongsTo→model/null, hasMany→array, getRelation still works).
+- **BUG-23 (`first()`/`find()`→null):** SAFE — the app has ZERO `=== false`/`!== false` comparisons on finder results (grep-verified; all guards are `if (!$x)`/`instanceof`, which work identically for null).
+- **Model definitions (`const fillable`):** already satisfied — all 46 app models use `const fillable` (no `$fillable` properties).
+- **Validation performed:** (1) class-load sweep — 199/199 live App\/Database\ classes load cleanly against the hardened vendor (no signature/trait fatal); (2) reflection + instantiation of every relation-bearing model; (3) live boot smoke — `Application` boots, providers register, routing + middleware chain + JSON responses all work with 0 PHP warnings (public + protected routes return correct JSON 400/404; the only TypeError seen was a CLI-fabrication artifact from omitting `REMOTE_ADDR`, harmless in real requests). Framework redirect/Response pipeline covered by the framework suite.
+- **PRE-EXISTING app findings (NOT hardening-related, dormant — reported, not fixed):** `DocumentsController` has `namespace App\Http\ControllersApi` (typo; unrouted orphan); `PermissonMiddleware.php` filename misspelled (only in commented-out Kernel lines); `app/Providers/BroadcastServiceProvider.php` declares `namespace Eyika\...\Providers` instead of `App\Providers` (registration commented out).
+- **Framework test count:** 132 tests / 259 assertions green.
 
 ## Severity legend
 CRITICAL / HIGH / MED / LOW — framework-level exploitability or breakage. Some security items depend on how an app calls the primitive (noted).

@@ -4,12 +4,15 @@ namespace Eyika\Atom\Framework\Support\Auth;
 
 use Eyika\Atom\Framework\Support\Auth\Concerns\Authenticatable;
 use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
+use Eyika\Atom\Framework\Support\Database\Concerns\ResolvesRelations;
 use Eyika\Atom\Framework\Support\Database\Concerns\UserAwareQueryBuilder;
 use Eyika\Atom\Framework\Support\Database\Model;
 
 class User extends Model implements AuthenticatableInterface
 {
-    use Authenticatable, UserAwareQueryBuilder;
+    // Relation methods resolve to DATA on a direct call ($user->relation()); the
+    // base Model's HasRelationships returns Relation descriptors for with() batching.
+    use Authenticatable, UserAwareQueryBuilder, ResolvesRelations;
 
     /**
      * The attributes that are mass assignable.
