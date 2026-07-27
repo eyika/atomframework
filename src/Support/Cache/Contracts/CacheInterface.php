@@ -2,11 +2,12 @@
 
 namespace Eyika\Atom\Framework\Support\Cache\Contracts;
 
-interface CacheInterface
+use Psr\Cache\CacheItemPoolInterface;
+
+interface CacheInterface extends CacheItemPoolInterface
 {
-    public function get(string $key);
-    public function set(string $key, $value, int $ttl = 3600): bool;
-    public function delete(string $key): bool;
-    public function clear(): bool;
-    public function has(string $key): bool;
+    /**
+     * @param CacheItem $item
+     */
+    public function setItem($item): bool;
 }

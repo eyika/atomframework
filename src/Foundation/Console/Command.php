@@ -2,107 +2,149 @@
 
 namespace Eyika\Atom\Framework\Foundation\Console;
 
+use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
-use Monolog\Level;
+use Eyika\Atom\Framework\Foundation\Console\Concerns\LogsMessages;
+use Eyika\Atom\Framework\Foundation\Console\Contracts\ShouldLogMessages;
+use Eyika\Atom\Framework\Support\Arr;
 
-abstract class Command
+abstract class Command implements ShouldLogMessages
 {
+    use LogsMessages;
+
     // Store parsed options
     protected array $options;
     protected array $allowedOptions;
+    protected array $arguments;
+    protected string $directory;
 
+    public string $description = '';
     public string $signature = '';
 
     public function __construct()
     {
+        $this->directory = '';
         $this->options = [];
         $this->allowedOptions = [];
-        $this->parseOptions();
     }
 
-    public function handle(array $arguments = []): bool
+    public function handle(): bool
     {
         throw new NotImplementedException('method is not implemented');
     }
 
-    // Method to get command line options
-    public function option($name)
+    public function setBaseDir(string $directory)
     {
-        return $this->options[$name] ?? null;
+        $this->directory = $directory;
+        return $this;
+    }
+
+    public function setArguments(array $arguments = [])
+    {
+        $this->arguments = $arguments;
+        $this->parseOptions();
+        return $this;
+    }
+
+    public function arguments()
+    {
+        return $this->arguments;
+    }
+
+    public function argument(int $index): null|string
+    {
+        if (!array_key_exists($index, $this->arguments)) {
+            return null;
+        }
+        return $this->arguments[$index];
+    }
+
+    // Method to get command line option
+    public function option($name, $default = null): null|string
+    {
+        return $this->options[$name] ?? $default;
+    }
+
+    // Method to get command line options
+    public function options(): array
+    {
+        return $this->options;
+    }
+
+    // Method to set command line options
+    public function setOption($name, $value)
+    {
+        if (!Arr::keyExists($this->allowedOptions, $name)) {
+            throw new BaseConsoleException("option $name is not in allowed options for this commmand");
+        }
+
+        $this->options[$name] = $value;
     }
 
     public function setAllowedOptions(array $options)
     {
         $this->allowedOptions = $options;
+        return $this;
+    }
+
+    public function allowedOptions()
+    {
+        return $this->allowedOptions;
     }
     
     // Method to parse command-line options
     protected function parseOptions()
     {
-        global $argv;
+        // global $argv;
+        $this->options = [];
 
-        foreach ($argv as $arg) {
-            // Match options in the form --option=value
-            if (preg_match('/^--(\w+)=?(.*)$/', $arg, $matches)) {
+        foreach ($this->arguments as $arg) {
+            // Match options in the form --option=value, --option, -option, -option=
+            if (preg_match('/^-{1,2}([\w-]+)(?:=(.*))?$/', $arg, $matches)) {
                 $name = $matches[1];
-                $value = $matches[2];
-
-                // If value is not provided, set it as true
-                if ($value === '') {
-                    $value = true;
-                }
-
-                // Store the option in the $options array
+                $value = isset($matches[2]) ? $matches[2] : (strpos($name, '=') === false ? true : null); // Set value to true if not provided
+        
+                // Store the option in the $options array only if it's allowed
                 if (
                     !in_array("{--$name=}", $this->allowedOptions) &&
                     !in_array("{--$name}", $this->allowedOptions) &&
                     !in_array("{-$name=}", $this->allowedOptions) &&
                     !in_array("{-$name}", $this->allowedOptions)
                 ) {
-                    //TODO: throw an exception with exit code 1 telling that the command option is not supported
+                    // TODO: throw an exception with exit code 1 telling that the command option is not supported
                 }
+                
                 $this->options[$name] = $value;
             }
         }
     }
 
-    public function info(string $message, array $context = [], $to_log_file = false)
+    protected function call(string $name, array $arguments = [], bool $requireConsoleRoute = false)
     {
-        $to_log_file ? logger()->info($message, $context) : consoleLog(200, $message);
+        Artisan::call($name, $arguments, $requireConsoleRoute);
     }
 
-    public function error(string $message, array $context = [], $to_log_file = false)
+    protected function table(array $headers, array $rows)
     {
-        $to_log_file ? logger()->error($message, $context) : consoleLog(400, $message);
-    }
+        $columnWidths = array_map('strlen', $headers);
 
-    public function notice(string $message, array $context = [], $to_log_file = false)
-    {
-        $to_log_file ? logger()->notice($message, $context) : consoleLog(250, $message);
-    }
+        foreach ($rows as $row) {
+            foreach ($row as $i => $cell) {
+                $columnWidths[$i] = max($columnWidths[$i], strlen($cell));
+            }
+        }
 
-    public function emergency(string $message, array $context = [], $to_log_file = false)
-    {
-        $to_log_file ? logger()->emergency($message, $context) : consoleLog(600, $message);
-    }
+        $separator = '+-' . implode('-+-', array_map(fn ($w) => str_repeat('-', $w), $columnWidths)) . '-+';
+        $headerRow = '| ' . implode(' | ', array_map(fn ($h, $w) => str_pad($h, $w), $headers, $columnWidths)) . ' |';
 
-    public function warning(string $message, array $context = [], $to_log_file = false)
-    {
-        $to_log_file ? logger()->warning($message, $context) : consoleLog(300, $message);
-    }
+        $output = [$separator, $headerRow, $separator];
 
-    public function warn(string $message, array $context = [], $to_log_file = false)
-    {
-        $to_log_file ? logger()->warning($message, $context) : consoleLog(300, $message);
-    }
+        foreach ($rows as $row) {
+            $output[] = '| ' . implode(' | ', array_map(fn ($cell, $w) => str_pad($cell, $w), $row, $columnWidths)) . ' |';
+        }
 
-    public function debug(string $message, array $context = [], $to_log_file = false)
-    {
-        $to_log_file ? logger()->debug($message, $context) : consoleLog(100, $message);
-    }
+        $output[] = $separator;
 
-    public function critical(string $message, array $context = [], $to_log_file = false)
-    {
-        $to_log_file ? logger()->critical($message, $context) : consoleLog(500, $message);
+        $this->info(implode("\n", $output));
     }
 }

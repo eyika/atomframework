@@ -2,9 +2,13 @@
 
 namespace Eyika\Atom\Framework\Http\Middlewares;
 
+use Closure;
 use Eyika\Atom\Framework\Exceptions\Http\AccessDeniedHttpException;
+use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
+use Eyika\Atom\Framework\Http\Csrf;
+use Eyika\Atom\Framework\Support\Facade\Request as FacadeRequest;
 
 class VerifyCsrfToken implements MiddlewareInterface
 {
@@ -13,13 +17,13 @@ class VerifyCsrfToken implements MiddlewareInterface
      *
      * @throws AccessDeniedHttpException
      */
-    public function handle(Request $request): bool
+    public function handle(Request $request, Closure $next): BaseResponse
     {
         if ($this->shouldVerify($request)) {
             $this->verifyCsrfToken($request);
         }
 
-        return false;
+        return $next($request);
     }
 
     /**
@@ -36,7 +40,7 @@ class VerifyCsrfToken implements MiddlewareInterface
         ];
 
         foreach ($except as $pattern) {
-            if ($this->match($pattern, $request->getPathInfo())) {
+            if ($this->match($pattern, $request->pathInfo())) {
                 return false;
             }
         }
@@ -53,25 +57,12 @@ class VerifyCsrfToken implements MiddlewareInterface
      */
     protected function verifyCsrfToken(Request $request): void
     {
-        $token = $request->header('X-CSRF-TOKEN') ?? $request->query('_token');
-
-        if (!$this->isValidCsrfToken($token)) {
+        // Csrf::csrfIsValid() itself exempts read-only verbs and verifies ALL
+        // state-changing ones (POST/PUT/PATCH/DELETE), closing the prior
+        // POST-only gap that let PUT/PATCH/DELETE bypass CSRF entirely.
+        if (!Csrf::csrfIsValid()) {
             throw new AccessDeniedHttpException('Invalid CSRF token.');
         }
-    }
-
-    /**
-     * Check if the CSRF token is valid.
-     *
-     * @param string|null $token
-     * @return bool
-     */
-    protected function isValidCsrfToken(?string $token): bool
-    {
-        // Retrieve the session token (this is just a placeholder; implement your own token retrieval)
-        $sessionToken = $_SESSION['csrf_token'] ?? null;
-
-        return hash_equals($sessionToken, $token);
     }
 
     /**

@@ -11,7 +11,7 @@ use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidFactory;
 use voku\helper\ASCII;
 
-Class Str
+final Class Str
 {
     use Macroable;
 
@@ -159,7 +159,7 @@ Class Str
     }
 
     /**
-     * Convert a value to camel case.
+     * Convert a value to camelCase.
      *
      * @param  string  $value
      * @return string
@@ -174,7 +174,18 @@ Class Str
     }
 
     /**
-     * Convert a value to pascal case.
+     * Check if a tring is camelCase.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public static function isCamel($value)
+    {
+        return $value === static::camel($value);
+    }
+
+    /**
+     * Convert a value to PascalCase.
      * 
      * @param string $value
      * @return string
@@ -186,6 +197,107 @@ Class Str
         }
 
         return static::$pascalCache[$value] = ucfirst(static::studly($value));
+    }
+
+    /**
+     * Check if a tring is PascalCase.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public static function isPascal($value)
+    {
+        return $value === static::pascal($value);
+    }
+
+    /**
+     * Convert a string to snake_case.
+     *
+     * @param  string  $value
+     * @param  string  $delimiter
+     * @return string
+     */
+    public static function snake($value, $delimiter = '_')
+    {
+        $key = $value;
+
+        if (isset(static::$snakeCache[$key][$delimiter])) {
+            return static::$snakeCache[$key][$delimiter];
+        }
+
+        if (! ctype_lower($value)) {
+            $value = preg_replace('/\s+/u', '', ucwords($value));
+
+            $value = static::lower(preg_replace('/(.)(?=[A-Z])/u', '$1'.$delimiter, $value));
+        }
+
+        return static::$snakeCache[$key][$delimiter] = $value;
+    }
+
+    /**
+     * Convert a string to kebab-case.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public static function kebab($value)
+    {
+        return static::snake($value, '-');
+    }
+
+    /**
+     * Convert a string to dot.case.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public static function dot($value)
+    {
+        return static::snake($value, '.');
+    }
+
+    /**
+     * Convert a string to SCREAMING_SNAKE_CASE.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public static function screamingSnake($value)
+    {
+        return strtoupper(static::snake($value));
+    }
+
+    /**
+     * Convert a string to TRAIN-CASE.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public static function train($value)
+    {
+        return ucwords(static::kebab($value), '-');
+    }
+
+    /**
+     * Convert a string to Title Case.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public static function title($value)
+    {
+        return ucwords(str_replace(['-', '_'], ' ', $value));
+    }
+
+    /**
+     * Convert a string to flatcase.
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public static function flat($value)
+    {
+        return strtolower(preg_replace('/\s+/u', '', $value));
     }
 
     /**
@@ -302,8 +414,7 @@ Class Str
      */
     public static function isAscii($value)
     {
-        throw new \Exception("The method is not implemented yet", 1);
-        //return ASCII::is_ascii((string) $value);
+        return mb_check_encoding($value, 'ASCII');
     }
 
     /**
@@ -333,14 +444,78 @@ Class Str
     }
 
     /**
-     * Convert a string to kebab case.
+     * Validate if a string is a valid email address.
      *
-     * @param  string  $value
-     * @return string
+     * @param string $email
+     * @return bool
      */
-    public static function kebab($value)
+    public static function isEmail($email): bool
     {
-        return static::snake($value, '-');
+        return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+    }
+
+    /**
+     * Validate if a string is a valid phone number.
+     *
+     * @param string $phone
+     * @return bool
+     */
+    public static function isPhoneNumber(string $phone): bool
+    {
+        // Matches international and local phone numbers with optional spaces, dashes, or parentheses
+        $pattern = '/^\+?[1-9]\d{1,14}$|^(\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}$/';
+
+        return preg_match($pattern, $phone) === 1;
+    }
+
+    /**
+     * Check if a string is valid Base64 encoded.
+     *
+     * @param string $value
+     * @return bool
+     */
+    public static function isBase64(string $value): bool
+    {
+        // Base64 strings should only contain A-Z, a-z, 0-9, +, /, and =
+        // The length of the string should be a multiple of 4
+        if (preg_match('/^[A-Za-z0-9+\/]+={0,2}$/', $value) && strlen($value) % 4 === 0) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Determine if a string is a valid word and check if it is singular.
+     *
+     * @param string $word
+     * @return string|null Returns true, false, or null if not a valid word.
+     */
+    public static function isSingular(string $word): ?string
+    {
+        // Check if the string is a valid word (letters only)
+        if (!preg_match('/^[a-zA-Z]+$/', $word)) {
+            return null; // Not a valid word
+        }
+
+        // Check plurality
+        // Basic rule: Words ending in 's' but not 'ss' are usually plural
+        if (substr($word, -1) === 's' && substr($word, -2) !== 'ss') {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Determine if a string is a valid word and check if it is plural.
+     *
+     * @param string $word
+     * @return string|null Returns true, false, or null if not a valid word.
+     */
+    public static function isPlural(string $word): ?string
+    {
+        return !static::isSingular($word);
     }
 
     /**
@@ -460,85 +635,61 @@ Class Str
     /**
      * Get the plural form of an English word.
      *
-     * @param  string  $word
-     * @param  int  $count
+     * @param string  $word
+     * @param string $lang
      * @return string
      */
-    public static function plural($word, $count = 2)
+    public static function plural($word, $lang = 'english')
     {
-        $plural = array(
-            array('/(quiz)$/i',               "$1zes"),
-            array('/^(ox)$/i',                "$1en"),
-            array('/([m|l])ouse$/i',          "$1ice"),
-            array('/(matr|vert|ind)ix|ex$/i', "$1ices"),
-            array('/(x|ch|ss|sh)$/i',         "$1es"),
-            array('/([^aeiouy]|qu)y$/i',      "$1ies"),
-            array('/(hive)$/i',               "$1s"),
-            array('/(?:([^f])fe|([lr])f)$/i', "$1$2ves"),
-            array('/sis$/i',                  "ses"),
-            array('/([ti])um$/i',             "$1a"),
-            array('/(buffal|tomat)o$/i',      "$1oes"),
-            array('/(bu)s$/i',                "$1ses"),
-            array('/(alias|status)$/i',       "$1es"),
-            array('/(octop|vir)us$/i',        "$1i"),
-            array('/(ax|test)is$/i',          "$1es"),
-            array('/s$/i',                    "s"),
-            array('/$/',                      "s")
-        );
-    
-        $irregular = array(
-            array('move',   'moves'),
-            array('foot',   'feet'),
-            array('goose',  'geese'),
-            array('sex',    'sexes'),
-            array('child',  'children'),
-            array('man',    'men'),
-            array('tooth',  'teeth'),
-            array('person', 'people')
-        );
-    
-        $uncountable = array(
-            'sheep', 'fish', 'deer', 'series', 'species', 'money', 'rice', 'information', 'equipment'
-        );
-    
-        // Check for uncountable words
-        foreach ($uncountable as $uncount) {
-            if (strtolower($uncount) == strtolower($word)) {
-                return $word;
-            }
-        }
-    
-        // Check for irregular words
-        foreach ($irregular as $noun) {
-            if (strtolower($noun[0]) == strtolower($word)) {
-                return $noun[1];
-            }
-        }
-    
-        // Check for matches using regular expressions
-        foreach ($plural as $pattern) {
-            if (preg_match($pattern[0], $word)) {
-                return preg_replace($pattern[0], $pattern[1], $word);
-            }
-        }
-    
-        return $word;
+        //TODO: ensure lang is among supported languages
+        return StrHelpers::{$lang}()->pluralize($word);
+    }
+
+    /**
+     * Get the singular form of an English word.
+     *
+     * @param string  $word
+     * @param string $lang
+     * @return string
+     */
+    public static function singular($word, $lang = 'english')
+    {
+        //TODO: ensure lang is among supported languages
+        return StrHelpers::{$lang}()->singularize($word);
     }
 
     /**
      * Pluralize the last word of an English, studly caps case string.
      *
      * @param  string  $value
-     * @param  int  $count
+     * @param  string  $lang
      * @return string
      */
-    public static function pluralStudly($value, $count = 2)
+    public static function pluralStudly($value, $lang = 'english')
     {
+        //TODO: ensure lang is among supported languages
         $parts = preg_split('/(.)(?=[A-Z])/u', $value, -1, PREG_SPLIT_DELIM_CAPTURE);
 
         $lastWord = array_pop($parts);
 
-        return implode('', $parts).self::plural($lastWord, $count);
+        return implode('', $parts).self::plural($lastWord, $lang);
+    }
+
+    /**
+     * Singularize the last word of an English, studly caps case string.
+     *
+     * @param  string  $value
+     * @param  string  $lang
+     * @return string
+     */
+    public static function singularStudly($value, $lang = 'english')
+    {
+        //TODO: ensure lang is among supported languages
+        $parts = preg_split('/(.)(?=[A-Z])/u', $value, -1, PREG_SPLIT_DELIM_CAPTURE);
+
+        $lastWord = array_pop($parts);
+
+        return implode('', $parts).self::singular($lastWord, $lang);
     }
 
     /**
@@ -673,29 +824,6 @@ Class Str
     }
 
     /**
-     * Convert the given string to title case.
-     *
-     * @param  string  $value
-     * @return string
-     */
-    public static function title($value)
-    {
-        return mb_convert_case($value, MB_CASE_TITLE, 'UTF-8');
-    }
-
-    /**
-     * Get the singular form of an English word.
-     *
-     * @param  string  $value
-     * @return string
-     */
-    public static function singular($value)
-    {
-        throw new \Exception("The method is not implemented yet", 1);
-        // return Pluralizer::singular($value);
-    }
-
-    /**
      * Generate a URL friendly "slug" from a given string.
      *
      * @param  string  $title
@@ -722,30 +850,6 @@ Class Str
         $title = preg_replace('!['.preg_quote($separator).'\s]+!u', $separator, $title);
 
         return trim($title, $separator);
-    }
-
-    /**
-     * Convert a string to snake case.
-     *
-     * @param  string  $value
-     * @param  string  $delimiter
-     * @return string
-     */
-    public static function snake($value, $delimiter = '_')
-    {
-        $key = $value;
-
-        if (isset(static::$snakeCache[$key][$delimiter])) {
-            return static::$snakeCache[$key][$delimiter];
-        }
-
-        if (! ctype_lower($value)) {
-            $value = preg_replace('/\s+/u', '', ucwords($value));
-
-            $value = static::lower(preg_replace('/(.)(?=[A-Z])/u', '$1'.$delimiter, $value));
-        }
-
-        return static::$snakeCache[$key][$delimiter] = $value;
     }
 
     /**

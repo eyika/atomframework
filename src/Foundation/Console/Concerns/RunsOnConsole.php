@@ -16,35 +16,21 @@ trait RunsOnConsole
         }
 
         $command = $this->{"{$type}Commander"}($options);
-        echo $command;
         $env = Arr::only($GLOBALS, Arr::values(Application::GLOBAL_VARS));
         $env = array_merge($_ENV, $env, getenv());
 
+        // Let the child process inherit our stdout/stderr directly. This streams
+        // output in real time on every platform. The previous approach pumped the
+        // output via non-blocking reads on proc_open pipes, which PHP does not
+        // support on Windows (stream_set_blocking() is a no-op there), so fgets()
+        // would block forever and commands like `serve`/`migrate` appeared to hang.
         $process = proc_open($command, [
-            1 => ['pipe', 'w'], // stdout
-            2 => ['pipe', 'w'], // stderr
+            1 => STDOUT, // stdout
+            2 => STDERR, // stderr
         ], $pipes, null, $env);
 
         if (is_resource($process)) {
-            stream_set_blocking($pipes[1], false); // Set stdout to non-blocking mode
-            stream_set_blocking($pipes[2], false); // Set stderr to non-blocking mode
-    
-            while (!feof($pipes[1]) || !feof($pipes[2])) {
-                if ($line = fgets($pipes[1])) {
-                    echo "$line";
-                }
-                if ($line = fgets($pipes[2])) {
-                    echo "$line";
-                }
-    
-                usleep(1500); // Sleep for 10ms to prevent high CPU usage
-            }
-    
-            fclose($pipes[1]);
-            fclose($pipes[2]);
-    
-            $return_value = proc_close($process);
-            return $return_value;
+            return proc_close($process);
         } else {
             return 1; // Error running the command
         }
@@ -79,14 +65,15 @@ trait RunsOnConsole
         });
         $options = array_diff($options, $found);
 
-        $address = array_key_exists('--address', $kv_options) || array_key_exists('-a', $kv_options) ? ($kv_options['--address'] ?? $kv_options['-a']) : 'localhost';
+        $address = array_key_exists('--host', $kv_options) || array_key_exists('-a', $kv_options) ? ($kv_options['--host'] ?? $kv_options['-a']) : '0.0.0.0';
         $port = array_key_exists('--port', $kv_options) || array_key_exists('-p', $kv_options) ? ($kv_options['--port'] ?? $kv_options['-p']) : '80';
+        $timeout = array_key_exists('--timeout', $kv_options) || array_key_exists('-t', $kv_options) ? " -d max_execution_time=". ($kv_options['--timeout'] ?? $kv_options['-t']) : ""; 
 
-        return "php -S {$address}:{$port} -t . " . implode(' ', $options). base_path("public/index.php");
+        return "php{$timeout} -S {$address}:{$port} -t . " . implode(' ', $options). base_path("public/index.php");
     }
 
     function phpUnitCommander($options = [])
     {
-        return 'php ' . base_path("vendor/bin/atom_phpunit " . implode(' ', $options));
+        return 'php ' . base_path("vendor/bin/phpunit " . implode(' ', $options));
     }
 }

@@ -3,113 +3,161 @@
 namespace Eyika\Atom\Framework\Http;
 
 use Exception;
-use Eyika\Atom\Framework\Support\View\Blade;
-use Eyika\Atom\Framework\Support\View\Twig;
+use Eyika\Atom\Framework\Support\Facade\Request as FacadeRequest;
 
 class Response extends BaseResponse
 {
-    public const STATUS_OK = 200;
-    public const STATUS_NO_CONTENT = 204;
-    public const STATUS_CREATED = 201;
-    public const NOT_MODIFIED = 304;
-    public const STATUS_BAD_REQUEST = 400;
-    public const STATUS_NOT_FOUND = 404;
-    public const STATUS_UNAUTHORIZED = 401;
-    public const STATUS_INTERNAL_SERVER_ERROR = 500;
-
-    private const methodToFunc = [
-        self::STATUS_OK => 'ok',
-        self::STATUS_NO_CONTENT => 'noContent',
-        self::STATUS_CREATED => 'created',
-        self::NOT_MODIFIED => 'notModified',
-        self::STATUS_BAD_REQUEST => 'badRequest',
-        self::STATUS_NOT_FOUND => 'notFound',
-        self::STATUS_UNAUTHORIZED => 'unauthorized',
-        self::STATUS_INTERNAL_SERVER_ERROR => 'serverError'
-    ];
-
-    public function __construct(int $status_code = 200)
+    public function plain(string $message, int $statusCode = self::STATUS_OK): self
     {
-
+        return $this->_plain($message, $statusCode);
     }
 
-    public static function plain(string $message, array|int $method = 200): bool
+    public function image(string $data, int $statusCode = self::STATUS_OK, string $type = "jpeg"): self
     {
-        header("Content-Type: text/plain; charset=utf-8", $method);
-        echo $message;
-        return true;
+        return $this->_plain($data, $statusCode, "image/$type");
     }
 
-    public static function json(string $message, array|int $data_or_method = 200, $method = 200): bool
+    public function html(string $message, int $statusCode = self::STATUS_OK): self
     {
-        if (is_array($data_or_method)) {
-            $data = $data_or_method;
-        } else {
-            $data = null;
-            $method = $data_or_method;
+        return $this->_plain($message, $statusCode, 'text/html');
+    }
+
+    public function custom(string $message, int $statusCode = self::STATUS_OK, $mime = 'text/plain'): self
+    {
+        return $this->_plain($message, $statusCode, $mime);
+    }
+
+    public function json(array $data, int $statusCode = self::STATUS_OK): self
+    {
+        if (!isset(self::METHOD_TO_FUNC[$statusCode])) {
+            throw new Exception("Invalid HTTP status code: $statusCode");
         }
-        if (!method_exists(JsonResponse::class, self::methodToFunc[$method])) {
-            ///TODO throw an exception
-        }
-        return $data === null ?
-            JsonResponse::{self::methodToFunc[$method]}($message) :
-            JsonResponse::{self::methodToFunc[$method]}($message, $data);
+
+        return $this->create($data, $statusCode);
     }
 
-    public static function view(string $file_name, $data = [])
+    public function view(string $file_name, array $data = []): self
     {
-        $path = resource_path('views');
-        try {
-            if (config('view.use_advance_engine')) {
-                $view = new Blade($path);
-                $code = $view->run("$file_name", $data);
-            } else {
-                $code = Twig::make("$file_name.blade.php", "$path/", $data, true);
+        $this->shouldCompileView = true;
+        $this->viewFileName = $file_name;
+        $this->viewData = $data;
+
+        return $this;
+    }
+
+    public function redirect(string $to, int $code = self::STATUS_FOUND, int|null $delay = null): self
+    {
+        // Strip CR/LF to prevent response-header injection via the redirect target.
+        $to = str_replace(["\r", "\n"], '', $to);
+        $this->isRedirect = true;
+
+        if ($delay) {
+            return self::status($code)->setHeader('Refresh', "$delay; URL={$to}", $code);
+        }
+
+        return self::setHeader('Location', $to, $code);
+    }
+
+    public function back(int $code = self::STATUS_SEE_OTHER, int|null $delay = null)
+    {
+        $to = null;
+
+        // Only honour the Referer when it is same-origin — an attacker-set Referer
+        // must never become an open redirect off-site.
+        $referer = FacadeRequest::headers('HTTP_REFERER') ?: FacadeRequest::headers('Referer');
+        if (!empty($referer) && filter_var($referer, FILTER_VALIDATE_URL)) {
+            $refHost = strtolower((string) parse_url($referer, PHP_URL_HOST));
+            $appHost = strtolower((string) FacadeRequest::host());
+            if ($refHost !== '' && $refHost === $appHost) {
+                $to = $referer;
             }
-        } catch (Exception $e) {
-            header("Content-Type: text/html; charset=utf-8", self::STATUS_INTERNAL_SERVER_ERROR);
-            echo "Server Error ". $e->getMessage();
-            return true;
         }
-        header("Content-Type: text/html; charset=utf-8", self::STATUS_OK);
-        echo $code;
-        return true;
+        // Fallback if the referrer is missing/cross-origin/invalid.
+        if (!$to) {
+            $to = Route::previous() ?: '/';
+        }
+        $to = str_replace(["\r", "\n"], '', (string) $to);
+        $this->isRedirect = true;
+
+        if ($delay) {
+            return $this->setHeader('Refresh', "$delay; URL={$to}", $code);
+        }
+
+        return $this->setHeader('Location', $to, $code);
     }
 
-    public static function redirect(string $to, $code = 301, int|null $delay = null): bool
+    public function download(string $file_path, string|null $file_name = null): self
     {
-        $delay ? header('Refresh: 5; URL=' . $to, true, $code) : header('Location: ' . $to, true, $code);
-        return true;
+        $status = self::STATUS_OK;
+
+        // Resolve the real path (collapses ../) and, when a download base dir is
+        // configured, confine to it — prevents traversal to arbitrary files when
+        // the path is influenced by user input.
+        $real = realpath($file_path);
+        $base = config('filesystem.download_base');
+        $confined = $base ? (is_string($real) && str_starts_with($real, realpath($base) . DIRECTORY_SEPARATOR)) : true;
+
+        if ($real === false || !is_file($real) || !$confined) {
+            $status = self::STATUS_NOT_FOUND;
+            return $this->body('File not found.')->setHeader('Content-Type', 'text/plain', $status);
+        }
+
+        // Sanitise the download filename (basename + strip CR/LF and quotes) to
+        // avoid header injection / path leakage in Content-Disposition.
+        $file_name = str_replace(["\r", "\n", '"'], '', basename($file_name ?? basename($real)));
+
+        return $this->status($status)->setIsFileResponse($real)
+            ->setHeader('Content-Description', 'File Transfer')
+            ->setHeader('Content-Type', 'application/octet-stream', $status)
+            ->setHeader('Content-Disposition', 'attachment; filename="' . $file_name . '"')
+            ->setHeader('Content-Transfer-Encoding', 'binary')
+            ->setHeader('Expires', '0')
+            ->setHeader('Cache-Control', 'must-revalidate')
+            ->setHeader('Pragma', 'public')
+            ->setHeader('Content-Length', filesize($file_path));
     }
 
-    public static function download(string $file_path, string|null $file_name = null): bool
+    public function proxy(Request $request, ?string $target = null, array $extraHeaders = [])
     {
-        if (!file_exists($file_path)) {
-            die('File not found.');
+        if ($target) {
+            return (new Proxy($request, $target, $extraHeaders))->send();
         }
-    
-        // Set the file name for the download
-        if (!$file_name) {
-            $file_name = basename($file_path);
-        }
-    
-        // Set headers to prompt the browser to download the file
-        header('Content-Description: File Transfer');
-        header('Content-Type: application/octet-stream');
-        header('Content-Disposition: attachment; filename=' . $file_name);
-        header('Content-Transfer-Encoding: binary');
-        header('Expires: 0');
-        header('Cache-Control: must-revalidate');
-        header('Pragma: public');
-        header('Content-Length: ' . filesize($file_path));
-    
-        // Clear the output buffer
-        ob_clean();
-        flush();
-    
-        // Read the file and write it to the output buffer
-        readfile($file_path);
-        exit;
-        return true;
+
+        return new Proxy($request, extraHeaders: $extraHeaders);
+    }
+
+    public function setCsrf(): void
+    {
+        Csrf::setCsrfToken();
+    }
+
+    // Add errors to the response
+    public function withErrors(array $errors)
+    {
+        $this->errors = array_merge($this->errors, $errors);
+        return $this;
+    }
+
+    // Add input validation errors to the response
+    public function withValidationErrors(array $validationErrors)
+    {
+        $this->validationErrors = $validationErrors;
+        return $this;
+    }
+
+    // Add inputs to the response
+    public function withInputs()
+    {
+        $this->inputs = FacadeRequest::input();
+        return $this;
+    }
+
+    private function _plain(string $message, int $statusCode = self::STATUS_OK, $mime = 'text/plain'): self
+    {
+        $this->shouldCompileView = false;
+
+        return $this->status($statusCode)->body($message)
+            ->setHeader('Content-Type', "$mime; charset=utf-8")
+            ->status($statusCode);
     }
 }

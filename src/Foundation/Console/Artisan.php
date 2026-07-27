@@ -17,15 +17,15 @@ class Artisan
         Console::purpose($purpose);
     }
 
-    public static function run(string $name, $arguments = [])
+    public static function run(string $name, $arguments = [], bool $requireConsoleRoute = false)
     {
-        Console::run($name, $arguments);
+        Console::run($name, $arguments, $requireConsoleRoute);
         return new static;
     }
 
-    public static function call(string $name, $arguments = [])
+    public static function call(string $name, $arguments = [], bool $requireConsoleRoute = false)
     {
-        return static::run($name, $arguments);
+        return static::run($name, $arguments, $requireConsoleRoute);
     }
 
     public static function terminate($arguments = [])

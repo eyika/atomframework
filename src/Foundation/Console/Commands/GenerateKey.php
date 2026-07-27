@@ -12,7 +12,7 @@ class GenerateKey extends Command
     public string $signature = 'key:generate';
     public string $description = 'Generate an APP_KEY and set it in .env';
 
-    public function handle(array $arguments = []): bool
+    public function handle(): bool
     {
         try {
             $key = $this->generateAndSetAppKey();

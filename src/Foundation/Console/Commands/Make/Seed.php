@@ -13,16 +13,16 @@ class Seed extends Command
 
     use RunsOnConsole;
 
-    public function handle(array $arguments = []): bool
+    public function handle(): bool
     {
         try {
-            if (empty($arguments[0] ?? '')) {
+            if (empty($this->arguments[0] ?? '')) {
                 throw new InvalidInputException('name of seed file is not specified', 1);
             }
     
-            array_unshift($arguments, 'seed:create');
+            array_unshift($this->arguments, 'seed:create');
     
-            $code = $this->executeCommand($arguments);
+            $code = $this->executeCommand($this->arguments);
         } catch (BaseConsoleException $e) {
             $this->error($e->getMessage(), $e->getTrace());
             return !(bool)$e->getCode();

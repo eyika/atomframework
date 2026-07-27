@@ -4,24 +4,32 @@ namespace Eyika\Atom\Framework\Foundation;
 
 use Exception;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
+use Eyika\Atom\Framework\Foundation\Concerns\ClassDependencyResolver;
 use Eyika\Atom\Framework\Foundation\Contracts\ConsoleKernel as ContractsConsoleKernel;
+use Eyika\Atom\Framework\Foundation\ServiceProvider;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\NamespaceHelper;
 use Eyika\Atom\Framework\Foundation\Console\Command;
+use Eyika\Atom\Framework\Foundation\Console\Concerns\LogsMessages;
+use Eyika\Atom\Framework\Foundation\Console\Contracts\QueueInterface;
+use Eyika\Atom\Framework\Foundation\Console\Contracts\ShouldLogMessages;
 use Eyika\Atom\Framework\Foundation\Console\Scheduler;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Support\Encrypter;
 use Eyika\Atom\Framework\Support\Storage\File;
 use Eyika\Atom\Framework\Support\Storage\Storage;
 
-class ConsoleKernel implements ContractsConsoleKernel
+class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
 {
+    use ClassDependencyResolver, LogsMessages;
+
     /**
      * The Artisan commands provided by your application.
      *
      * @var array
      */
     protected $commands = [];
+    protected const ignore_commands = ['BaseMake'];
 
     protected const ignore_facades = ['app', 'application'];
     protected const facadables = [
@@ -34,17 +42,13 @@ class ConsoleKernel implements ContractsConsoleKernel
 
     public function __construct()
     {
-        $this->loadCommands();
-        $this->loadProjectCommands();
-        // $this->loadLibrariesCommands();
-        $this->loadFacades();
     }
 
     protected $status = false;
 
-    public function register(string $name, Command|callable $command, array $options = [])
+    public function register(string $signature, Command|callable $command, array $options = [], $purpose = '')
     {
-        $this->commands[$name] = [ 'command' => $command, 'options' => $options, 'purpose' => '' ];
+        $this->commands[$signature] = [ 'command' => $command, 'options' => $options, 'purpose' => $purpose ];
     }
 
     public function purpose(string $purpose)
@@ -56,24 +60,34 @@ class ConsoleKernel implements ContractsConsoleKernel
 
     public function comment(string $comment)
     {
-        consoleLog(0, "Info: $comment." . PHP_EOL);
+        $this->info($comment);
     }
 
-    public function run(string $name, array $arguments = [])
+    public function run(string|callable|QueueInterface $signature, array $arguments = [], bool $requireConsoleRoute = true)
     {
+        app()->registerProviders();
+        // Register commands contributed by packages via ServiceProvider::commands()
+        // (PKG-01) — providers have just booted, so the registry is populated.
+        $this->loadPackageCommands();
         //Load console route command definitions into $commands array
-        require base_path('routes/console.php');
+        if ($requireConsoleRoute)
+            require base_path('routes/console.php');
 
-        if (isset($this->commands[$name])) {
-            $command = $this->commands[$name]['command'];
+        if ($signature instanceof QueueInterface) {
+            $this->status = $signature->handle();
+        } else if (is_callable($signature)) {
+            $this->status = $signature(...$arguments);
+        } else if (isset($this->commands[$signature])) {
+            $command = $this->commands[$signature]['command'];
 
             if ($command instanceof Command) {
-                $this->commands[$name]['command']->setAllowedOptions($this->commands[$name]['options']);
-                $this->status = $command->handle($arguments);
+                $this->status = $command->setAllowedOptions($this->commands[$signature]['options'])
+                    ->setArguments($arguments)
+                    ->handle();
             } else if (is_callable($command))
                 $this->status = $command($arguments);
         } else {
-            consoleLog(1, "Error: Command '$name' not found." . PHP_EOL);
+            $this->error("Command '$signature' not found.");
         }
     }
 
@@ -85,29 +99,60 @@ class ConsoleKernel implements ContractsConsoleKernel
     /**
      * Load all the defined commands into console kernel registry
      */
-    protected function loadCommands(string|null $fullPath = null, string|null $namespace = null, $base_folder = 'src')
+    public function loadCommands(string|null $fullPath = null, string|null $namespace = null, $base_folder = 'src')
     {
         try {
             $fullPath = $fullPath ?? base_path("vendor/eyika/atom-framework/src/Foundation/Console/Commands");
             $namespace = $namespace ??  framework_namespace();
 
             NamespaceHelper::loadAndPerformActionOnClasses($namespace, $fullPath, function (string $class_name, string $command) {
-                $command_obj = new $command;
-    
+                if ($this->shouldIgnoreCommand($command))
+                    return;
+
+                $command_obj = $this->resolve($command);
+
                 $args = explode(' ', $command_obj->signature);
-                $signature = array_shift($args) ?? '';
-                $this->register($signature, $command_obj, $args);
+                $signature = array_shift($args) ?: strtolower($class_name); // '' falls back to the class name
+                $this->register($signature, $command_obj, $args, $command_obj instanceof Command ? $command_obj->description : '');
             }, $base_folder);
         } catch (Exception $e) {
-            logger()->info("INTERNAL: ".$e->getMessage(), $e->getTrace());
+            $this->error($e->getMessage(), $e->getTrace());
+            $this->error($e->getMessage(), $e->getTrace(), true);
             ///TODO handle exception
         }
+    }
+
+    protected function shouldIgnoreCommand(string $commandName)
+    {
+        foreach ($this::ignore_commands as $command) {
+            if (str_contains($commandName, $command))
+                return true;
+        }
+        return false;
     }
 
     /**
      * Load all the defined project commands into console kernel registry
      */
-    protected function loadProjectCommands()
+    /**
+     * Register console commands contributed by packages through
+     * ServiceProvider::commands() (PKG-01), in addition to the framework + app
+     * command directories.
+     */
+    public function loadPackageCommands(): void
+    {
+        foreach (ServiceProvider::packageCommands() as $commandClass) {
+            if (!is_string($commandClass) || !class_exists($commandClass)) {
+                continue;
+            }
+            $command = new $commandClass();
+            if ($command instanceof Command) {
+                $this->register($command->signature, $command, [], $command->description);
+            }
+        }
+    }
+
+    public function loadProjectCommands()
     {
         $this->loadCommands(base_path('app/Console/Commands'), project_namespace(), 'app');
     }
@@ -115,16 +160,16 @@ class ConsoleKernel implements ContractsConsoleKernel
     /**
      * Load all the defined third party commands into console kernel registry
      */
-    protected function loadLibrariesCommands()
-    {
-        throw new NotImplementedException('this method is not yet implemented');
-        $this->loadCommands(base_path('app/Console/Commands'), project_namespace(), 'app');
-    }
+    // protected function loadLibrariesCommands()
+    // {
+    //     throw new NotImplementedException('this method is not yet implemented');
+    //     $this->loadCommands(base_path('app/Console/Commands'), project_namespace(), 'app');
+    // }
 
     /**
      * Load all the needed facades into memory
      */
-    protected function loadFacades()
+    public function loadFacades()
     {
         try {
             $app = Facade::getFacadeApplication();
@@ -134,8 +179,12 @@ class ConsoleKernel implements ContractsConsoleKernel
                 $app->instance($tag, $facade_obj);
             }
         } catch (Exception $e) {
-            logger()->info("INTERNAL: ".$e->getMessage(), $e->getTrace());
+            $this->error($e->getMessage(), $e->getTrace());
+            $this->error($e->getMessage(), $e->getTrace(), true);
             ///TODO handle exception
         }
     }
+
+    public function schedule(): void
+    {}
 }

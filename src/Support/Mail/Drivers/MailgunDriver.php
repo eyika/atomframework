@@ -14,6 +14,8 @@ class MailgunDriver implements MailerInterface
     protected $client;
     protected $config;
     protected array $tos;
+    protected ?string $from = null;
+    protected array $replyTos = [];
 
     public function __construct(array $config)
     {
@@ -36,15 +38,31 @@ class MailgunDriver implements MailerInterface
         return $this;
     }
 
+    public function from(string $address, string $name): self
+    {
+        $this->from = "$name <$address>";
+        return $this;
+    }
+
+    public function replyTo(string $address, string|null $name = null): self
+    {
+        array_push($this->replyTos, $name ? "$name <$address>" : $address);
+        return $this;
+    }
+
     public function send($subject, $body): MailerResponse
     {
         try {
-            $response = $this->client->messages()->send($this->config['mailgun']['domain'], [
-                'from'    => $this->config['mailgun']['from'],
+            $payload = [
+                'from'    => $this->from ?? $this->config['mailgun']['from'],
                 'to'      => $this->tos,
                 'subject' => $subject,
                 'html'    => $body,
-            ]);
+            ];
+            if (!empty($this->replyTos)) {
+                $payload['h:Reply-To'] = implode(', ', $this->replyTos);
+            }
+            $response = $this->client->messages()->send($this->config['mailgun']['domain'], $payload);
 
             return new MailerResponse(true, $response->getId());
         } catch (Exception $e) {

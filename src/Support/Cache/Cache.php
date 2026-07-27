@@ -4,7 +4,7 @@ namespace Eyika\Atom\Framework\Support\Cache;
 
 use Eyika\Atom\Framework\Exceptions\Cache\InvalidConfigException;
 use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
-use Eyika\Atom\Framework\Support\Database\mysqly;
+use Psr\Cache\CacheItemInterface;
 
 class Cache implements CacheInterface
 {
@@ -18,31 +18,90 @@ class Cache implements CacheInterface
         'dynamodb' => 'Eyika\Atom\Framework\Support\Cache\DynamodbCache'
     ];
 
+    private array $deferred = [];
     protected array $store_config;
     protected CacheInterface $cache_store;
 
     public function __construct(string|null $store = null)
     {
         $this->setStoreConfig($store);
-
         $this->initAdapter();
     }
 
-
-    public function setCacheStore(CacheInterface $cache)
+    public function instance(): self
     {
-        $this->cache_store = $cache;
+        return $this;
     }
 
-    public function getFileSystemAdapter()
+    public function getItem(string $key): CacheItem
     {
-        return $this->cache_store;
+        return $this->cache_store->getItem($key);
     }
 
-    public function setStore(string|null $store = null)
+    public function getItems(array $keys = []): iterable
     {
-        $this->setStoreConfig($store);
-        $this->initAdapter();
+        $items = [];
+        foreach ($keys as $key) {
+            $items[$key] = $this->getItem($key);
+        }
+        return $items;
+    }
+
+    public function hasItem(string $key): bool
+    {
+        return $this->cache_store->hasItem($key);
+    }
+
+    public function clear(): bool
+    {
+        return $this->cache_store->clear();
+    }
+
+    public function deleteItem(string $key): bool
+    {
+        return $this->cache_store->deleteItem($key);
+    }
+
+    public function deleteItems(array $keys): bool
+    {
+        foreach ($keys as $key) {
+            $this->deleteItem($key);
+        }
+        return true;
+    }
+
+    /**
+     * @param CacheItem $item
+     */
+    public function save($item): bool
+    {
+        return $this->cache_store->save($item);
+    }
+
+    /**
+     * @param CacheItem $item
+     */
+    public function setItem($item): bool
+    {
+        return $this->save($item);
+    }
+
+    /**
+     * @param CacheItem $item
+     */
+    public function saveDeferred($item): bool
+    {
+        $this->deferred[$item->getKey()] = $item;
+        return true;
+    }
+
+    public function commit(): bool
+    {
+        foreach ($this->deferred as $item) {
+            $this->save($item);
+        }
+        $this->deferred = [];
+        return true;
     }
 
     protected function setStoreConfig(string|null $store = null)
@@ -55,35 +114,9 @@ class Cache implements CacheInterface
         $classname = self::adapters[$this->store_config['driver']] ?? null;
 
         if (empty($this->store_config['driver'])) {
-            throw new InvalidConfigException('driver not found or adapter package not installed');
+            throw new InvalidConfigException('Driver not found or adapter package not installed');
         }
 
         $this->cache_store = new $classname();
-    }
-
-    public function get(string $key)
-    {
-        $value = mysqly::cache($key);
-        return $value === false ? null : $value;
-    }
-
-    public function set(string $key, $value, int $ttl = 3600): bool
-    {
-        return mysqly::cache($key, $value, $ttl) ? true : false;
-    }
-
-    public function delete(string $key): bool
-    {
-        return mysqly::uncache($key);
-    }
-
-    public function clear(): bool
-    {
-        return mysqly::clear_cache();
-    }
-
-    public function has(string $key): bool
-    {
-        return mysqly::cache($key) ? true : false;
     }
 }

@@ -3,6 +3,7 @@
 namespace Eyika\Atom\Framework\Support\Storage;
 
 use Exception;
+use Eyika\Atom\Framework\Exceptions\Storage\FileNotFoundException;
 use Eyika\Atom\Framework\Support\Arr;
 use finfo;
 use Google\Cloud\Storage\StorageClient;
@@ -45,6 +46,7 @@ class File
     protected array $diskconfig = [];
     protected string $visibility;
     protected string $contents;
+    protected ?FileUploadProperties $uploadProperties;
 
     public function __construct(Filesystem|null $filesystem = null, $disk = null)
     {
@@ -78,6 +80,11 @@ class File
     protected function setDiskConfig(string|null $disk = null)
     {
         $this->diskconfig = is_null($disk) ? config('filesystems.disks')[config('filesystems.default')] : config('filesystems.disks')[$disk];
+    }
+
+    public function getDiskConfig()
+    {
+        return $this->diskconfig;
     }
 
     protected function initAdapter()
@@ -194,6 +201,17 @@ class File
     public function contents()
     {
         return $this->contents;
+    }
+
+    public function setUploadProperties(FileUploadProperties $properties)
+    {
+        $this->uploadProperties = $properties;
+        return $this;
+    }
+
+    public function uploadProperties()
+    {
+        return $this->uploadProperties;
     }
 
     /**
@@ -322,22 +340,49 @@ class File
     /**
      * Put the uploaded contents into a file using Flysystem.
      *
-     * @param string $tempPath The uploaded file contents.
+     * @param string|null $path The path where the file should be stored.
+     * @return int
+     * @throws UnableToWriteFile
+     * @throws FilesystemException
+     */
+    public function upload($path, $compress = false)
+    {
+        $uploadProperties = $this->uploadProperties();
+        if ($uploadProperties === null) {
+            throw new FilesystemException('Temp file path cannot be null');
+        }
+        $tempPath = $uploadProperties->tmpName();
+        if (!file_exists($tempPath)) {
+            throw new FilesystemException('Temp file does not exist: ' . $tempPath);
+        }
+        if (!is_readable($tempPath)) {
+            throw new UnableToReadFile('Temp file is not readable');
+        }
+        $contents = file_get_contents($tempPath);
+        if ($contents === false) {
+            throw new FilesystemException('unable to read uploaded file');
+        }
+
+        // Write the file to the specified path
+        $this->filesystem->write($path, $contents);
+
+        return strlen($contents);
+    }
+
+    /**
+     * Put the uploaded contents into a file using Flysystem.
+     *
+     * @param string $path The path or folder to upload file to.
      * @param string $path The path where the file should be stored.
      * @return int
      * @throws UnableToWriteFile
      * @throws FilesystemException
      */
-    public function upload($tempPath, $path)
+    public function store(string $path, string $disk)
     {
-        if ($contents = file_get_contents($tempPath) == false) {
-            throw new FilesystemException('unable to read uploaded file');
-        }
+        $this->setDisk($disk);
 
-        // Write the file to the specified path
-        $this->filesystem->write(basename($path), $contents);
-
-        return strlen($contents);
+        return $this->upload($this->uploadProperties()->tmpName(), $path);
     }
 
     /**
@@ -533,12 +578,13 @@ class File
      * @return int
      * @throws UnableToRetrieveMetadata
      * @throws FilesystemException
+     * @throws FileNotFoundException
      */
     public function size($path)
     {
 
         if (!static::exists($path)) {
-            throw new Exception("File does not exist at path {$path}");
+            throw new FileNotFoundException("File does not exist at path {$path} ". json_encode($this->diskconfig));
         }
 
         return $this->filesystem->fileSize($path);

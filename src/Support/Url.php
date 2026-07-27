@@ -2,6 +2,8 @@
 
 namespace Eyika\Atom\Framework\Support;
 
+use Eyika\Atom\Framework\Support\Facade\Session;
+
 class Url
 {
     protected static $routes = [];
@@ -15,6 +17,31 @@ class Url
     }
 
     /**
+     * Read a server value from the CURRENT bound request (WRK-11) so URL generation
+     * doesn't read the $_SERVER process global directly; falls back to $_SERVER when no
+     * request is bound (CLI).
+     */
+    protected static function server(string $key, $default = null)
+    {
+        $app = function_exists('app') ? app() : null;
+        if ($app && $app->bound('request')) {
+            $value = app('request')->server($key);
+            if ($value !== null) {
+                return $value;
+            }
+        }
+        return $_SERVER[$key] ?? $default;
+    }
+
+    /** http:// or https:// for the current request. */
+    protected static function protocol(): string
+    {
+        $https = static::server('HTTPS');
+        $port = static::server('SERVER_PORT');
+        return ((!empty($https) && $https !== 'off') || $port == 443) ? 'https://' : 'http://';
+    }
+
+    /**
      * Generate an absolute URL.
      *
      * @param string $path
@@ -22,16 +49,10 @@ class Url
      */
     public static function to($path = '')
     {
-        // Get the protocol
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+        $protocol = static::protocol();
+        $host = static::server('HTTP_HOST');
 
-        // Get the host
-        $host = $_SERVER['HTTP_HOST'];
-
-        // Build the URL
-        $url = $protocol . $host . '/' . ltrim($path, '/');
-
-        return $url;
+        return $protocol . $host . '/' . ltrim($path, '/');
     }
 
     /**
@@ -41,13 +62,11 @@ class Url
      */
     public static function current($fullpath = true)
     {
-        $requestUri = $_SERVER['REQUEST_URI'];
+        $requestUri = static::server('REQUEST_URI');
         if (!$fullpath) {
             return $requestUri;
         }
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-        $host = $_SERVER['HTTP_HOST'];
-        return $protocol . $host . $requestUri;
+        return static::protocol() . static::server('HTTP_HOST') . $requestUri;
     }
 
     /**
@@ -55,7 +74,7 @@ class Url
      */
     public static function storeCurrent()
     {
-        $_SESSION['previous_url'] = self::current();
+        Session::set('previous_url', self::current());
     }
 
     /**
@@ -66,10 +85,10 @@ class Url
     public static function previous(bool $store = false)
     {
         if ($store) {
-            $_SESSION['previous_url'] = self::current();
+            Session::set('previous_url', self::current());
             return;
         }
-        return isset($_SESSION['previous_url']) ? $_SESSION['previous_url'] : null;
+        return Session::get('previous_url');
     }
 
     public static function route($name, $parameters = [])
@@ -78,7 +97,8 @@ class Url
             foreach ($routes as $route => $data) {
                 if ($data['name'] === $name) {
                     foreach ($parameters as $key => $value) {
-                        $route = str_replace('$' . $key, $value, $route);
+                        // Routes use {key}/{key?} placeholders, not $key.
+                        $route = str_replace(['{' . $key . '}', '{' . $key . '?}'], $value, $route);
                     }
                     return $route;
                 }
@@ -88,49 +108,61 @@ class Url
         return null;
     }
 
-    public static function signedRoute($name, $parameters = [], $secret = 'secret-key')
+    private static function signingKey(): string
     {
-        $url = self::route($name, $parameters);
-
-        if ($url) {
-            $signature = hash_hmac('sha256', $url, $secret);
-            $url .= '?signature=' . $signature;
-        }
-
-        return $url;
+        return (string) config('app.key');
     }
 
-    public static function temporarySignedRoute($name, $expiration, $parameters = [], $secret = 'secret-key')
+    /**
+     * Canonical = path + sorted query (minus `signature`). Signer and validator
+     * MUST build it identically (this matches Http\Request::validateSignature()).
+     */
+    private static function canonical(string $path, array $query): string
     {
-        $parameters['expires'] = $expiration;
-        $url = self::route($name, $parameters);
-
-        if ($url) {
-            $signature = hash_hmac('sha256', $url, $secret);
-            $url .= '?expires=' . $expiration . '&signature=' . $signature;
-        }
-
-        return $url;
+        unset($query['signature']);
+        ksort($query);
+        return $path . (empty($query) ? '' : '?' . http_build_query($query));
     }
 
-    public static function validateSignature($url, $secret = 'secret-key')
+    public static function signedRoute($name, $parameters = [], $expiration = null)
     {
-        $urlParts = parse_url($url);
-        parse_str($urlParts['query'], $query);
+        $path = self::route($name, $parameters);
+        if (!$path) {
+            return $path;
+        }
 
-        $expires = $query['expires'] ?? null;
-        if ($expires && $expires < time()) {
+        $query = [];
+        if ($expiration !== null) {
+            $query['expires'] = (int) $expiration;
+        }
+
+        $query['signature'] = hash_hmac('sha256', self::canonical($path, $query), self::signingKey());
+
+        return $path . '?' . http_build_query($query);
+    }
+
+    public static function temporarySignedRoute($name, $expiration, $parameters = [])
+    {
+        return self::signedRoute($name, $parameters, $expiration);
+    }
+
+    public static function validateSignature($url, $secret = null)
+    {
+        $parts = parse_url($url);
+        $path = $parts['path'] ?? '/';
+        parse_str($parts['query'] ?? '', $query);
+
+        $signature = $query['signature'] ?? null;
+        if (empty($signature)) {
+            return false;
+        }
+        if (isset($query['expires']) && (int) $query['expires'] < time()) {
             return false;
         }
 
-        $originalUrl = $urlParts['scheme'] . '://' . $urlParts['host'] . $urlParts['path'];
-        if (isset($urlParts['query'])) {
-            unset($query['signature']);
-            $originalUrl .= '?' . http_build_query($query);
-        }
+        $expected = hash_hmac('sha256', self::canonical($path, $query), $secret ?? self::signingKey());
 
-        $expectedSignature = hash_hmac('sha256', $originalUrl, $secret);
-        return hash_equals($expectedSignature, $query['signature']);
+        return hash_equals($expected, (string) $signature);
     }
 }
 

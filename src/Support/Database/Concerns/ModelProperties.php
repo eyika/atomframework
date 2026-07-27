@@ -66,6 +66,29 @@ trait ModelProperties
     protected const defaultGuarded = ['incrementing', 'exists', 'wasRecentlyCreated'];
 
     /**
+     * The attributes that should be cast to native types.
+     *
+     * Supported types: 'boolean', 'bool', 'integer', 'int', 'float', 'double', 'string', 'array', 'json', 'object'
+     *
+     * @var array
+     */
+    protected const casts = [];
+
+    /**
+     * Indicates values that should be encrypted when saving and decrypted when retrieving
+     *
+     * @var array
+     */
+    protected const encrypted = [];
+
+    /**
+     * Indicates values that should be given a duplicate hashed column
+     * 
+     * @var array
+     */
+    protected const ignore_hash_replica = [];
+
+    /**
      * Indicates if the IDs are auto-incrementing.
      *
      * @var bool
@@ -108,6 +131,13 @@ trait ModelProperties
     protected $or_ands;
 
     /**
+     * The join statements to add to the query
+     * 
+     * @var array
+     */
+    protected $joins = [];
+
+    /**
      * The filter key values
      * 
      * @var array|null
@@ -133,14 +163,14 @@ trait ModelProperties
      * 
      * @var Model|Model&UserModelInterface
      */
-    protected $child;
+    // protected $child;
 
     /**
      * Name of relationship model to get with current query
      * 
-     * @property string
+     * @property string[]
      */
-    protected $with_model_name = "";
+    protected $with_model_names = [];
 
     /**
      * The placeholder for model dynamic properties
@@ -148,6 +178,12 @@ trait ModelProperties
      * @property array $dynamicProperties;
      */
     protected $dynamicProperties = [];
+    /**
+     * The placeholder for model dynamic properties
+     * 
+     * @property array $relationshipItems;
+     */
+    protected $relationshipItems = [];
 
     /**
      * The name of the "created at" column.
@@ -162,4 +198,11 @@ trait ModelProperties
      * @var string|null
      */
     const UPDATED_AT = 'updated_at';
+
+    /**
+     * The name of the "suffix" for the hashed replica for encrypted columns.
+     * 
+     * @var array
+     */
+    protected const hashed_col_suffix = '_hash';
 }

@@ -2,7 +2,9 @@
 
 namespace Eyika\Atom\Framework\Http\Middlewares;
 
+use Closure;
 use Eyika\Atom\Framework\Exceptions\Db\ModelNotFoundException;
+use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Support\Arr;
@@ -13,17 +15,27 @@ use Eyika\Atom\Framework\Support\NamespaceHelper;
 class SubstituteBindings implements MiddlewareInterface
 {
     /**
+     * Cached map of lowercased model short-name => FQCN, built once per process
+     * (PERF-01 / BUG-17). Previously every route parameter of every request walked
+     * the entire app/Models directory via NamespaceHelper. The model set is fixed
+     * at runtime, so this is safe to memoize (including under long-lived workers).
+     *
+     * @var array<string,string>|null
+     */
+    protected static ?array $modelMap = null;
+
+    /**
      * Handle an incoming request.
      *
      * @throws NotFoundHttpException
      */
-    public function handle(Request $request, ...$ignoreKeys): bool
+    public function handle(Request $request, Closure $next, ...$ignoreKeys): BaseResponse
     {
         // Get the route parameters from the request
         $routeParams = $request->route_params;
 
         if (empty($routeParams))
-            return false;
+            return $next($request);
 
         // Substitute bindings for each parameter
         foreach ($routeParams as $key => $value) {
@@ -31,8 +43,8 @@ class SubstituteBindings implements MiddlewareInterface
                 continue;
 
             if (is_numeric($value)) {
-                $value = sanitize_data($value);
-                // Example: replace `{user}` with an instance of User model
+                // Route params are already sanitized at dispatch (Route::dispatch),
+                // so there is no second sanitize_data() pass here (PERF-19).
                 $model = $this->resolveModel($key, $value);
                 if ($model === null) {
                     continue;
@@ -46,7 +58,7 @@ class SubstituteBindings implements MiddlewareInterface
         }
         $request->route_params = $routeParams;
 
-        return false;
+        return $next($request);
     }
 
     /**
@@ -78,21 +90,43 @@ class SubstituteBindings implements MiddlewareInterface
      */
     protected function modelClassForKey(string $key): ?string
     {
-        // Map route parameter keys to model classes
-        $fullPath = base_path('app/Models');
+        return $this->modelMap()[$key] ?? null;
+    }
 
+    /**
+     * Build (once) and return the lowercased-short-name => FQCN map for app/Models.
+     * Memoized on a static so the directory is walked a single time per process
+     * instead of once per route parameter per request (PERF-01).
+     *
+     * @return array<string,string>
+     */
+    protected function modelMap(): array
+    {
+        if (self::$modelMap !== null) {
+            return self::$modelMap;
+        }
+
+        $map = [];
+        $fullPath = base_path('app/Models');
         $namespace = project_namespace();
 
-        $model_class = null;
-
-        NamespaceHelper::loadAndPerformActionOnClasses($namespace, $fullPath, function (string $class_name, string $model) use (&$model_class, $key) {
-            if ($key === strtolower($class_name)) {
-                $model_class = $model;
-                return true;
-            }
+        NamespaceHelper::loadAndPerformActionOnClasses($namespace, $fullPath, function (string $class_name, string $model) use (&$map) {
+            // Keyed by the lowercased short class name (matches the previous
+            // `$key === strtolower($class_name)` comparison). Collect all — no
+            // short-circuit — so the full map is cached.
+            $map[strtolower($class_name)] = $model;
+            return false;
         }, 'app');
 
-        return $model_class;
+        return self::$modelMap = $map;
+    }
+
+    /**
+     * Reset the memoized model map (test isolation / worker reload).
+     */
+    public static function flushModelMap(): void
+    {
+        self::$modelMap = null;
     }
 }
 

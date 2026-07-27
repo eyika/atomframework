@@ -11,10 +11,10 @@ class Model extends Command
 {
     public string $signature = 'make:model';
 
-    public function handle(array $arguments = []): bool
+    public function handle(): bool
     {
         try {
-            if (empty($name = $arguments[0] ?? '')) {
+            if (empty($name = $this->arguments[0] ?? '')) {
                 throw new InvalidInputException('Name of model is not specified', 1);
             }
     

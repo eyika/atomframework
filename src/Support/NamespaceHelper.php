@@ -4,21 +4,60 @@ namespace Eyika\Atom\Framework\Support;
 
 class NamespaceHelper
 {
-    public static function getBaseNamespace(string|null $composerJsonPath = null): string
+    /**
+     * Parsed composer.json keyed by path (PERF-17). The Application constructor
+     * calls getBaseNamespace() three times per boot (app/test/database namespaces),
+     * each of which previously re-read and re-decoded the file.
+     *
+     * @var array<string,array>
+     */
+    protected static array $composerCache = [];
+
+    public static function getBaseNamespace(?string $composerJsonPath = null, ?string $folderName = null): string
     {
-        if (!$composerJsonPath)
+        if (!$composerJsonPath) {
             $composerJsonPath = self::findComposerJsonPath();
+        }
 
         if ($composerJsonPath && file_exists($composerJsonPath)) {
-            $composerJson = json_decode(file_get_contents($composerJsonPath), true);
+            if (!isset(self::$composerCache[$composerJsonPath])) {
+                self::$composerCache[$composerJsonPath] = json_decode(file_get_contents($composerJsonPath), true) ?: [];
+            }
+            $composerJson = self::$composerCache[$composerJsonPath];
 
             if (isset($composerJson['autoload']['psr-4'])) {
                 $namespaces = array_keys($composerJson['autoload']['psr-4']);
-                return rtrim($namespaces[0], '\\');
+                $folders = array_values($composerJson['autoload']['psr-4']);
+                if ($folderName !== null) {
+                    foreach ($namespaces as $index => $namespace) {
+                        if (str_contains($folders[$index], $folderName) || str_contains($folders[$index], Str::plural($folderName))) {
+                            return rtrim($namespaces[$index], '\\');
+                        }
+                    }
+                } else {
+                    return rtrim($namespaces[0], '\\');
+                }
+            }
+            if (isset($composerJson['autoload-dev']['psr-4'])) {
+                $namespaces = array_keys($composerJson['autoload-dev']['psr-4']);
+                $folders = array_values($composerJson['autoload-dev']['psr-4']);
+                foreach ($namespaces as $index => $namespace) {
+                    if (str_contains($folders[$index], $folderName) || str_contains($folders[$index], Str::plural($folderName))) {
+                        return rtrim($namespaces[$index], '\\');
+                    }
+                }
             }
         }
 
         throw new \RuntimeException("Base namespace could not be determined.");
+    }
+
+    /**
+     * Drop the memoized composer.json cache (test isolation / worker reload).
+     */
+    public static function flushComposerCache(): void
+    {
+        self::$composerCache = [];
     }
 
     public static function loadAndPerformActionOnClasses(string $namespace, string $fullPath, callable $method, $base_folder = 'src')

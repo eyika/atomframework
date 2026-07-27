@@ -7,6 +7,8 @@ use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
 
 class ApcCache implements CacheInterface
 {
+    protected array $deferredItems = [];
+
     public function __construct()
     {
         if (!function_exists('apcu_fetch')) {
@@ -16,27 +18,36 @@ class ApcCache implements CacheInterface
     /**
      * {@inheritdoc}
      */
-    public function get(string $key)
+    public function getItem(string $key): CacheItem
     {
         $success = false;
         $value = apcu_fetch($key, $success);
-        return $success ? $value : null;
+
+        return new CacheItem($key, $value, $success);
+    }
+
+    /**
+     * @param string[] $keys
+     * 
+     * @return CacheItemInterface[]
+     * 
+     * @throws InvalidArgumentException
+     */
+    public function getItems($keys = []): iterable
+    {
+        $items = [];
+        foreach ($keys as $key) {
+            $items[$key] = $this->getItem($key);
+        }
+        return $items;
     }
 
     /**
      * {@inheritdoc}
      */
-    public function set(string $key, $value, int $ttl = 3600): bool
+    public function hasItem(string $key): bool
     {
-        return apcu_store($key, $value, $ttl);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function delete(string $key): bool
-    {
-        return apcu_delete($key);
+        return apcu_exists($key);
     }
 
     /**
@@ -50,8 +61,65 @@ class ApcCache implements CacheInterface
     /**
      * {@inheritdoc}
      */
-    public function has(string $key): bool
+    public function deleteItem(string $key): bool
     {
-        return apcu_exists($key);
+        return apcu_delete($key);
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    public function deleteItems($keys = []): bool
+    {
+        foreach ($keys as $key) {
+            if (!$this->deleteItem($key))
+                return false;
+        }
+        return true;
+    }
+
+    /**
+     * @param CacheItem $item
+     */
+    public function save($item): bool
+    {
+        return apcu_store($item->getKey(), $item->get(), $item->getExpiration());
+    }
+
+    /**
+     * @param CacheItem $item
+     */
+    public function setItem($item): bool
+    {
+        return $this->save($item);
+    }
+
+    /**
+     * @param CacheItem $item
+     */
+    public function saveDeferred($item): bool
+    {
+        if (!$item instanceof CacheItem) {
+            return false;
+        }
+
+        $this->deferredItems[$item->getKey()] = $item;
+        return true;
+    }
+
+    public function commit(): bool
+    {
+        $allSaved = true;
+
+        foreach ($this->deferredItems as $key => $item) {
+            if (!$this->save($item)) {
+                $allSaved = false;
+            }
+        }
+
+        // Clear deferred items after attempting to save
+        $this->deferredItems = [];
+
+        return $allSaved;
     }
 }

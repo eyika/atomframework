@@ -2,9 +2,11 @@
 
 namespace Eyika\Atom\Framework\Http\Middlewares;
 
+use Closure;
+use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
-use Eyika\Atom\Framework\Support\Str;
+use Eyika\Atom\Framework\Support\Facade\Response;
 
 class ServePublicAssets implements MiddlewareInterface
 {
@@ -12,12 +14,9 @@ class ServePublicAssets implements MiddlewareInterface
      * Handle an incoming request.
      *
      */
-    public function handle(Request $request): bool
+    public function handle(Request $request, Closure $next): BaseResponse
     {
-        $server = strtolower($request->server('SERVER_SOFTWARE', ''));
-    
-    
-        if (in_array($_ENV['APP_ENV'], [ 'local', 'dev' ]) && !str_contains($server, 'apache') && !str_contains($server, 'nginx') && (!str_contains($server, 'litespeed'))) {
+        if (config('app.serve_public_assets')) {
             $customMappings = [
                 'js' => 'text/javascript', //'application/javascript',
                 'css' => 'text/css',
@@ -25,8 +24,9 @@ class ServePublicAssets implements MiddlewareInterface
                 'woff' => 'font/woff'
             ];
 
-            $uri = explode('?', $_SERVER["REQUEST_URI"])[0];
+            $uri = explode('?', $request->server('REQUEST_URI') ?? '')[0];
             if (preg_match('/\.(?:js|css|svg|ico|woff|woff2|ttf|webp|pdf|png|jpg|json|jpeg|gif|md)$/', $uri)) {
+                $request->isAssetRequest(true);
                 $path = public_path().$uri;
                 if (file_exists($path)) {
                     $mime = mime_content_type($path);
@@ -34,18 +34,24 @@ class ServePublicAssets implements MiddlewareInterface
                     if (array_key_exists($ext, $customMappings)) {
                         $mime = $customMappings[$ext];
                     }
-                    header("Content-Type: $mime", true, 200);
-                    echo file_get_contents($path);
-                    return true;
+                    $allowedOrigins = config('cors.allowed_origins', ['*']);
+                    $origin = $request->headers('Origin');
+
+                    $response = Response::setHeader("Content-Type", $mime, BaseResponse::STATUS_OK);
+
+                    if ($allowedOrigins[0] === '*' || in_array($origin, $allowedOrigins)) {
+                        $response->setHeader("Access-Control-Allow-Origin", '*');
+                        $response->setHeader('Access-Control-Allow-Methods', "GET, OPTIONS");
+                        $response->setHeader('Access-Control-Allow-Headers', "Content-Type");
+                    }
+
+                    return $response->body(file_get_contents($path));
                 }
 
-                header("Content-type: text/html", true, 404);
-                echo "File Not Found";
-
-                return true;
+                return Response::plain("File Not Found", BaseResponse::STATUS_NOT_FOUND);
             }
         }
 
-        return false;
+        return $next($request);
     }
 }

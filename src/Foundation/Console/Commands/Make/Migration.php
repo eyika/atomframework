@@ -1,32 +1,56 @@
 <?php
-
 namespace Eyika\Atom\Framework\Foundation\Console\Commands\Make;
 
 use Eyika\Atom\Framework\Exceptions\Console\BaseConsoleException;
-use Eyika\Atom\Framework\Exceptions\Console\InvalidInputException;
-use Eyika\Atom\Framework\Foundation\Console\Concerns\RunsOnConsole;
-use Eyika\Atom\Framework\Foundation\Console\Command;
+use Eyika\Atom\Framework\Support\Str;
 
-class Migration extends Command
+class Migration extends BaseMake
 {
     public string $signature = 'make:migration';
+    public string $description = 'Create a new migration file';
+    protected string $type = 'Migration';
+    protected string $directory = 'database/migrations';
 
-    use RunsOnConsole;
-
-    public function handle(array $arguments = []): bool
+    protected function stubContent(): string
     {
-        try {
-            if (empty($arguments[0] ?? '')) {
-                throw new InvalidInputException('name of migration is not specified', 1);
-            }
-    
-            array_unshift($arguments, 'create');
+        $table_name = Str::snake($this->argument(0));
 
-            $code = $this->executeCommand($arguments);
-        } catch (BaseConsoleException $e) {
-            $this->error($e->getMessage());
-            return !(bool)$e->getCode();
+        return <<<EOT
+<?php
+
+namespace Database\Migrations;
+
+use Eyika\Atom\Framework\Support\Database\Schema\Migrations\Migration;
+use Eyika\Atom\Framework\Support\Database\Schema\Blueprint;
+use Eyika\Atom\Framework\Support\Database\Schema\Schema;
+
+return new class extends Migration
+{
+    public function up()
+    {
+        Schema::create('$table_name', function (Blueprint \$table) {
+            \$table->id();
+            \$table->timestamps();
+        });
+    }
+
+    public function down()
+    {
+        Schema::dropIfExists('$table_name');
+    }
+};
+
+EOT;
+    }
+
+    protected function filename(): string
+    {
+        $timestamp = date('Y_m_d_His');
+        $name =  $this->argument(0);
+        if (is_null($name)) {
+            throw new BaseConsoleException("Please provide a name for the {$this->type}");
         }
-        return !(bool)$code;
+
+        return "{$timestamp}_" . Str::snake($name);
     }
 }

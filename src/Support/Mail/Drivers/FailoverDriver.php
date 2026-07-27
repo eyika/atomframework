@@ -13,7 +13,9 @@ class FailoverDriver implements MailerInterface
     protected $mailers;
 
     protected $config;
-    protected array $tos;
+    protected array $tos = [];
+    protected array $from = [];
+    protected array $replyTos = [];
 
     public function __construct(array $config)
     {
@@ -27,6 +29,18 @@ class FailoverDriver implements MailerInterface
     public function to(string $address, string|null $name = null): self
     {
         array_push($this->tos, $address);
+        return $this;
+    }
+
+    public function from(string $address, string $name): self
+    {
+        $this->from = ['address' => $address, 'name' => $name];
+        return $this;
+    }
+
+    public function replyTo(string $address, string|null $name = null): self
+    {
+        array_push($this->replyTos, $name ? "$name <$address>" : $address);
         return $this;
     }
 

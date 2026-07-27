@@ -3,158 +3,274 @@
 namespace Eyika\Atom\Framework\Support\Database;
 
 use Exception;
-use Eyika\Atom\Framework\Exceptions\NotImplementedException;
+use Eyika\Atom\Framework\Support\Arr;
+use Eyika\Atom\Framework\Support\Facade\DatabaseConnection;
 
 class DB
 {
+    // Transaction/lifecycle flags are process-level and stay static; every other
+    // query-state field is now INSTANCE state (BUG-31) so two live builders — e.g.
+    // DB::table('a')->where(...) held while DB::table('b')->... runs — no longer
+    // clobber each other's WHERE/ORDER/JOIN/LIMIT.
     public static bool $transaction_mode;
 
-    protected static $bind_or_filter;
-    protected static array|string $or_ands;
-    protected static array|string $operators;
-    protected static $order;
+    protected $bind_or_filter;
+    protected array|string $or_ands;
+    protected array $joins = [];
+    protected array|string $operators;
+    protected $order;
+    protected bool $for_update = false;
 
     private static $instantiated = false;
 
-    protected static $recordsPerPage;
+    protected $recordsPerPage;
+    protected $table;
 
     public function __construct()
     {
         static::$transaction_mode = false;
-        static::$or_ands = 'AND';
-        static::$operators = '=';
+        $this->or_ands = 'AND';
+        $this->operators = '=';
         static::$instantiated = true;
+        $this->order = '';
+        $this->bind_or_filter = null;
     }
 
-    public static function init()
+    public static function table(string $table)
     {
-        return new static();
+        $o = (new static());
+        $o->table = $table;
+
+        return $o;
     }
 
     public static function beginTransaction()
     {
-        mysqly::beginTransaction();
-        $_SESSION['transaction_mode'] = true;
-        self::$transaction_mode = true;
+        // Transaction state lives on the connection object (Connection::$transaction_mode),
+        // not in $_SESSION (WRK-12/PERF-16) — the session global was written but never
+        // read, and is process-shared under a worker.
+        DatabaseConnection::beginTransaction();
+
+        if (! self::$instantiated)
+            self::$transaction_mode = true;
     }
 
     public static function commit()
     {
-        mysqly::commit();
-        $_SESSION['transaction_mode'] = false;
-        self::$transaction_mode = false;
+        DatabaseConnection::commit();
+
+        if (! self::$instantiated)
+            self::$transaction_mode = false;
     }
 
     public static function rollback()
     {
-        mysqly::rollback();
-        $_SESSION['transaction_mode'] = false;
+        DatabaseConnection::rollback();
+
+        if (! self::$instantiated)
+            self::$transaction_mode = false;
+    }
+
+    public static function statement(string $stmt)
+    {
+        $stat = DatabaseConnection::exec($stmt);
+
+        return $stat !== false;
+    }
+
+    public static function select(string $select_stmt)
+    {
+        $statement = DatabaseConnection::exec($select_stmt);
+
+        return $statement->fetchAll();
+    }
+
+    /**
+     * Run a parameterized SELECT and return an array of associative rows.
+     * Bindings are named (e.g. `:limit`, `:start`).
+     *
+     * @param string $sql
+     * @param array $bind
+     * @return array
+     */
+    public static function query(string $sql, array $bind = []): array
+    {
+        $statement = DatabaseConnection::exec($sql, $bind);
+        if ($statement === false) {
+            return [];
+        }
+        return $statement->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    protected function resetInstance()
+    {
+        $this->bind_or_filter = null;
+        $this->or_ands = '';
+        $this->operators = '=';
+        $this->order = '';
+        $this->for_update = false;
         self::$transaction_mode = false;
     }
 
-    protected static function resetInstance()
+    /**
+     * Add a pessimistic write lock (SELECT ... FOR UPDATE) to the next first()/get().
+     * Use inside a transaction to serialize read-modify-write access to a row
+     * (e.g. wallet balance). The flag is cleared by resetInstance() after the read.
+     */
+    public function lockForUpdate()
     {
-        static::$bind_or_filter = null;
-        static::$or_ands = '';
-        static::$operators = '=';
-        static::$order = '';
-        static::$transaction_mode = false;
+        $this->for_update = true;
+        return $this;
     }
 
-    public static function orderBy($column = "id", $direction = "ASC")
+    public function orderBy($column = "id", $direction = "ASC")
     {
-        static::$order = "$column $direction";
-        return new static;
+        // SECURITY: escape column identifier(s) + whitelist direction (mirrors
+        // QueryBuilder::orderBy) — a user-supplied sort must not inject.
+        $dir = strtoupper(trim((string) $direction)) === 'DESC' ? 'DESC' : 'ASC';
+        $cols = array_map(
+            fn($c) => Connection::quoteQualified(trim($c)),
+            explode(',', (string) $column)
+        );
+        $this->bind_or_filter['ORDER BY'] = implode(', ', $cols) . " $dir";
+        return $this;
     }
 
-    public static function raw(string $sql, $bind)
+    public function raw(string $sql, $bind = [])
     {
-        return mysqly::exec($sql, $bind);
+        return DatabaseConnection::exec($sql, $bind);
     }
 
-    public static function create(string $table, array $values, array|string $select = '*')
+    public function create(array $values, array|string $select = '*')
     {
-        if (! self::$instantiated)
-            static::init();
-        if (!$id = mysqly::insert($table, $values)) {
+        if (!$id = $this->insert($values)) {
             return false;
         }
         
         $fields = $select;
 
-        if (!$model = mysqly::fetch($table, ['id' => $id], $fields)) {
+        if (!$model = DatabaseConnection::fetch($this->table, ['id' => $id], $fields)) {
             return true;
         };
 
         return $model;
     }
 
-    public static function find(string $table, $id, array|string $fields = '*')
+    public function insert(array $values)
     {
-        if (! self::$instantiated)
-            static::init();
-        $query_arr = [];
-        
-        if ($id > 0)
-            $query_arr['id'] = $id;
-
-        if (!$model = mysqly::fetch($table, $query_arr, $fields, static::$operators, static::$or_ands)) {
-            static::resetInstance();
+        if (!$id = DatabaseConnection::insert($this->table, $values)) {
             return false;
         }
-        static::resetInstance();
-        return $model[0];
+        return $id;
     }
 
-    public static function findOr(string $table, $id = 0, $callable = null)
+    public function find(int $id, array|string $fields = '*')
     {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
+        return $this->_find($id, $fields);
     }
 
-    public static function first(string $table, $id = 1, array|string $fields = '*')
+    public function exists()
     {
-        return static::find($table, $id, $fields);
+        return $this->count() > 0;
     }
 
-    public static function firstWhere(string $table, $column, $operatorOrValue = null, $value = null, $id = 1)
+    public function findOr($id = 0, $callable = null)
     {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
-    }
-
-    public static function firstOrCreate(string $table, $search, $keyvalues, array|string $select = '*')
-    {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
-    }
-
-    public static function firstOrNew($search, $keyvalues, array|string $select = '*')
-    {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
-    }
-
-    public static function findBy(string $table, $key, $value, array|string $select = '*')
-    {
-        if (! self::$instantiated)
-            static::init();
-        $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
-
-        $query_arr[$key] = $value;
-        if (static::$order !== "")
-            $query_arr['order_by'] = static::$order;
-    
-        $fields = $select;
-
-        if (!$model = mysqly::fetch($table, $query_arr, $fields, static::$operators, static::$or_ands)) {
-            static::resetInstance();
-            return false;
+        if (!$model = $this->_find($id)) {
+            return is_callable($callable) ? $callable() : $model;
         }
-        static::resetInstance();
+
         return $model;
     }
 
-    public static function findByArray(string $table, $keys, $values, $or_and = "AND", $select = [])
+    public function first(array|string $fields = '*')
     {
-        if (! self::$instantiated)
-            static::init();
+        return $this->_find(null, $fields);
+    }
+
+    /**
+     * First matching row, or the result of $callable when none is found.
+     */
+    public function firstOr($callable = null, array|string $fields = '*')
+    {
+        if (!$model = $this->_find(null, $fields)) {
+            return is_callable($callable) ? $callable() : $model;
+        }
+
+        return $model;
+    }
+
+    private function _find(int|null $id, array|string $fields = '*')
+    {
+        $query_arr = [];
+
+        if ($this->bind_or_filter)
+            $query_arr = $this->bind_or_filter;
+        
+        if ($id && $id > 0)
+            $query_arr['id'] = $id;
+
+        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands, $this->for_update)) {
+            $this->resetInstance();
+            return false;
+        }
+        $this->resetInstance();
+        return $model[0];
+    }
+
+    public function firstWhere($column, $operatorOrValue = null, $value = null)
+    {
+        return $this->where($column, $operatorOrValue, $value)->first();
+    }
+
+    /**
+     * First row matching $search, or a freshly created row (search + values merged).
+     * Returns a single associative row (not a list).
+     */
+    public function firstOrCreate($search, $keyvalues, array|string $select = '*')
+    {
+        $existing = $this->findByArray(array_keys($search), array_values($search), 'AND', $select);
+        if ($existing) {
+            return is_array($existing) ? ($existing[0] ?? $existing) : $existing;
+        }
+
+        $created = $this->create(array_merge($search, $keyvalues), $select);
+        return is_array($created) ? ($created[0] ?? $created) : $created;
+    }
+
+    /**
+     * First row matching $search, or the would-be attributes (search + values merged)
+     * WITHOUT persisting. The static DB builder has no model instances, so a miss
+     * returns a plain array rather than an unsaved model.
+     */
+    public function firstOrNew($search, $keyvalues, array|string $select = '*')
+    {
+        $existing = $this->findByArray(array_keys($search), array_values($search), 'AND', $select);
+        if ($existing) {
+            return is_array($existing) ? ($existing[0] ?? $existing) : $existing;
+        }
+
+        return array_merge($search, $keyvalues);
+    }
+
+    public function findBy($key, $value, array|string $select = '*')
+    {
+        $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
+
+        $query_arr[$key] = $value;
+    
+        $fields = $select;
+
+        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
+            $this->resetInstance();
+            return false;
+        }
+        $this->resetInstance();
+        return $model;
+    }
+
+    public function findByArray($keys, $values, $or_and = "AND", $select = [])
+    {
         if (count($keys) !== count($values)) {
             return false;
         }
@@ -163,59 +279,65 @@ class DB
 
         foreach ($keys as $pos => $key) {
             $query_arr[$key] = $values[$pos];
-            is_string(static::$or_ands) ? static::$or_ands = [$or_and] : array_push(static::$or_ands, $or_and);
+            is_string($this->or_ands) ? $this->or_ands = [$or_and] : array_push($this->or_ands, $or_and);
         }
-        
-        if (!$fields = mysqly::fetch($table, $query_arr, $select)) {
+
+        // Empty select → all columns (see all()).
+        if (is_array($select) && count($select) === 0) {
+            $select = '*';
+        }
+
+        if (!$fields = DatabaseConnection::fetch($this->table, $query_arr, $select)) {
             return false;
         }
         return $fields;
     }
 
-    public static function all(string $table, $select = [])
+    public function all($select = [])
     {
-        if (! self::$instantiated)
-            static::init();
         $query_arr = [];
-        if (static::$bind_or_filter)
-            $query_arr = static::$bind_or_filter;
+        if ($this->bind_or_filter)
+            $query_arr = $this->bind_or_filter;
 
-        if (static::$order !== "")
-            $query_arr['order_by'] = static::$order;
+        // The raw builder has no fillable list — an empty select means "all columns".
+        // Left as [] it produced `SELECT  FROM` (invalid SQL).
+        if (is_array($select) && count($select) === 0) {
+            $select = '*';
+        }
 
-        if (!$fields = mysqly::fetch($table, $query_arr, $select, static::$operators, static::$or_ands)) {
-            static::resetInstance();
+        if (!$fields = DatabaseConnection::fetch($this->table, $query_arr, $select, $this->operators, $this->or_ands, $this->for_update)) {
+            $this->resetInstance();
             return false;
         }
-        static::resetInstance();
+        $this->resetInstance();
         return $fields;
     }
 
-    // public static function with($model)
-    // {
-    //     throw new NotImplementedException('method not fully implemented');
-    //     static::$with_model_name = $model;
-    // }
-
-    public static function get(string $table, $select = '*')
+    public function get($select = '*')
     {
-        return static::all($table, $select);
+        return $this->all($select);
     }
 
-    public static function paginate(string $table, $currentPage = null, $recordsPerPage = null)
+    public function paginate($currentPage = null, $recordsPerPage = null)
     {
-        $currentPage = $currentPage ?? 1;
-        $recordsPerPage = $recordsPerPage ?? static::$recordsPerPage;
-        $totalRecords = static::count($table, 'id');
-        // Calculate total pages
-        $totalPages = ceil($totalRecords / $recordsPerPage);
-        // Calculate the offset
+        $currentPage = max(1, (int) ($currentPage ?? PaginatedData::currentPage));
+        $recordsPerPage = (int) ($recordsPerPage ?? $this->recordsPerPage ?? PaginatedData::recordsPerPage);
+        if ($recordsPerPage < 1) {
+            $recordsPerPage = PaginatedData::recordsPerPage;
+        }
+
+        // Count matching rows WITHOUT resetting the builder, so the SAME where()
+        // filter is reused for the page fetch below (mirrors QueryBuilder::_paginate).
+        // The previous code called `static::$offset(...)` — a variable-variable that
+        // treated $offset as a property name — and passed the table as a column.
+        $totalRecords = (int) $this->_aggregate('*', 'count', false);
+        $totalPages = (int) ceil($totalRecords / $recordsPerPage);
         $offset = ($currentPage - 1) * $recordsPerPage;
 
-        static::limit($recordsPerPage);
-        static::$offset($offset);
+        $this->limit($recordsPerPage);
+        $this->offset($offset);
 
-        $data = static::all($table);
+        $data = $this->all();
 
         if (!$data) {
             return false;
@@ -223,137 +345,256 @@ class DB
         return PaginatedData::init($data, $totalRecords, $recordsPerPage, $totalPages, $currentPage);
     }
 
-    public static function random()
+    public function random()
     {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
+        $data = $this->_aggregate(method: 'random', reset_instance: false);
+
+        return $data;
     }
 
-    public static function count(string $table, $column = "*")
+    public function count($column = "*")
     {
-        return static::_count($table, $column);
+        if (!$dat = $this->_aggregate($column)) {
+            return 0;
+        }
+        return $dat;
     }
 
-    public static function _count(string $table, $column = "*", $reset_instance = true)
+    public function avg($column)
     {
-        if (! self::$instantiated)
-            static::init();
-        $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
+        if (!$dat = $this->_aggregate($column, 'avg')) {
+            return 0;
+        }
+        return $dat;
+    }
 
-        $i = 0;
-        // foreach ($keys as $key) {
-        //     $query_arr[$key] = $values[$i];
-        //     $i++;
-        // }
+    public function max($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'max')) {
+            return 0;
+        }
+        return $dat;
+    }
+    
+    public function min($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'min')) {
+            return 0;
+        }
+        return $dat;
+    }
 
-        if (!$count = mysqly::count($table, $query_arr, static::$operators, static::$or_ands)) {
+    public function sum($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'sum')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function group_concat($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'group_concat')) {
+            return '';
+        }
+        return $dat;
+    }
+    
+    public function var_pop($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'var_pop')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function stddev($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'stddev')) {
+            return 0;
+        }
+        return $dat;
+    }
+    
+    public function bit_and($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'bit_and')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function bit_or($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'bit_or')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function bit_xor($column)
+    {
+        if (!$dat = $this->_aggregate($column, 'bit_xor')) {
+            return 0;
+        }
+        return $dat;
+    }
+
+    public function _aggregate($column = "*", $method = 'count', $reset_instance = true)
+    {
+        $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
+
+        if ($method == 'count' && $column != '*') {
+            $this->operators[] = "DISTINCT " . Connection::quoteQualified($column);
+        }
+
+        $method = $method == 'count' ? $method : $method."_".$column;
+
+        if (!$aggregate = DatabaseConnection::{$method}($this->table, $query_arr, $this->operators, $this->or_ands)) {
             if ($reset_instance)
-                static::resetInstance();
+                $this->resetInstance();
             return false;
         }
         if ($reset_instance)
-            static::resetInstance();
+            $this->resetInstance();
 
-        return $count;
+        return $aggregate;
     }
 
-    public static function avg($column)
+    public function update(array $values, int|null $id = null)
     {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
+        return $this->_update($values, $id);
     }
 
-    public static function max($column)
+    public function increment(string $column, int $step = 1)
     {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
-    }
-    
-    public static function min($column)
-    {
-        throw new NotImplementedException('oops! this feature is yet to be implemented');
-    }
+        $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
+        $operators = $this->operators;
+        $column = $this->parseColumn($column);
 
-    public static function update(string $table, $values, $id)
-    {
-        return static::_update($table, $values, $id);
+        if (DatabaseConnection::increment($column, $this->table, $query_arr, $operators, $this->or_ands, $step)) {
+            return false;
+        }
+        return true;
     }
 
-    public static function delete(string $table, $id)
+    public function decrement(string $column, int $step = 1)
     {
-        if (! self::$instantiated)
-            static::init();
-        $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
+        $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
+        $operators = $this->operators;
+        $column = $this->parseColumn($column);
 
-        if ($id !== 0 && count($query_arr) < 1)
+        if (DatabaseConnection::decrement($column, $this->table, $query_arr, $operators, $this->or_ands, $step)) {
+            return false;
+        }
+        return true;
+    }
+
+    public function delete(int|null $id = null)
+    {
+        $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
+
+        if ((int) $id > 0 && count($query_arr) < 1)
             $query_arr['id'] = $id;
 
-        $val = mysqly::remove($table, $query_arr, static::$operators, static::$or_ands);
-        static::resetInstance();
+        // Refuse a filterless/idless delete — it would DELETE the entire table (or,
+        // with a null id, silently match nothing).
+        if (count($query_arr) < 1) {
+            throw new Exception('delete() requires a positive id or a where() filter; refusing to delete every row.');
+        }
+
+        $val = DatabaseConnection::remove($this->table, $query_arr, $this->operators, $this->or_ands);
+        $this->resetInstance();
         return $val;
     }
 
-    public static function restore(string $table, $id)
+    public function restore($id)
     {
-        // if (!static::$child->softdeletes) {
-        //     throw new Exception("this model does not support soft deleting");
-        // }
-
-        return static::_update($table, ['deleted_at', null], $id);
+        // Associative — a list wrote columns `0`/`1` and never cleared deleted_at.
+        return $this->_update(['deleted_at' => null], $id);
     }
 
-    public static function limit($amount)
+    public function limit($amount)
     {
-        static::$bind_or_filter['LIMIT'] = $amount;
-        return new static;
+        $this->bind_or_filter['LIMIT'] = (int) $amount;
+        return $this;
     }
 
-    public static function offset($postion)
+    public function offset($postion)
     {
-        static::$bind_or_filter['OFFSET'] = $postion;
-        return new static;
+        $this->bind_or_filter['OFFSET'] = (int) $postion;
+        return $this;
     }
 
-    public static function where($column, $operatorOrValueOrMethod = null, $value = null)
+    public function where($column, $operatorOrValueOrMethod = null, $value = null)
     {
-        return static::_where($column, $operatorOrValueOrMethod, $value, 'AND');
+        return $this->_where($column, $operatorOrValueOrMethod, $value, 'AND');
     }
     
-    public static function whereLike($column, $value = null)
+    public function whereLike($column, $value = null)
     {
-        return static::_where($column, 'LIKE', $value, 'AND');
+        return $this->_where($column, 'LIKE', $value, 'AND');
+    }
+    
+    public function whereIn($column, $values)
+    {
+        return $this->_where($column, 'IN', $values, 'AND');
+    }
+    
+    public function whereNotIn($column, $values)
+    {
+        return $this->_where($column, 'NOT IN', $values, 'AND');
     }
 
-    public static function whereNotLike($column, $value = null)
+    public function whereNotLike($column, $value = null)
     {
-        return static::_where($column, 'NOT LIKE', $value, 'AND');
+        return $this->_where($column, 'NOT LIKE', $value, 'AND');
     }
 
-    public static function whereLessThan($column, $value = null)
+    public function whereBetween($column, array $range)
     {
-        return static::_where($column, '<', $value, 'AND');
+        if (count($range) !== 2) {
+            throw new \InvalidArgumentException('whereBetween expects a [min, max] array');
+        }
+        return $this->_where($column, 'BETWEEN', array_values($range), 'AND');
     }
 
-    public static function whereGreaterThan($column, $value = null)
+    public function whereNotBetween($column, array $range)
     {
-        return static::_where($column, '>', $value, 'AND');
+        if (count($range) !== 2) {
+            throw new \InvalidArgumentException('whereNotBetween expects a [min, max] array');
+        }
+        return $this->_where($column, 'NOT BETWEEN', array_values($range), 'AND');
     }
 
-    public static function whereLessThanOrEqual($column, $value = null)
+    public function whereLessThan($column, $value = null)
     {
-        return static::_where($column, '<=', $value, 'AND');
+        return $this->_where($column, '<', $value, 'AND');
     }
 
-    public static function whereGreaterThanOrEqual($column, $value = null)
+    public function whereGreaterThan($column, $value = null)
     {
-        return static::_where($column, '>=', $value, 'AND');
+        return $this->_where($column, '>', $value, 'AND');
     }
 
-    public static function whereEqual($column, $value = null)
+    public function whereLessThanOrEqual($column, $value = null)
     {
-        return static::_where($column, '=', $value, 'AND');
+        return $this->_where($column, '<=', $value, 'AND');
     }
 
-    public static function whereNotEqual($column, $value = null)
+    public function whereGreaterThanOrEqual($column, $value = null)
     {
-        return static::_where($column, '!=', $value, 'AND');
+        return $this->_where($column, '>=', $value, 'AND');
+    }
+
+    public function whereEqual($column, $value = null)
+    {
+        return $this->_where($column, '=', $value, 'AND');
+    }
+
+    public function whereNotEqual($column, $value = null)
+    {
+        return $this->_where($column, '!=', $value, 'AND');
     }
 
     public function whereNull($column)
@@ -363,52 +604,62 @@ class DB
 
     public function whereNotNull($column)
     {
-        return $this->_where($column, 'NOT NULL');
+        return $this->_where($column, 'IS NOT NULL');
     }
 
-    public static function orWhere($column, $operatorOrValue = null, $value = null)
+    public function orWhere($column, $operatorOrValue = null, $value = null)
     {
-        return static::_where($column, $operatorOrValue, $value, 'OR');
-    }
-
-    public static function orWhereLike($column, $value = null)
-    {
-        return static::_where($column, 'LIKE', $value, 'OR');
-    }
-
-    public static function orWhereNotLike($column, $value = null)
-    {
-        return static::_where($column, 'NOT LIKE', $value, 'OR');
+        return $this->_where($column, $operatorOrValue, $value, 'OR');
     }
     
-    public static function orWhereLessThan($column, $value = null)
+    public function orWhereIn($column, $values)
     {
-        return static::_where($column, '<', $value, 'OR');
+        return $this->_where($column, 'IN', $values, 'OR');
+    }
+    
+    public function orWhereNotIn($column, $values)
+    {
+        return $this->_where($column, 'NOT IN', $values, 'OR');
     }
 
-    public static function orWhereGreaterThan($column, $value = null)
+    public function orWhereLike($column, $value = null)
     {
-        return static::_where($column, '>', $value, 'OR');
+        return $this->_where($column, 'LIKE', $value, 'OR');
     }
 
-    public static function orWhereLessThanOrEqual($column, $value = null)
+    public function orWhereNotLike($column, $value = null)
     {
-        return static::_where($column, '<=', $value, 'OR');
+        return $this->_where($column, 'NOT LIKE', $value, 'OR');
+    }
+    
+    public function orWhereLessThan($column, $value = null)
+    {
+        return $this->_where($column, '<', $value, 'OR');
     }
 
-    public static function orWhereGreaterThanOrEqual($column, $value = null)
+    public function orWhereGreaterThan($column, $value = null)
     {
-        return static::_where($column, '>=', $value, 'OR');
+        return $this->_where($column, '>', $value, 'OR');
     }
 
-    public static function orWhereEqual($column, $value = null)
+    public function orWhereLessThanOrEqual($column, $value = null)
     {
-        return static::_where($column, '=', $value, 'OR');
+        return $this->_where($column, '<=', $value, 'OR');
     }
 
-    public static function orWhereNotEqual($column, $value = null)
+    public function orWhereGreaterThanOrEqual($column, $value = null)
     {
-        return static::_where($column, '!=', $value, 'OR');
+        return $this->_where($column, '>=', $value, 'OR');
+    }
+
+    public function orWhereEqual($column, $value = null)
+    {
+        return $this->_where($column, '=', $value, 'OR');
+    }
+
+    public function orWhereNotEqual($column, $value = null)
+    {
+        return $this->_where($column, '!=', $value, 'OR');
     }
 
     public function orWhereNull($column)
@@ -429,32 +680,29 @@ class DB
      * @param bool $internal
      * @return self|bool|array
      */
-    private function _update(string $table, array $values, int $id, string|array $fields = '*')
+    private function _update(array $values, int|null $id = null, string|array $fields = '*')
     {   
-        if (! self::$instantiated)
-            static::init();
-        $query_arr = static::$bind_or_filter === null ? [] : static::$bind_or_filter;
+        $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
-        $query_arr['id'] = $id;
+        if ($id)
+            $query_arr['id'] = $id;
 
-        $count = mysqly::update($table, $query_arr, $values, static::$operators, static::$or_ands);
+        $count = DatabaseConnection::update($this->table, $query_arr, $values, $this->operators, $this->or_ands);
 
-        if (!$model = mysqly::fetch($table, $query_arr, $fields, static::$operators, static::$or_ands)) {
-            static::resetInstance();
+        if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
+            $this->resetInstance();
             return false;
         }
 
-        static::resetInstance();
+        $this->resetInstance();
 
         return $model[0];
     }
 
     private function _where(string $column, string|null $operatorOrValue = null, $value = null, $boolean = "AND")
     {
-        if (! self::$instantiated)
-            static::init();
-        $bind_or_filter = static::$bind_or_filter;
-        if ($bind_or_filter != null) {
+        $bind_or_filter = $this->bind_or_filter;
+        if (is_array($bind_or_filter)) {
             foreach ($bind_or_filter as $key => $_value) {
                 if (($key == 'LIMIT' || $key == 'OFFSET') && gettype($_value) == 'integer') {
                     throw new Exception("all where queries should come before $key queries");
@@ -462,25 +710,78 @@ class DB
             }
         }
         if (is_null($value) && !is_null($operatorOrValue) && str_contains($operatorOrValue, ' NULL')) {// only column and value was given but value is like `IS NULL` or `NOT NULL`
-            is_string(static::$operators) ? static::$operators = [$operatorOrValue] : array_push(static::$operators, $operatorOrValue);
-        }
-        else if (is_null($value) && !is_null($operatorOrValue) && !str_contains($operatorOrValue, ' NULL')) {// only column and value was given
-            is_string(static::$operators) ? static::$operators = ['='] : array_push(static::$operators, '=');
+            $value = $operatorOrValue;
+        } else if (is_null($value) && Arr::exists(['!=', '==', '='], $operatorOrValue)) {
+            $value = $operatorOrValue == '!=' ? 'IS NOT NULL' : 'IS NULL';
+        } else if (is_null($value) && !is_null($operatorOrValue) && !str_contains($operatorOrValue, ' NULL')) {// only column and value was given
+            is_string($this->operators) ? $this->operators = ['='] : array_push($this->operators, '=');
             $value = $operatorOrValue;
         } else {
-            is_string(static::$operators) ? static::$operators = [$operatorOrValue] : array_push(static::$operators, $operatorOrValue);
+            is_string($this->operators) ? $this->operators = [$operatorOrValue] : array_push($this->operators, $operatorOrValue);
         }
 
-        is_string(static::$or_ands) ? static::$or_ands = [$boolean] : array_push(static::$or_ands, $boolean);
-        is_null(static::$bind_or_filter) ? static::$bind_or_filter = array($column => $value) : static::$bind_or_filter[$column] = $value;
+        is_string($this->or_ands) ? $this->or_ands = [$boolean] : array_push($this->or_ands, $boolean);
+        $column = $this->parseColumn($column);
 
-        return new static;
+        // See QueryBuilder::__where() for rationale on the __dupN suffix.
+        $bindKey = $column;
+        if (is_array($this->bind_or_filter) && array_key_exists($bindKey, $this->bind_or_filter)) {
+            $n = 1;
+            while (array_key_exists($column . '__dup' . $n, $this->bind_or_filter)) {
+                $n++;
+            }
+            $bindKey = $column . '__dup' . $n;
+        }
+
+        is_null($this->bind_or_filter) ? $this->bind_or_filter = array($bindKey => $value) : $this->bind_or_filter[$bindKey] = $value;
+
+        return $this;
     }
 
-    public static function distinct($column)
+    private function _join(string $table, string $first, string $operator, string $second, string $type = 'INNER'): static
     {
-        is_string(static::$operators) ? static::$operators = ["DISTINCT `$column`"] : array_push(static::$operators, "DISTINCT `$column`");
+        $this->joins[] = compact('type', 'table', 'first', 'operator', 'second');
+        return $this;
+    }
 
-        return new static;
+    public function join(string $table, string $first, string $operator, string $second)
+    {
+        return $this->_join($table, $first, $operator, $second);
+    }
+
+    public function leftJoin(string $table, string $first, string $operator, string $second)
+    {
+        return $this->_join($table, $first, $operator, $second, 'LEFT');
+    }
+
+    public function rightJoin(string $table, string $first, string $operator, string $second)
+    {
+        return $this->_join($table, $first, $operator, $second, 'RIGHT');
+    }
+
+    public function fullOuterJoin(string $table, string $first, string $operator, string $second)
+    {
+        return $this->_join($table, $first, $operator, $second, 'FULL OUTER');
+    }
+
+    public function distinct($column)
+    {
+        $distinct = "DISTINCT " . Connection::quoteQualified($column);
+        is_string($this->operators) ? $this->operators = [$distinct] : array_push($this->operators, $distinct);
+
+        return $this;
+    }
+
+    private function parseColumn(string $column): string
+    {
+        if (strpos($column, '.') !== false) {
+            [$relation, $field] = explode('.', $column, 2);
+
+            $this->leftJoin("{$relation}s", $this->table.".{$relation}_id", '=', "{$relation}s.id");
+
+            return "{$relation}s.{$field}";
+        }
+
+        return $this->table.".{$column}";
     }
 }

@@ -270,7 +270,7 @@ class Job_Queue
                         $result = $result[0];
                         $job = [
                             'id' => intval($result['id']),
-                            'tries' => intval($result['attempts'])+1,
+                            'attempts' => intval($result['attempts'])+1,
                             'payload' => $result['payload']
                         ];
                         $delay = intval($result['delay']);
@@ -306,7 +306,6 @@ class Job_Queue
                     $table_name = $this->getSqlTableName()[0];
                     $field = $this->isMysqlQueueType() && $this->options['mysql']['use_compression'] === true ? 'UNCOMPRESS(payload) payload' : 'payload';
                     $send_dt = gmdate('Y-m-d H:i:s');
-                    // $reserved_dt = gmdate('Y-m-d H:i:s', strtotime('now -5 minutes UTC'));
                     $statement = $this->connection->prepare("SELECT id, {$field}, `delay`, added_dt, send_dt, priority, attempts, is_reserved, reserved_dt, is_buried, buried_dt
                         FROM {$table_name} 
                         WHERE pipeline = ? AND send_dt <= ? AND is_buried = 1 AND (attempts >= 1 AND time_to_retry_dt <= ?)
@@ -317,7 +316,7 @@ class Job_Queue
                         $result = $result[0];
                         $job = [
                             'id' => intval($result['id']),
-                            'tries' => intval($result['attempts'])+1,
+                            'attempts' => intval($result['attempts'])+1,
                             'payload' => $result['payload']
                         ];
                         $delay = intval($result['delay']);
@@ -405,7 +404,7 @@ class Job_Queue
 					$this->pipeline,
 					$job['payload'],
 					$added_dt,
-					$job['tries']
+					$job['attempts'] ?? 0
 				]);
 				
 				$id = intval($this->connection->lastInsertId());
@@ -474,6 +473,7 @@ class Job_Queue
 				return $job->getData();
 			break;
 		}
+		return '';
 	}
 
 	/**

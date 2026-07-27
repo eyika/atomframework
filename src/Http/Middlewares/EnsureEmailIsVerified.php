@@ -2,7 +2,9 @@
 
 namespace Eyika\Atom\Framework\Http\Middlewares;
 
+use Closure;
 use Eyika\Atom\Framework\Exceptions\Http\RequestException;
+use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
 use Eyika\Atom\Framework\Http\Request;
 
@@ -13,7 +15,7 @@ class EnsureEmailIsVerified implements MiddlewareInterface
      *
      * @throws RequestException
      */
-    public function handle(Request $request): bool
+    public function handle(Request $request, Closure $next): BaseResponse
     {
         // Assuming a method isEmailVerified() checks if the user's email is verified
         if (!$this->isEmailVerified($request)) {
@@ -22,7 +24,7 @@ class EnsureEmailIsVerified implements MiddlewareInterface
             throw new RequestException(403, 'Your email address is not verified.');
         }
 
-        return false;
+        return $next($request);
     }
 
     /**
@@ -44,7 +46,7 @@ class EnsureEmailIsVerified implements MiddlewareInterface
      * Mock method to get the user from the request.
      *
      * @param Request $request
-     * @return \Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface|null
+     * @return Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface|null
      */
     protected function getUser(Request $request)
     {

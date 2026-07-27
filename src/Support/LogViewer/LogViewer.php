@@ -2,7 +2,10 @@
 
 namespace Eyika\Atom\Framework\Support\LogViewer;
 
+use Eyika\Atom\Framework\Exceptions\Storage\FileNotFoundException;
+use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Cache\DbCache;
+use Eyika\Atom\Framework\Support\Storage\Storage;
 
 class LogViewer
 {
@@ -20,6 +23,11 @@ class LogViewer
      * @var string storage_path
      */
     private $storage_path;
+
+    /**
+     * @var string storage_disk
+     */
+    private $storage_disk;
 
     /**
      * Why? Uh... Sorry
@@ -44,7 +52,7 @@ class LogViewer
         $this->level = new Level();
         $this->pattern = new Pattern();
         $this->storage_path = function_exists('config') ? config('logviewer.storage_path', storage_path('logs')) : storage_path('logs');
-
+        $this->storage_disk = config('logviewer.storage_disk', 'log');
     }
 
     /**
@@ -82,7 +90,7 @@ class LogViewer
      */
     public function setFile($file)
     {
-        $file = $this->pathToLogFile($file);
+        // $file = $this->pathToLogFile($file);
 
         if (storage( cache: new DbCache)->exists($file, true)) {
             $this->file = $file;
@@ -158,11 +166,15 @@ class LogViewer
         $max_file_size = function_exists('config') ? config('logviewer.max_file_size', self::MAX_FILE_SIZE) : self::MAX_FILE_SIZE;
         // if ( app('files')->size($this->file) > $max_file_size) {
 
-        if (storage( cache: new DbCache)->size($this->file, true) > $max_file_size) {
-            return null;
-        }
+        // try {
+            if ($this->getStorage()->size($this->file) > $max_file_size) {
+                return null;
+            }
+        // } catch (FileNotFoundException $e) {
+        //     return null;
+        // }
 
-        if (!is_readable($this->file)) {
+        if (!$this->getStorage()->exists($this->file)) {
             return [[
                 'context' => '',
                 'level' => '',
@@ -173,7 +185,7 @@ class LogViewer
         }
 
         // $file = app('files')->get($this->file);
-        $file = storage( cache: new DbCache)->get($this->file, true);
+        $file = $this->getStorage()->get($this->file);
 
         preg_match_all($this->pattern->getPattern('logs'), $file, $headings);
 
@@ -282,24 +294,22 @@ class LogViewer
 
 
     /**
-     * @param bool $basename
      * @return array
      */
-    public function getFolderFiles($basename = false)
+    public function getFolderFiles()
     {
-        return $this->getFiles($basename, $this->folder);
+        return $this->getFiles($this->folder);
     }
 
     /**
-     * @param bool $basename
      * @param string $folder
      * @return array
      */
-    public function getFiles($basename = false, $folder = '')
+    public function getFiles($folder = '')
     {
         $files = [];
         $pattern = function_exists('config') ? config('logviewer.pattern', '*.log') : '*.log';
-        $fullPath = $this->storage_path . '/' . $folder;
+        $fullPath = $folder ? $this->storage_path . '/' . $folder : $this->storage_path;
 
         $listObject = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($fullPath, \RecursiveDirectoryIterator::SKIP_DOTS),
@@ -308,12 +318,51 @@ class LogViewer
 
         foreach ($listObject as $fileinfo) {
             if (!$fileinfo->isDir() && strtolower(pathinfo($fileinfo->getRealPath(), PATHINFO_EXTENSION)) == explode('.', $pattern)[1])
-                $files[] = $basename ? basename($fileinfo->getRealPath()) : $fileinfo->getRealPath();
+                // $files[] = str_replace(storage_path(), '', $fileinfo->getRealPath());
+                $files[] = basename($fileinfo->getRealPath());
         }
 
-        arsort($files);
+        sort($files);
 
         return array_values($files);
+    }
+
+    /**
+     * @return Storage
+     */
+    public function getStorage()
+    {
+        return storage($this->storage_disk, cache: new DbCache);
+    }
+
+    /**
+     * @param string $filepath
+     */
+    public function clean(string $filepath)
+    {
+        $this->getStorage()->put($filepath, '');
+    }
+
+    /**
+     * 
+     */
+    public function cleanFolder()
+    {
+        $files = ($this->getFolderName())
+            ? $this->getFolderFiles()
+            : $this->getFiles();
+
+        foreach ($files as $file) {
+            $this->getStorage()->delete($file, true);
+        }
+    }
+
+    /**
+     * 
+     */
+    public function delete(string $filepath)
+    {
+        $this->getStorage()->delete($filepath);
     }
 
     /**

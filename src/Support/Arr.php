@@ -3,10 +3,11 @@
 namespace Eyika\Atom\Framework\Support;
 
 use ArrayAccess;
+use Eyika\Atom\Framework\Support\Collections\Collection;
 use Eyika\Atom\Framework\Support\Concerns\Macroable;
 use InvalidArgumentException;
 
-Class Arr
+final Class Arr
 {
     use Macroable;
 
@@ -164,6 +165,30 @@ Class Arr
     }
 
     /**
+     * Replace a key with new key name in an array
+     * 
+     * @param array $array
+     * @param string|int $oldKey
+     * @param string|int $newKey
+     * 
+     * @return void
+     */
+    public static function replaceKey(array &$array, string|int $oldKey, string|int $newKey): void
+    {
+        if (!array_key_exists($oldKey, $array)) {
+            return; // leave array as is if key doesn't exist
+        }
+    
+        $keys = array_keys($array);
+        $values = array_values($array);
+        
+        $index = array_search($oldKey, $keys); // Find index of old key
+        $keys[$index] = $newKey; // Replace old key with new key
+    
+        $array = array_combine($keys, $values);
+    }
+
+    /**
      * Return the first element in an array passing a given truth test.
      *
      * @param  iterable  $array
@@ -175,7 +200,7 @@ Class Arr
     {
         if (is_null($callback)) {
             if (empty($array)) {
-                return self::value($default);
+                return value($default);
             }
 
             foreach ($array as $item) {
@@ -189,7 +214,7 @@ Class Arr
             }
         }
 
-        return self::value($default);
+        return value($default);
     }
 
     /**
@@ -203,7 +228,7 @@ Class Arr
     public static function last($array, callable|null $callback = null, $default = null)
     {
         if (is_null($callback)) {
-            return empty($array) ? self::value($default) : end($array);
+            return empty($array) ? value($default) : end($array);
         }
 
         return static::first(array_reverse($array, true), $callback, $default);
@@ -359,7 +384,7 @@ Class Arr
     public static function get($array, $key, $default = null)
     {
         if (! static::accessible($array)) {
-            return self::value($default);
+            return value($default);
         }
 
         if (is_null($key)) {
@@ -371,14 +396,14 @@ Class Arr
         }
 
         if (strpos($key, '.') === false) {
-            return $array[$key] ?? self::value($default);
+            return $array[$key] ?? value($default);
         }
 
         foreach (explode('.', $key) as $segment) {
             if (static::accessible($array) && static::keyExists($array, $segment)) {
                 $array = $array[$segment];
             } else {
-                return self::value($default);
+                return value($default);
             }
         }
 
@@ -464,6 +489,36 @@ Class Arr
         $keys = array_keys($array);
 
         return array_keys($keys) !== $keys;
+    }
+
+    /**
+     * Determines if an array is an array of arrays.
+     *
+     * @param  array  $array
+     * @return bool
+     */
+    public static function isArrayOfArrays(array $input): bool
+    {
+        $allArrays = true;
+        $hasMixed = false;
+
+        foreach ($input as $value) {
+            if (is_array($value)) {
+                continue;
+            } else {
+                $allArrays = false;
+                $hasMixed = true;
+                break; // If mixed type detected, exit early.
+            }
+        }
+
+        if ($allArrays) {
+            return true;
+        } elseif ($hasMixed) {
+            return false;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -568,15 +623,9 @@ Class Arr
         return $array;
     }
 
-    public static function merge(array ...$values)
+    public static function merge(array ...$values): array
     {
-        $data = [];
-        foreach ($values as $_values) {
-            if (static::isAssoc($_values)) {
-                return array_merge_recursive($data, $_values);
-            }
-            return array_merge($data, $_values);
-        }
+        return array_reduce($values, fn ($carry, $item) => array_merge($carry, is_array($item) ? static::flatten($item) : $item), []);
     }
 
     /**
@@ -705,12 +754,12 @@ Class Arr
      */
     public static function sort($array, $callback = null)
     {
-        //return Collection::makeNew($array)->sort($callback)->toArray();
-        $callback && is_callable($callback)
-            ? uasort($array, $callback)
-            : asort($array, $callback);
+        return Collection::make($array)->sort($callback)->toArray();
+        // $callback && is_callable($callback)
+        //     ? uasort($array, $callback)
+        //     : asort($array, $callback);
 
-        return $array;
+        // return $array;
     }
 
     /**
@@ -721,7 +770,7 @@ Class Arr
      */
     public static function collect($array)
     {
-        return Collection::makeNew($array);
+        return Collection::make($array);
     }
 
     /**

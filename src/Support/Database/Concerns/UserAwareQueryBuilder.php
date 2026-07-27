@@ -2,27 +2,24 @@
 
 namespace Eyika\Atom\Framework\Support\Database\Concerns;
 
-use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
-use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
-use Eyika\Atom\Framework\Support\Database\mysqly;
+use Eyika\Atom\Framework\Support\Facade\DatabaseConnection;
 
 trait UserAwareQueryBuilder
 {
-    public static function boot(ModelInterface | UserModelInterface | null $user)
-    {
-    }
-    public function findByUsername($name, $is_protected = true)
+    public function _findByUsername($name, $is_protected = true)
     {
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
         $query_arr['username'] = $name;
-        if ($this->child->softdeletes) {
+        if ($this->softdeletes) {
             $query_arr['deleted_at'] = "IS NULL";
             is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
         }
+        $this->useHashForEncryptedColumnComparisonQueries($query_arr);
 
         $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
-        if (!$user = mysqly::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
+        info('query array is', $query_arr);
+        if (!$user = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
             $this->resetInstance();
             return false;
         }
@@ -32,21 +29,22 @@ trait UserAwareQueryBuilder
         }
 
         $this->resetInstance();
-        return $this->fill($user[0]);
+        return $this->fill($user[0], true);
     }
 
-    public function findByEmail(string $email, $is_protected = true)
+    public function _findByEmail(string $email, $is_protected = true)
     {
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
         $query_arr['email'] = $email;
-        if ($this->child->softdeletes) {
+        if ($this->softdeletes) {
             $query_arr['deleted_at'] = "IS NULL";
             is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
         }
+        $this->useHashForEncryptedColumnComparisonQueries($query_arr);
 
         $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
-        if (!$user = mysqly::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
+        if (!$user = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
             $this->resetInstance();
             return false;
         }
@@ -56,6 +54,6 @@ trait UserAwareQueryBuilder
         }
 
         $this->resetInstance();
-        return $this->fill($user[0]);
+        return $this->fill($user[0], true);
     }
 }

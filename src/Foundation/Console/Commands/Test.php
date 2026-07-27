@@ -12,12 +12,12 @@ class Test extends Command
 
     public string $signature = 'test';
 
-    public function handle(array $arguments = []): bool
+    public function handle(): bool
     {
         try {
-            array_unshift($arguments, 'tests');
+            array_unshift($this->arguments, 'tests');
 
-            $code = $this->executeCommand($arguments, 'phpUnit');
+            $code = $this->executeCommand($this->arguments, 'phpUnit');
         } catch (BaseConsoleException $e) {
             $this->error($e->getMessage(), $e->getTrace());
             return !(bool)($e->getCode());

@@ -1,0 +1,24 @@
+<?php
+
+use Eyika\Atom\Framework\Support\Database\Schema\Migrations\Migration;
+use Eyika\Atom\Framework\Support\Database\Schema\Blueprint;
+use Eyika\Atom\Framework\Support\Database\Schema\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        //
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        //
+    }
+};

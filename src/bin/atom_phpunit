@@ -105,18 +105,18 @@ use Eyika\Atom\Framework\Foundation\Application;
 
 $log_path = __DIR__."/../../storage/logs/php_error.log";
 ini_set('error_log', $log_path);
-$env = getenv();
+// $env = getenv();
 
-foreach (Application::GLOBAL_VARS as $key => $var) {
-    if ($_var = getenv($var)) {
-        $GLOBALS[$var] = $_var;
-    }
-}
-// Explicitly push environment variables into $_ENV
-foreach ($env as $key => $value) {
-    if (isset($_ENV[$key]) === false) {
-        $_ENV[$key] = $value;
-    }
-}
+// foreach (Application::GLOBAL_VARS as $key => $var) {
+//     if ($_var = getenv($var)) {
+//         $GLOBALS[$var] = $_var;
+//     }
+// }
+// // Explicitly push environment variables into $_ENV
+// foreach ($env as $key => $value) {
+//     if (isset($_ENV[$key]) === false) {
+//         $_ENV[$key] = $value;
+//     }
+// }
 
 exit((new PHPUnit\TextUI\Application)->run($_SERVER['argv']));

@@ -1,13 +1,11 @@
 <?php
 namespace Eyika\Atom\Framework\Support\Mail;
 
-use BadMethodCallException;
-use Exception;
-use Eyika\Atom\Framework\Support\ArrayDriver;
-use Eyika\Atom\Framework\Support\LogDriver;
 use Eyika\Atom\Framework\Support\Mail\Contracts\MailerInterface;
 use Eyika\Atom\Framework\Support\Mail\Contracts\MailerResponse;
+use Eyika\Atom\Framework\Support\Mail\Drivers\ArrayDriver;
 use Eyika\Atom\Framework\Support\Mail\Drivers\FailoverDriver;
+use Eyika\Atom\Framework\Support\Mail\Drivers\LogDriver;
 use Eyika\Atom\Framework\Support\Mail\Drivers\MailgunDriver;
 use Eyika\Atom\Framework\Support\Mail\Drivers\PostmarkDriver;
 use Eyika\Atom\Framework\Support\Mail\Drivers\SendmailDriver;
@@ -99,10 +97,6 @@ class Mailer
         if (!self::$instantiated) {
             new static;
         }
-
-        if (!self::$driver instanceof SmtpDriver && !self::$driver instanceof SendmailDriver) {
-            throw new BadMethodCallException('This method only exists for smtp and sendmail drivers');
-        }
         self::$driver->replyTo($address, $name);
         return new static(self::$config, self::$driver);
     }
@@ -112,12 +106,7 @@ class Mailer
         if (!self::$instantiated) {
             new static;
         }
-
-        if (!self::$driver instanceof SmtpDriver && !self::$driver instanceof SendmailDriver) {
-            throw new BadMethodCallException('This method only exists for smtp and sendmail drivers');
-        }
-
-        self::$driver->from($address, $name);
+        self::$driver->from($address, $name ?? '');
         return new static(static::$config, static::$driver);
     }
 

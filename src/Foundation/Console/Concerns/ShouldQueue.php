@@ -109,20 +109,20 @@ trait ShouldQueue
      * Release the job to a different Queue
      * 
      * @param int $delay in minutes
-     * @return void                      
+     * @return void
      */
     private function bury(int|null $delay = null)
     {
         $id = $this->job['id'];
         unset($this->job);
-        $sclass = serialize($this);
+        $sclass = \Eyika\Atom\Framework\Support\SignedPayload::sign($this);
         $this->delay = $delay ?? $this->delay;
         return $this::$queue->buryJob(['payload' => $sclass, 'id' => $id], $this->delay);
     }
 
     public function run(): void
     {
-        $sclass = serialize($this);
+        $sclass = \Eyika\Atom\Framework\Support\SignedPayload::sign($this);
         $this::$queue->addJob($sclass, $this->delay, $this->priority, $this->delay);
     }
 }

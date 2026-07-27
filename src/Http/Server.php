@@ -2,7 +2,6 @@
 
 namespace Eyika\Atom\Framework\Http;
 
-use Dotenv\Dotenv;
 use Exception;
 use Eyika\Atom\Framework\Foundation\Application;
 use Eyika\Atom\Framework\Foundation\Console\Scheduler;
@@ -12,17 +11,23 @@ use Eyika\Atom\Framework\Support\Encrypter;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\Storage\File;
 use Eyika\Atom\Framework\Support\Storage\Storage;
+use Throwable;
 
 class Server
 {
     public static Application $app;
     protected const ignore_facades = ['console', 'app', 'application'];
     protected const facadables = [
+        // 'cache' => Cache::class,  // Already registered in Service Provider`
         'encrypter' => Encrypter::class,
         'file' => File::class,
-        'storage' => Storage::class,
         'request' => Request::class,
-        'scheduler' => Scheduler::class
+        'scheduler' => Scheduler::class,
+        'session' => Session::class,
+        'storage' => Storage::class,
+        'response' => Response::class,
+        'json_response' => JsonResponse::class,
+        // 'blade' => Blade::class  // Already registered in Service Provider
     ];
 
     public function __construct(Application $app)
@@ -36,32 +41,44 @@ class Server
 
     public static function handle(): bool
     {
+        $request = null; // defined even if make('request') throws (used in catch)
         try {
-            $request = new Request();
+            $request = static::$app->make('request');
             static::$app->instance('request', $request);
-            if (preg_match('/^.*$/i', $request->getRequestUri())) {
-                //register controllers
-                if (!str_contains($request->getPathInfo(), '/api') && !$request->wantsJson() && !$request->isXmlHttpRequest() && !$request->isOptions()) {
-                    static::loadMiddlewares('web');
-                    ///TODO: load all default web middlewares
-                    require_once base_path().'/routes/web.php';
-                } else {
-                    Route::isApiRequest(true);
-                    static::loadMiddlewares('api');
-                    ///TODO: load all default api middlewares
-                    require_once base_path().'/routes/api.php';
+            static::$app->registerProviders();
+            // ErrorHandler::register();
+            if (preg_match('/^.*$/i', $request->requestUri())) {
+                // Route wiring is owned by the app's RouteServiceProvider: each
+                // Route::map() declares a matcher + middleware group + route file, and
+                // the first map whose matcher accepts the request handles it (a
+                // matcher-less map is the fallback). No matching map → no routes are
+                // loaded and dispatch returns a not-found response.
+                $map = Route::resolveMapFor($request);
+                if ($map !== null && $map->getFile() !== null) {
+                    Route::isApiRequest($map->isStateless());
+                    if ($middleware = $map->getMiddleware()) {
+                        static::loadMiddlewares($middleware);
+                    }
+                    Route::loadRoutesFile($map->getName(), $map->getFile());
                 }
+
                 $status = Route::dispatch($request);
-                Route::storeCurrent();
+                // Only remember the "previous URL" for web GET navigation. Storing it
+                // for API, AJAX/JSON, or non-GET requests forced a needless session
+                // write — a DB write under the MySQL session handler — on every
+                // request, and overwriting it on POST is wrong anyway (PERF-18).
+                if (!$request->isAssetRequest() && $request->isMethod('GET') && !Route::isApiRequest())
+                    Route::storeCurrent();
+
                 return $status;
             } else {
                 return false; // Let php bultin server serve
             }
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             /** @var ExceptionHandler $handler */
             $handler = static::$app->make(ExceptionHandler::class);
 
-            return $handler->render($request, $e);
+            return $handler->render($request, $e)->send();
         }
     }
 
@@ -73,7 +90,8 @@ class Server
         Route::$middlewareAliases = $kernel->getMiddlewareAliases();
         $middlewares = $kernel->getMiddlewares();
 
-        array_push($middlewares, '*', ...$kernel->getMiddlewareGroups()[$type]);
+        array_push($middlewares, ...$kernel->getMiddlewareGroups()[$type]);
+        // array_push($middlewares, '*', ...$kernel->getMiddlewareGroups()[$type]);
         Route::$defaultMiddlewares = $middlewares;
 
         Route::$middlewarePriority = $kernel->getMiddlewarePriority();

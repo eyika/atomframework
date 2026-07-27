@@ -2,10 +2,17 @@
 
 namespace Eyika\Atom\Framework\Http;
 
+use Eyika\Atom\Framework\Exceptions\BaseException;
+use Eyika\Atom\Framework\Exceptions\Http\RequestException;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
+use Eyika\Atom\Framework\Exceptions\ValidationException;
 use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Arrayable;
-use Eyika\Atom\Framework\Support\Database\Contracts\UserModelInterface;
+use Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface;
+use Eyika\Atom\Framework\Support\Auth\User;
+use Eyika\Atom\Framework\Support\Facade\Session as FacadeSession;
+use Eyika\Atom\Framework\Support\Storage\File;
+use Eyika\Atom\Framework\Support\Storage\FileUploadProperties;
 use Eyika\Atom\Framework\Support\Validator;
 
 class Request
@@ -18,48 +25,258 @@ class Request
     protected $query;
     public array $route_params;
     protected $body;
+    protected $input;
     protected $attributes;
-    protected $cookies;
-    protected $files;
+    protected Arrayable $cookies;
+    protected array $files;
+    /** Files parsed from a PUT multipart body — kept on the instance instead of
+     *  mutating the $_FILES global (WRK-13). */
+    protected array $rawFiles = [];
+    // Injectable request source (WRK-01) — captured from superglobals + php://input by
+    // default, so a Request never reads process globals directly after construction.
+    protected array $postData = [];
+    protected array $filesSource = [];
+    protected ?string $rawBody = null;
     protected $server;
     protected array $headers;
     protected $proxyheader;
     protected $trustedProxies = [];
     protected Session $session;
+    protected bool $isAssetRequest;
 
-    public UserModelInterface $auth_user;
+    public AuthenticatableInterface|User|null $auth_user;
 
-    public function __construct()
+    /**
+     * @param array|null $source WRK-01 injectable request source. Keys: server, query,
+     *   post, cookies, files, headers, rawBody. When null (default) each is captured
+     *   from the matching PHP superglobal / php://input — so `new Request()` is
+     *   unchanged, while a worker or test can pass explicit data and never touch
+     *   process globals.
+     */
+    public function __construct(?array $source = null)
     {
-        $this->query = sanitize_data($_GET);
-        $this->body = sanitize_data($_POST);
+        $this->auth_user = null;
+        $this->cookies = new Arrayable();
+        $this->isAssetRequest = false;
+
+        $source ??= [];
+        $server  = $source['server']  ?? $_SERVER;
+        $query   = $source['query']   ?? $_GET;
+        $post    = $source['post']    ?? $_POST;
+        $cookies = $source['cookies'] ?? $_COOKIE;
+        $files   = $source['files']   ?? $_FILES;
+        $headers = $source['headers'] ?? getallheaders();
+        // Present-but-'' means an empty injected body; absent means read php://input.
+        $this->rawBody = array_key_exists('rawBody', $source) ? (string) $source['rawBody'] : null;
+
+        $this->server = $server;
+        $this->headers = array_change_key_case($headers, CASE_LOWER);
+        $this->query = $query;
+        $this->postData = $post;
+        $this->filesSource = $files;
+
+        // Fetch the whitelist once, not once per cookie (PERF-07).
+        $whitelistedCookies = config('cookies.whitelisted_cookies', []);
+        foreach ($cookies as $name => $value) {
+            if (!in_array($name, $whitelistedCookies)) {
+                $this->cookies->set($name, new Cookie($name, $value));
+            }
+        }
+
+        $this->setRequestBodyAndFiles();
+        $this->input = [...$this->body, ...$this->files];
         $this->attributes = [];
         $this->route_params = [];
-        $this->cookies = $_COOKIE;
-        $this->files = $_FILES;
-        $this->server = $_SERVER;
-        $this->headers = getallheaders();
         $this->proxyheader = 0;
+    }
 
-        // Handle JSON payload
-        if ($this->isJson()) {
-            $jsonData = json_decode(file_get_contents('php://input'), true);
+    /**
+     * The raw request body (php://input) — read once and cached (the stream is
+     * one-shot), or the injected body when a source was provided (WRK-01).
+     */
+    public function rawBody(): string
+    {
+        if ($this->rawBody === null) {
+            $this->rawBody = file_get_contents('php://input') ?: '';
+        }
+        return $this->rawBody;
+    }
+
+    protected function setRequestBodyAndFiles()
+    {
+        if ($this->isMethod('PUT') && strpos((string) $this->headers('Content-Type'), 'multipart/form-data') === 0) {
+            $this->body = $this->parseMultipartRequest();
+        } elseif ($this->isJson()) {
+            // Read raw JSON input if content-type is JSON (from the injectable source).
+            $jsonData = json_decode($this->rawBody(), true);
             if (json_last_error() === JSON_ERROR_NONE) {
-                $this->body = array_merge($this->body, $jsonData ?? []);
+                $this->body = $jsonData ?? [];
+            } else {
+                $this->body = [];
+            }
+        } else {
+            $this->body = $this->postData;
+        }
+    
+        $this->initRequestFiles();
+    }
+
+    protected function parseMultipartRequest()
+    {
+        $contentType = $this->server['CONTENT_TYPE'] ?? '';
+
+        // Ensure it's a multipart/form-data request
+        if (strpos($contentType, 'multipart/form-data') !== 0) {
+            return ['error' => 'Invalid Content-Type'];
+        }
+    
+        // Extract boundary from Content-Type
+        preg_match('/boundary=(.*)$/', $contentType, $matches);
+        if (!isset($matches[1])) {
+            return ['error' => 'No boundary found'];
+        }
+        $boundary = $matches[1];
+    
+        // Read raw input
+        $rawData = $this->rawBody();
+    
+        // Split by boundary
+        $parts = explode("--" . $boundary, $rawData);
+    
+        $files = [];
+        $fields = [];
+    
+        foreach ($parts as $part) {
+            $part = trim($part);
+            if (empty($part) || $part === "--") continue; // Skip empty or closing boundary
+    
+            // Ensure the part contains headers and body
+            if (!str_contains($part, "\r\n\r\n")) {
+                continue; // Skip malformed parts
+            }
+    
+            // Separate headers from content
+            $sections = explode("\r\n\r\n", $part, 2);
+            if (count($sections) < 2) {
+                continue; // Skip invalid parts
+            }
+    
+            list($rawHeaders, $content) = $sections;
+    
+            $rawHeaders = trim($rawHeaders);
+            $content = trim($content);
+    
+            // Parse headers
+            $headers = [];
+            foreach (explode("\r\n", $rawHeaders) as $header) {
+                if (!str_contains($header, ": ")) continue; // Ensure valid header format
+                list($name, $value) = explode(": ", $header, 2);
+                $headers[strtolower($name)] = $value;
+            }
+    
+            // Check if it's a file
+            if (isset($headers['content-disposition']) && preg_match('/name="([^"]+)"(?:; filename="([^"]+)")?/', $headers['content-disposition'], $matches)) {
+                $fieldName = $matches[1];
+                $fileName = $matches[2] ?? null;
+    
+                if ($fileName) {
+                    // It's a file
+                    $files[$fieldName] = [
+                        'name' => basename($fileName), // strip client-supplied path (traversal)
+                        'type' => $headers['content-type'] ?? 'application/octet-stream',
+                        'tmp_name' => $this->saveTempFile($content),
+                        'size' => strlen($content),
+                    ];
+                } else {
+                    // It's a normal form field
+                    $fields[$fieldName] = $content;
+                }
+            }
+        }
+    
+        // Keep the parsed files on the instance instead of writing the $_FILES global
+        // (WRK-13); initRequestFiles() reads them from here.
+        $this->rawFiles = $files;
+        return $fields;
+    }
+
+    // Save file to a temporary location
+    protected function saveTempFile($content)
+    {
+        $tempFile = tempnam(sys_get_temp_dir(), 'atom_put_');
+        file_put_contents($tempFile, $content);
+        return $tempFile;
+    }
+    
+    protected function initRequestFiles()
+    {
+        $this->files = [];
+
+        // Prefer files parsed from a PUT multipart body (kept on the instance) over
+        // the injected/captured files source (WRK-13 + WRK-01).
+        $source = $this->rawFiles ?: $this->filesSource;
+        foreach ($source as $fieldName => $fileData) {
+            // Normalize multiple file uploads
+            if (is_array($fileData['name'])) {
+                foreach ($fileData['name'] as $index => $name) {
+                    $file = new File();
+                    $file->setUploadProperties(new FileUploadProperties(
+                        basename($name), // strip any client-supplied path (traversal)
+                        $fileData['type'][$index],
+                        $fileData['tmp_name'][$index],
+                        $fileData['size'][$index],
+                        $fileData['error'][$index] ?? null
+                    ));
+                    $this->files[$fieldName][] = $file;
+                }
+            } else {
+                // Single file upload
+                $file = new File();
+                $file->setUploadProperties(new FileUploadProperties(
+                    basename($fileData['name']), // strip any client-supplied path (traversal)
+                    $fileData['type'],
+                    $fileData['tmp_name'],
+                    $fileData['size'],
+                    $fileData['error'] ?? null
+                ));
+                $this->files[$fieldName] = $file;
             }
         }
     }
 
     public function __get($name) {
-        if ($item = $this->retrieveItem($this->attributes, $name)) {
-            return $item;
+        if (array_key_exists($name, $this->input)) {
+            return $this->input[$name];
         }
-        $data = array_merge($this->query, $this->body, $this->cookies, $this->files, $this->server, $this->headers);
-        return $this->retrieveItem($data, $name);
+        if (array_key_exists($name, $this->route_params)) {
+            return $this->route_params[$name];
+        }
+        if (array_key_exists($name, $this->query)) {
+            return $this->query[$name];
+        }
+        if (array_key_exists($name, $this->attributes)) {
+            return $this->attributes[$name];
+        }
+        return null;
+    }
+
+    public function __isset($name) {
+        return array_key_exists($name, $this->input)
+            || array_key_exists($name, $this->route_params)
+            || array_key_exists($name, $this->query)
+            || array_key_exists($name, $this->attributes);
     }
 
     public function __set($name, $value) {
         $this->attributes[$name] = $value;
+    }
+
+    public function isAssetRequest(bool|null $value = null)
+    {
+        if ($value === null) {
+            return $this->isAssetRequest;
+        }
+        $this->isAssetRequest = $value;
     }
 
     public static function capture()
@@ -75,26 +292,39 @@ class Request
         return $this->retrieveItem($this->query, $key, $default);
     }
 
-    public function input($key = null, $default = null)
+    public function body($key = null, $default = null)
     {
         if ($key == null)
             return $this->body;
         return $this->retrieveItem($this->body, $key, $default);
     }
 
+    public function input($key = null, $default = null)
+    {
+        if ($key == null)
+            return $this->input;
+        return $this->retrieveItem($this->input, $key, $default);
+    }
+
+    public function merge(array $data)
+    {
+        $this->attributes = array_merge($this->attributes, $data);
+    }
+
     public function only(array $keys)
     {
-        return Arr::only($this->input(), $keys);
+        return Arr::only($this->body, $keys);
     }
 
     public function except(array $keys)
     {
-        return Arr::except($this->input(), $keys);
+        return Arr::except($this->body, $keys);
     }
 
     public function replaceInput(array $input)
     {
-        $this->body = $input;
+        $this->input = $input;
+        $this->body = array_diff_key($input, $this->files);
     }
 
     public function replaceQuery(array $query)
@@ -102,14 +332,37 @@ class Request
         $this->query = $query;
     }
 
+    public function replaceAttributes(array $input)
+    {
+        $this->input = $input;
+    }
+
+    public function replace(string $bodyOrQuery, array $data)
+    {
+        switch ($bodyOrQuery) {
+            case 'query':
+                $this->query = $data;
+                break;
+            case 'body':
+                $this->body = $data;
+                break;
+            default:
+                throw new BaseException("request data group $bodyOrQuery does not exist");
+        }
+    }
+
     public function all()
     {
-        return array_merge($this->query, $this->body, $this->attributes);
+        return array_merge($this->query, $this->input(), $this->attributes);
     }
 
     public function has($key)
     {
-        return $this->input($key) !== null || $this->query($key) !== null;
+        // Existence check (a present-but-null value counts), consistent with __isset.
+        return array_key_exists($key, $this->input)
+            || array_key_exists($key, $this->query)
+            || array_key_exists($key, $this->attributes)
+            || array_key_exists($key, $this->route_params);
     }
 
     public function hasHeader($key)
@@ -119,28 +372,60 @@ class Request
 
     public function hasBody()
     {
-        return $this->server('CONTENT_LENGTH') ?? 0 > env('CONTENT_LENGTH_MIN');
+        // Parenthesised: `>` binds tighter than `??`, so the original returned the
+        // length string (or a stray bool) instead of "body larger than the min".
+        return (int) $this->server('CONTENT_LENGTH', 0) > (int) env('CONTENT_LENGTH_MIN', 0);
     }
 
-    public function file($key = null)
+    /**
+     * @return File[]
+     */
+    public function files()
     {
-        if ($key == null)
-            return $this->files;
+        return $this->files;
+    }
+
+    /**
+     * @return File[]|File|null
+     */
+    public function file(string $key): Array|File|null
+    {
         return $this->retrieveItem($this->files, $key);
     }
 
+    public function hasFile(string $key)
+    {
+        return !is_null($this->file($key));
+    }
+
+    /**
+     * @return Arrayable<Cookie>
+     */
+    public function cookies(): Arrayable
+    {
+        return $this->cookies;
+    }
+
+    /**
+     * @return Cookie[]|Cookie
+     */
     public function cookie($key = null, $default = null)
     {
         if ($key == null)
-            return $this->cookies;
-        return $this->retrieveItem($this->cookies, $key, $default);
+            return $this->cookies->toArray();
+        return $this->retrieveItem($this->cookies->toArray(), $key, $default);
     }
 
     public function headers($key = null, $default = null)
     {
         if ($key == null)
             return $this->headers;
-        return $this->retrieveItem($this->headers, $key, $default);
+        return $this->retrieveItem($this->headers, strtolower($key), $default);
+    }
+
+    public function header($key, $default = null)
+    {
+        return $this->headers($key, $default);
     }
 
     public function server($key = null, $default = null)
@@ -167,7 +452,9 @@ class Request
 
     public function isJson()
     {
-        return $this->headers('Content-Type') === 'application/json';
+        // Match the media type regardless of parameters (e.g. "; charset=utf-8") —
+        // an exact === comparison dropped the body of every such JSON request.
+        return str_contains(strtolower((string) $this->headers('Content-Type')), 'application/json');
     }
 
     public function isOptions()
@@ -190,24 +477,34 @@ class Request
         return strtolower($this->server('HTTP_X_REQUESTED_WITH', '')) === 'xmlhttprequest';
     }
 
-    public function getPathInfo()
+    function isHtml()
+    {
+        return !$this->wantsJson() && !$this->isXmlHttpRequest();
+    }
+
+    function isNotHtml()
+    {
+        return $this->wantsJson() || $this->isXmlHttpRequest();
+    }
+
+    public function pathInfo()
     {
         return $this->server('REQUEST_URI', '');
     }
 
-    public function getOriginPathInfo()
+    public function originPathInfo()
     {
         return $this->server('ORIG_PATH_INFO', '');
     }
 
-    public function getRequestUri()
+    public function requestUri()
     {
         return $this->server('REQUEST_URI', '');
     }
 
     public function hasSession()
     {
-        return isset($this->session);
+        return isset($this->session) && $this->session->active();
     }
 
     public function setSession(Session $session)
@@ -221,12 +518,20 @@ class Request
     }
 
     /**
-     * check if the request uri matches this regex string
+     * Check whether the current path matches the given pattern ("*" wildcard),
+     * e.g. is('admin/*'). Was previously a no-op (no return + a never-true compare).
      */
-    public function is(string $regex)
+    public function is(string $pattern): bool
     {
-        // preg_match($regex, $this->getPathInfo(), $matches);
-        strpos($this->getPathInfo(), $regex) === true;
+        $path = trim($this->url(), '/');
+        $pattern = trim($pattern, '/');
+
+        if ($pattern === $path) {
+            return true;
+        }
+
+        $regex = '#^' . str_replace('\*', '.*', preg_quote($pattern, '#')) . '$#';
+        return (bool) preg_match($regex, $path);
     }
 
     public function url()
@@ -241,27 +546,83 @@ class Request
         return $this->url();
     }
 
-    public function getScheme()
+    public function scheme()
     {
-        if ($this->isFromTrustedProxy() && $this->headers('X-Forwarded-Proto')) {
-            return $this->headers['X-Forwarded-Proto'];
+        if ($this->isFromTrustedProxy() && $this->server('HTTP_X_FORWARDED_PROTO')) {
+            return $this->server('HTTP_X_FORWARDED_PROTO');
         }
 
-        return $this->headers('HTTPS') && $this->headers['HTTPS'] === 'on' ? 'https' : 'http';
+        if (
+            ($this->server('HTTPS') && $this->server('HTTPS', '') !== 'off') ||
+            ($this->server('SERVER_PORT') && $this->server('SERVER_PORT', null) == 443) ||
+            ($this->server('REQUEST_SCHEME') && $this->server('REQUEST_SCHEME', '') === 'https')
+        ) {
+            return 'https';
+        }
+
+        return 'http';
     }
 
-    public function getHost()
+    public function host()
     {
         if ($this->isFromTrustedProxy() && $this->headers('X-Forwarded-Host')) {
-            return $this->headers['X-Forwarded-Host'];
+            $host = $this->headers('X-Forwarded-Host');
+        } else {
+            $host = $this->server('HTTP_HOST');
         }
 
-        return $this->server['HTTP_HOST'];
+        // Host-header poisoning guard (opt-in): when a trusted-hosts allowlist is
+        // configured, an unrecognised Host falls back to the configured app host so
+        // it can't poison generated URLs / password-reset links / emails.
+        $trusted = array_map('strtolower', config('app.trusted_hosts', []));
+        if (!empty($trusted)) {
+            $bare = strtolower(preg_replace('/:\d+$/', '', (string) $host));
+            if (!in_array($bare, $trusted, true)) {
+                $appHost = parse_url((string) config('app.url', ''), PHP_URL_HOST);
+                return $appHost ?: ($trusted[0] ?? $host);
+            }
+        }
+
+        return $host;
     }
 
-    public function getSchemeAndHttpHost()
+    public function address()
     {
-        return $this->getScheme() . '://' . $this->getHost();
+        return $this->server('REMOTE_ADDR', '');
+    }
+
+    public function clientIp()
+    {
+        // Only trust X-Forwarded-For when the request actually came through a
+        // configured trusted proxy; otherwise it is client-spoofable. (The previous
+        // regex used a literal `d` instead of `\d`, so it never matched anyway.)
+        if ($this->isFromTrustedProxy()) {
+            $forwarded = $this->server('HTTP_X_FORWARDED_FOR', '');
+            if ($forwarded !== '') {
+                // XFF is a comma list; the left-most entry is the original client.
+                $ip = trim(explode(',', $forwarded)[0]);
+                if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                    return $ip;
+                }
+            }
+        }
+
+        return $this->address();
+    }
+
+    public function ip()
+    {
+        return $this->clientIp();
+    }
+
+    public function userAgent()
+    {
+        return $this->server('HTTP_USER_AGENT');
+    }
+
+    public function schemeAndHttpHost()
+    {
+        return $this->scheme() . '://' . $this->host();
     }
 
     public function setTrustedProxies(array $proxies, int|null $headers = null)
@@ -280,7 +641,7 @@ class Request
             return false;
         }
 
-        $clientIp = $this->headers['REMOTE_ADDR'] ?? '';
+        $clientIp = $this->server('REMOTE_ADDR', '');
 
         return in_array($clientIp, $this->trustedProxies);
     }
@@ -297,12 +658,46 @@ class Request
 
     protected function validateSignature(array $ignoredParams = []): bool
     {
-        throw new NotImplementedException('this method validateSignature is not yet implemented');
+        $query = $this->query();
+        $signature = $query['signature'] ?? null;
+        if (empty($signature) || !is_string($signature)) {
+            return false;
+        }
+
+        // Temporary signed URLs carry an `expires` timestamp.
+        if (isset($query['expires']) && (int) $query['expires'] < time()) {
+            return false;
+        }
+
+        unset($query['signature']);
+        foreach ($ignoredParams as $ignored) {
+            unset($query[$ignored]);
+        }
+        ksort($query);
+
+        // Canonical = path + sorted query (minus signature/ignored). Must match the
+        // signer (Support\Url::signedRoute). Keyed by app.key, compared constant-time.
+        $canonical = $this->url() . (empty($query) ? '' : '?' . http_build_query($query));
+        $expected = hash_hmac('sha256', $canonical, (string) config('app.key'));
+
+        return hash_equals($expected, $signature);
     }
 
     public function validate(array $params, string $separator = '|'): bool|array
     {
         return Validator::validate($this->input(), $params, $separator);
+    }
+
+    public function validateOrFail(array $params, string $separator = '|', $message = 'errors in request', $code = 422)
+    {
+        Validator::setErrorMessage($message);
+        Validator::setErrorCode($code);
+        return Validator::validate($this->input(), $params, $separator, true);
+    }
+
+    public function validationErrors()
+    {
+        return Validator::$errors;
     }
 
     protected function retrieveItem($source, $key = null, $default = null)
@@ -317,6 +712,14 @@ class Request
     protected function setItem($source, string $key, string|array $value)
     {
         $this->{$source}[$key] = $value;
+    }
+
+    public function validateCsrf()
+    {
+        // Delegate to the single CSRF implementation so the session key, token
+        // sources and constant-time comparison stay consistent (this previously
+        // used a third session key 'csrf' and a loose, non-constant-time `!=`).
+        return Csrf::csrfIsValid();
     }
 }
 

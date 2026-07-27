@@ -64,13 +64,25 @@ class SmtpDriver implements MailerInterface
         $r = false;
         try {
             $this->mailer->Subject = $subject;
-            //Set an HTML and plain-text body, import relative image references
-            $this->mailer->msgHTML($body, './images/'); //TODO: images path not yet correct
+            // Set HTML body. No basedir: image src attributes are hosted
+            // on an HTTP(S) endpoint, so PHPMailer shouldn't try to resolve
+            // them against a local directory or inline-attach them.
+            $this->mailer->msgHTML($body);
             $r = $this->mailer->send();
-    
+
             return new MailerResponse($r, $this->mailer->getLastMessageID());
         } catch (Exception $e) {
-            return  new MailerResponse($r, null, $e->getMessage(), $e);
+            return new MailerResponse($r, null, $e->getMessage(), $e);
+        } finally {
+            // The Mailer facade keeps a single static PHPMailer instance
+            // across the lifetime of the PHP process. Without clearing, each
+            // to()/replyTo() call accumulates, so subsequent sends within
+            // the same queue:work run try to send to every prior recipient
+            // plus the new one — multiplying actual send attempts and
+            // blowing through provider hourly quotas.
+            $this->mailer->clearAllRecipients();
+            $this->mailer->clearReplyTos();
+            $this->mailer->clearAttachments();
         }
     }
 }

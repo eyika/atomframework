@@ -1,0 +1,13 @@
+{
+    "name": "atom/fixture-app",
+    "description": "Minimal fixture application used by the framework's Feature tests.",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Src\\": "src/",
+            "Database\\": "database/",
+            "Tests\\": "tests/"
+        }
+    }
+}

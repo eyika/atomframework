@@ -3,8 +3,8 @@
 namespace Eyika\Atom\Framework\Support\Facade;
 
 /**
- * @method static string encrypt(mixed $value, bool $serialize = true)
- * @method static mixed decrypt(string $payload, bool $unserialize = true)
+ * @method static string encrypt(mixed $value, bool $serialize = false)
+ * @method static mixed decrypt(string $payload, bool $unserialize = false)
  */
 class Encrypter extends Facade
 {

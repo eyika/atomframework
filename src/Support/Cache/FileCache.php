@@ -3,7 +3,6 @@
 namespace Eyika\Atom\Framework\Support\Cache;
 
 use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
-use App\Contracts\AbstractFile;
 use Eyika\Atom\Framework\Support\Storage\File;
 use League\Flysystem\Filesystem;
 use League\Flysystem\Local\LocalFilesystemAdapter;
@@ -12,8 +11,8 @@ use League\Flysystem\UnixVisibility\PortableVisibilityConverter;
 class FileCache implements CacheInterface
 {
     protected $file;
-    protected $cacheDirectory;
     protected $prefix;
+    protected array $deferredItems = [];
 
     public function __construct()
     {
@@ -21,7 +20,7 @@ class FileCache implements CacheInterface
         $this->prefix = config('cache.prefix');
 
         if (!file_exists($cacheDirectory))
-            mkdir($cacheDirectory, 0775, true);
+            mkdir($cacheDirectory, 0744, true);
 
         $adapter = new LocalFilesystemAdapter(
             $cacheDirectory,
@@ -46,72 +45,86 @@ class FileCache implements CacheInterface
         //     $this->file->makeDirectory($cacheDirectory, 0755, true);
         // }
 
-        $this->cacheDirectory = rtrim($cacheDirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
     }
 
     /**
-     * Get the cache file path based on the key.
+     * Get the cache file path relative to the cache root directory.
      */
     protected function getCacheFilePath(string $key): string
     {
-        return $this->cacheDirectory . md5($key) . '.cache';
+        return md5($key) . '.cache';
     }
 
     /**
      * {@inheritdoc}
      */
-    public function get(string $key)
+    public function getItem(string $key): CacheItem
     {
         $filePath = $this->getCacheFilePath($key);
 
         if (!$this->file->exists($filePath)) {
-            return null;
+            return new CacheItem($key, null, false);
         }
 
         $data = $this->file->get($filePath);
 
-        // Decode the data
-        $cacheItem = unserialize($data);
+        // Decode the data. A torn write or stale file from before the cache
+        // path refactor can leave the file unparseable; treat that as a miss
+        // and delete the file so the next write starts clean.
+        $cacheItem = $data !== '' && $data !== false ? @unserialize($data) : false;
+
+        if (!is_array($cacheItem) || !array_key_exists('expires_at', $cacheItem)) {
+            $this->deleteItem($key);
+            return new CacheItem($key, null, false);
+        }
 
         // Check if the cache item is still valid
         if ($cacheItem['expires_at'] !== 0 && $cacheItem['expires_at'] < time()) {
             // Cache expired, delete the file
-            $this->delete($key);
-            return null;
+            $this->deleteItem($key);
+            return new CacheItem($key, null, false);
         }
 
-        return $cacheItem['value'];
+        return new CacheItem($key, $cacheItem['value'], true);
+    }
+
+    /**
+     * @param string[] $keys
+     * 
+     * @return CacheItemInterface[]
+     * 
+     * @throws InvalidArgumentException
+     */
+    public function getItems($keys = []): iterable
+    {
+        $items = [];
+        foreach ($keys as $key) {
+            $items[$key] = $this->getItem($key);
+        }
+        return $items;
     }
 
     /**
      * {@inheritdoc}
      */
-    public function set(string $key, $value, int $ttl = 3600): bool
-    {
-        $filePath = $this->getCacheFilePath($key);
-        $expiresAt = ($ttl === 0) ? 0 : time() + $ttl;
-
-        $cacheItem = [
-            'value' => $value,
-            'expires_at' => $expiresAt,
-        ];
-
-        // Serialize and write to file
-        return $this->file->put($filePath, serialize($cacheItem)) !== false;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function delete(string $key): bool
+    public function hasItem(string $key): bool
     {
         $filePath = $this->getCacheFilePath($key);
 
-        if ($this->file->exists($filePath)) {
-            return $this->file->delete($filePath);
+        if (!$this->file->exists($filePath)) {
+            return false;
         }
 
-        return false;
+        $data = $this->file->get($filePath);
+        $cacheItem = $data !== '' && $data !== false ? @unserialize($data) : false;
+
+        if (!is_array($cacheItem) || !array_key_exists('expires_at', $cacheItem)) {
+            $this->deleteItem($key);
+            return false;
+        }
+
+        // Check if the cache has expired
+        return $cacheItem['expires_at'] === 0 || $cacheItem['expires_at'] > time();
     }
 
     /**
@@ -119,7 +132,7 @@ class FileCache implements CacheInterface
      */
     public function clear(): bool
     {
-        $files = $this->file->files($this->cacheDirectory);
+        $files = $this->file->files('');
 
         foreach ($files as $file) {
             $this->file->delete($file);
@@ -131,18 +144,80 @@ class FileCache implements CacheInterface
     /**
      * {@inheritdoc}
      */
-    public function has(string $key): bool
+    public function deleteItem(string $key): bool
     {
         $filePath = $this->getCacheFilePath($key);
 
-        if (!$this->file->exists($filePath)) {
+        if ($this->file->exists($filePath)) {
+            return $this->file->delete($filePath);
+        }
+
+        return false;
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    public function deleteItems($keys = []): bool
+    {
+        foreach ($keys as $key) {
+            if (!$this->deleteItem($key))
+                return false;
+        }
+        return true;
+    }
+
+    /**
+     * @param CacheItem $item
+     */
+    public function save($item): bool
+    {
+        $filePath = $this->getCacheFilePath($item->getKey());
+        $expiresAt = ($item->getExpiration() === 0) ? 0 : time() + $item->getExpiration();
+
+        $cacheItem = [
+            'value' => $item->get(),
+            'expires_at' => $expiresAt,
+        ];
+
+        // Serialize and write to file
+        return $this->file->put($filePath, serialize($cacheItem)) !== false;
+    }
+
+    /**
+     * @param CacheItem $item
+     */
+    public function setItem($item): bool
+    {
+        return $this->save($item);
+    }
+
+    /**
+     * @param CacheItem $item
+     */
+    public function saveDeferred($item): bool
+    {
+        if (!$item instanceof CacheItem) {
             return false;
         }
 
-        $data = $this->file->get($filePath);
-        $cacheItem = unserialize($data);
+        $this->deferredItems[$item->getKey()] = $item;
+        return true;
+    }
 
-        // Check if the cache has expired
-        return $cacheItem['expires_at'] === 0 || $cacheItem['expires_at'] > time();
+    public function commit(): bool
+    {
+        $allSaved = true;
+
+        foreach ($this->deferredItems as $key => $item) {
+            if (!$this->save($item)) {
+                $allSaved = false;
+            }
+        }
+
+        // Clear deferred items after attempting to save
+        $this->deferredItems = [];
+
+        return $allSaved;
     }
 }

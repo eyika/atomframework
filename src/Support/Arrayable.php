@@ -4,8 +4,9 @@ namespace Eyika\Atom\Framework\Support;
 
 use ArrayAccess;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
+use Eyika\Atom\Framework\Support\Contracts\Arrayable as ContractsArrayable;
 
-Class Arrayable implements ArrayAccess
+class Arrayable implements ContractsArrayable, ArrayAccess
 {
     
     /**
@@ -34,6 +35,11 @@ Class Arrayable implements ArrayAccess
     public function toArray()
     {
         return $this->data;
+    }
+
+    public function all()
+    {
+        return $this->toArray();
     }
 
     public function offsetExists(mixed $offset): bool
@@ -164,12 +170,22 @@ Class Arrayable implements ArrayAccess
      * Determine if the given key exists in the Arrayble instance.
      *
      * @param  string|int  $key
-     * @param  bool $use_values
      * @return bool
      */
     public function keyExists($key)
     {
         return Arr::keyExists($this->data, $key);
+    }
+
+    /**
+     * Determine if the given key exists in the Arrayble instance.
+     *
+     * @param  string|int  $key
+     * @return bool
+     */
+    public function keyNotExists($key)
+    {
+        return !$this->keyExists($key);
     }
 
     /**
@@ -250,7 +266,7 @@ Class Arrayable implements ArrayAccess
      */
     public function get($key, $default = null)
     {
-        return Arr::get($this->data, $default);
+        return Arr::get($this->data, $key, $default);
     }
 
     /**
@@ -273,6 +289,16 @@ Class Arrayable implements ArrayAccess
     public function hasAny($keys)
     {
         return Arr::hasAny($this->data, $keys);
+    }
+
+    /**
+     * Determine if the object elements storage is empty
+     *
+     * @return bool
+     */
+    public function any()
+    {
+        return !empty($this->data);
     }
 
     /**
@@ -355,6 +381,19 @@ Class Arrayable implements ArrayAccess
         return $this;
     }
 
+    /**
+     * Push multiple items onto the end of an array.
+     *
+     * @param  array  $items
+     * @return self
+     */
+    public function push($items)
+    {
+        $this->data = array_merge($this->data, $items);
+
+        return $this;
+    }
+
     public function merge(array ...$values)
     {
         $this->data = Arr::merge($this->data, $values);
@@ -401,7 +440,7 @@ Class Arrayable implements ArrayAccess
      * @param  mixed  $value
      * @return self
      */
-    public function set(&$array, $key, $value)
+    public function set($key, $value)
     {
         Arr::set($this->data, $key, $value);
 
@@ -518,5 +557,14 @@ Class Arrayable implements ArrayAccess
 
         return is_array($value) ? $value : [$value];
     }
+
+    /**
+     * cast the instance to an array
+     * 
+     * @return array
+     */
+    public function __toArray()
+    {
+        return $this->data;
+    }
 }
-    

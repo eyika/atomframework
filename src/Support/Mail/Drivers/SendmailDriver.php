@@ -48,6 +48,11 @@ class SendmailDriver implements MailerInterface
             return new MailerResponse($result, $this->mailer->getLastMessageID(), null);
         } catch (Exception $e) {
             return new MailerResponse(false, null, $e->getMessage(), $e);
+        } finally {
+            // See SmtpDriver::send() for why we must reset recipients here.
+            $this->mailer->clearAllRecipients();
+            $this->mailer->clearReplyTos();
+            $this->mailer->clearAttachments();
         }
     }
 }

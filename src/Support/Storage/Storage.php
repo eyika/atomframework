@@ -6,6 +6,7 @@ use Eyika\Atom\Framework\Exceptions\Storage\InvalidDiskException;
 use Eyika\Atom\Framework\Exceptions\Storage\InvalidStorageAdapterException;
 use Eyika\Atom\Framework\Support\Arr;
 use Eyika\Atom\Framework\Support\Cache\Cache;
+use Eyika\Atom\Framework\Support\Cache\CacheItem;
 use Eyika\Atom\Framework\Support\Cache\Contracts\CacheInterface;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\Storage\Contracts\CustomStorageAdapterCallback;
@@ -80,18 +81,18 @@ class Storage
 
     public function get(string $path): string
     {
-        $cached = $this->cache->get($this->cacheKey($path));
-        if ($cached) {
-            return $cached;
+        $cached = $this->cache->getItem($this->cacheKey($path));
+        if ($cached->isHit() && $data = $cached->get()) {
+            return $data;
         }
 
         // $path = $isfullpath ? $path : $this->getFullPath($path);
-        $contents = false;
 
         $contents = $this->file->get($path);
 
-        if ($contents !== false) {
-            $this->cache->set($this->cacheKey($path), $contents);
+        if ($contents) {
+            $item = new CacheItem($this->cacheKey($path), $contents);
+            $this->cache->save($item);
         }
 
         return $contents;
@@ -104,7 +105,8 @@ class Storage
         $result = $this->file->put($path, $contents, $options['lock'] ?? false);
 
         if ($result) {
-            $this->cache->set($this->cacheKey($path), $contents);
+            $item = new CacheItem($this->cacheKey($path), $contents);
+            $this->cache->save($item);
         }
 
         return $result;
@@ -117,7 +119,8 @@ class Storage
         $result = $this->file->put($path, $file->contents(), $options['lock'] ?? false);
 
         if ($result) {
-            $this->cache->set($this->cacheKey($path), $file->contents());
+            $item = new CacheItem($this->cacheKey($path), $file->contents());
+            $this->cache->save($item);
         }
 
         return $result;
@@ -130,7 +133,8 @@ class Storage
         $result = $this->file->put($path.$name, $file->contents(), $options['lock'] ?? false);
 
         if ($result) {
-            $this->cache->set($this->cacheKey($path), $file->contents());
+            $item = new CacheItem($this->cacheKey($path), $file->contents());
+            $this->cache->save($item);
         }
 
         return $result;
@@ -164,7 +168,7 @@ class Storage
         $result = $this->file->delete($path);
 
         if ($result) {
-            $this->cache->delete($this->cacheKey($path));
+            $this->cache->deleteItem($this->cacheKey($path));
         }
 
         return $result;
@@ -182,9 +186,9 @@ class Storage
 
     public function size($path)
     {
-        $cached = $this->cache->get($this->cacheKey($path));
-        if ($cached) {
-            return strlen(serialize($cached));
+        $cached = $this->cache->getItem($this->cacheKey($path));
+        if ($cached->isHit() && $data = $cached->get()) {
+            return strlen(serialize($data));
         }
 
         $size = 0;
@@ -204,7 +208,7 @@ class Storage
         //TODO:: implement for adapters that are not supported by flysystem by default
         $adapter = $this->file->getFileSystemAdapter();
 
-        return $adapter->publicUrl($path);
+        return $adapter->publicUrl($path, $this->file->getDiskConfig());
     }
 
     public function temporaryUrl(string $path, \DateTimeInterface $expiration, array $options = []): string
@@ -252,8 +256,8 @@ class Storage
 
     public function exists($path, $isfullpath = false)
     {
-        $cached = $this->cache->get($this->cacheKey($path));
-        if ($cached) {
+        $cached = $this->cache->getItem($this->cacheKey($path));
+        if ($cached->isHit()) {
             return true;
         }
 

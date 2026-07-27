@@ -16,7 +16,7 @@ class Unlink extends Command
      *
      * @throws BaseConsoleException
      */
-    public function handle(array $arguments = []): bool
+    public function handle(): bool
     {
         try {
             $links = config('filesystems.links');

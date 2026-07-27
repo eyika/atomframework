@@ -2,9 +2,13 @@
 
 namespace Eyika\Atom\Framework\Http\Middlewares;
 
+use Closure;
+use Exception;
+use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
 use Eyika\Atom\Framework\Http\Session;
+use Eyika\Atom\Framework\Support\Facade\Facade;
 
 class StartSession  implements MiddlewareInterface
 {
@@ -12,12 +16,12 @@ class StartSession  implements MiddlewareInterface
      * Handle an incoming request.
      *
      */
-    public function handle(Request $request): bool
+    public function handle(Request $request, Closure $next): BaseResponse
     {
-        if (strtolower($_SERVER["REQUEST_METHOD"]) !== "options") {
+        if (strtolower($request->method()) !== "options") {
             $this->startSession($request);
         }
-        return false;
+        return $next($request);
     }
 
     /**
@@ -57,9 +61,13 @@ class StartSession  implements MiddlewareInterface
      */
     protected function createSession()
     {
-        // Typically, you'd use a session handler (e.g., file, database)
-        // For simplicity, this example uses a basic session object.
-        return new Session();
+        try {
+            return Facade::getFacadeApplication()->make('session');
+        } catch (Exception $e) {
+            if ($e->getMessage() == "Class session is not instantiable.") {
+                return Facade::getFacadeApplication()->make(Session::class);
+            }
+        }
     }
 }
 

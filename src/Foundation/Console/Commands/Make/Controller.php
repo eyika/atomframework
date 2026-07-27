@@ -12,13 +12,13 @@ class Controller extends Command
 {
     public string $signature = 'make:controller';
 
-    public function handle(array $arguments = []): bool
+    public function handle(): bool
     {
         try {
-            if (empty($name = $arguments[0] ?? '')) {
+            if (empty($name = $this->arguments[0] ?? '')) {
                 throw new InvalidInputException('name of controller is not specified', 1);
             }
-            $type = $arguments[1] ?? '--web';
+            $type = $this->arguments[1] ?? '--web';
     
             $name = Str::pascal($name);
             $controller_str = Str::snake($name);
@@ -40,7 +40,7 @@ class Controller extends Command
 "<?php
 namespace App\Http\Controllers\\$api;
 
-use Eyika\Atom\Framework\Http\JsonResponse;
+use Eyika\Atom\Framework\Support\Facade\JsonResponse;
 use Eyika\Atom\Framework\Support\Validator;
 use Eyika\Atom\Framework\Http\Request;
 use App\Models\\$name;
@@ -57,7 +57,7 @@ final class {$name}Controller
             if (!\$$controller_str = $name::getBuilder()->find((int)\$id))
                 return JsonResponse::notFound('unable to retrieve $controller_str_spc');
 
-            return JsonResponse::ok('$controller_str_spc retrieved success', \${$controller_str}->toArray());
+            return JsonResponse::ok('$controller_str_spc retrieved success', \${$controller_str});
         } catch (PDOException \$e) {
             return JsonResponse::serverError('we encountered a db problem');
         } catch (LogicException \$e) {

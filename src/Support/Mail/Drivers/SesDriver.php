@@ -12,6 +12,8 @@ class SesDriver implements MailerInterface
     protected $client;
     protected $config;
     protected array $tos;
+    protected ?string $from = null;
+    protected array $replyTos = [];
 
     public function __construct(array $config)
     {
@@ -39,14 +41,25 @@ class SesDriver implements MailerInterface
         return $this;
     }
 
+    public function from(string $address, string $name): self
+    {
+        $this->from = "$name <$address>";
+        return $this;
+    }
+
+    public function replyTo(string $address, string|null $name = null): self
+    {
+        array_push($this->replyTos, $name ? "$name <$address>" : $address);
+        return $this;
+    }
+
     public function send($subject, $body): MailerResponse
     {
         try {
-            // Send the email using SES
-            $result = $this->client->sendEmail([
-                'Source' => $this->config['from'], // Sender email
+            $params = [
+                'Source' => $this->from ?? $this->config['from'],
                 'Destination' => [
-                    'ToAddresses' => $this->tos, // Recipient email
+                    'ToAddresses' => $this->tos,
                 ],
                 'Message' => [
                     'Subject' => [
@@ -57,11 +70,15 @@ class SesDriver implements MailerInterface
                             'Data' => $body,
                         ],
                         'Text' => [
-                            'Data' => strip_tags($body), // Fallback text body
+                            'Data' => strip_tags($body),
                         ],
                     ],
                 ],
-            ]);
+            ];
+            if (!empty($this->replyTos)) {
+                $params['ReplyToAddresses'] = $this->replyTos;
+            }
+            $result = $this->client->sendEmail($params);
 
             // Return a standardized response structure
             return new MailerResponse(true, $result->get('MessageId'), null);

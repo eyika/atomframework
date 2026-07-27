@@ -9,13 +9,76 @@ use InvalidArgumentException;
 
 class Config
 {
+    protected static $instance = null;
+
     protected static $config = [];
     protected static CacheInterface $cache;
     protected static $cacheEnabled = false;
     protected static $cache_prefix = 'config__';
 
-    public function __construct()
+    public function __construct(){
+        // Load the whole merged config from a single compiled cache file in one
+        // require (PERF-10) if present; otherwise glob + require each config file.
+        $cacheFile = self::cachePath();
+        if ($cacheFile !== null && is_file($cacheFile)) {
+            $cached = require $cacheFile;
+            if (is_array($cached) && !empty($cached)) {
+                self::$config = $cached;
+                return;
+            }
+        }
+        self::loadConfigFiles(config_path());
+    }
+
+    /**
+     * Path to the compiled config-cache artifact, or null when base_path() is
+     * unavailable (e.g. before the app is booted).
+     */
+    protected static function cachePath(): ?string
     {
+        if (!function_exists('base_path')) {
+            return null;
+        }
+        return base_path('bootstrap/cache/config.php');
+    }
+
+    /**
+     * Compile every config file into a single cached PHP file that returns the
+     * merged config array (PERF-10). Values must be var_export-able (arrays/scalars)
+     * — the standard config-cache constraint; env() is resolved at compile time, so
+     * after caching, env() reads outside config files return their defaults.
+     *
+     * @return string The path the cache was written to.
+     */
+    public static function cache(): string
+    {
+        $path = self::cachePath();
+        if ($path === null) {
+            throw new \RuntimeException('Cannot resolve the config cache path (base_path unavailable).');
+        }
+
+        // Load fresh from disk, ignoring any existing cache.
+        self::$config = [];
+        self::$instance = null;
+        self::loadConfigFiles(config_path());
+
+        $dir = dirname($path);
+        if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+            throw new \RuntimeException("Unable to create config cache directory: $dir");
+        }
+
+        $export = var_export(self::$config, true);
+        file_put_contents($path, "<?php\n\nreturn " . $export . ";\n", LOCK_EX);
+
+        return $path;
+    }
+
+    public static function instance(): Config
+    {
+        if (self::$instance === null) {
+            self::$instance = new self;
+        }
+        return self::$instance;
     }
 
     /**
@@ -40,10 +103,11 @@ class Config
      */
     public static function setCache(CacheInterface|null $cache = null): self
     {
+        $instance = self::instance();
         self::$cacheEnabled = true;
         self::$cache = $cache ?? new DbCache();
 
-        return new static();
+        return $instance;
     }
 
     /**
@@ -55,7 +119,8 @@ class Config
      */
     public static function get($key, $default = null)
     {
-        if (self::$cacheEnabled && $value = self::$cache->get(self::$cache_prefix . $key)) {
+        self::instance();
+        if (self::$cacheEnabled && $value = self::$cache->getItem(self::$cache_prefix . $key)) {
             return $value;
         }
 
@@ -70,7 +135,7 @@ class Config
         }
 
         if (self::$cacheEnabled) {
-            self::$cache->set(self::$cache_prefix . $key, $config);
+            self::$cache->setItem(self::$cache_prefix . $key, $config);
         }
 
         return $config;
@@ -84,6 +149,8 @@ class Config
      */
     public static function set($key, $value)
     {
+        self::instance();
+
         $segments = explode('.', $key);
         $config = &self::$config;
 
@@ -97,7 +164,7 @@ class Config
         $config = $value;
 
         if (self::$cacheEnabled) {
-            self::$cache->set(self::$cache_prefix . $key, $value);
+            self::$cache->setItem(self::$cache_prefix . $key, $value);
         }
     }
 
@@ -106,9 +173,28 @@ class Config
      */
     public static function clearCache()
     {
-        throw new NotImplementedException('clear feature is not yet implemented');
-        // this should be reimplemented to only clear the config cache items
-        // self::$cache->clear();
+        // Drop the in-memory config + singleton so the next access reloads from disk.
+        self::$config = [];
+        self::$instance = null;
+
+        // Remove the compiled config-cache artifact (PERF-10) so the next boot globs
+        // the config directory again.
+        $path = self::cachePath();
+        if ($path !== null && is_file($path)) {
+            @unlink($path);
+        }
+
+        // Best-effort clear of the persistent config cache (prefix-scoped where the
+        // backend supports it; else a full clear — config keys are prefixed).
+        if (self::$cacheEnabled && isset(self::$cache)) {
+            if (method_exists(self::$cache, 'deleteByPrefix')) {
+                self::$cache->deleteByPrefix(self::$cache_prefix);
+            } elseif (method_exists(self::$cache, 'clear')) {
+                self::$cache->clear();
+            }
+        }
+
+        return true;
     }
 }
 

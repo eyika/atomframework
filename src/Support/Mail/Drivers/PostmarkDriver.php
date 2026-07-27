@@ -12,6 +12,8 @@ class PostmarkDriver implements MailerInterface
     protected $client;
     protected $config;
     protected array $tos;
+    protected ?string $from = null;
+    protected array $replyTos = [];
 
     public function __construct(array $config)
     {
@@ -31,15 +33,29 @@ class PostmarkDriver implements MailerInterface
         return $this;
     }
 
+    public function from(string $address, string $name): self
+    {
+        $this->from = "$name <$address>";
+        return $this;
+    }
+
+    public function replyTo(string $address, string|null $name = null): self
+    {
+        array_push($this->replyTos, $name ? "$name <$address>" : $address);
+        return $this;
+    }
+
     public function send($subject, $body): MailerResponse
     {
         try {
             // Send the email using Postmark
             $result = $this->client->sendEmail(
-                $this->config['from'], // From email address
+                $this->from ?? $this->config['from'], // From email address
                 $this->tos[0] ?? '',                              // To email address
                 $subject,                          // Subject of the email
-                $body                              // HTML body content
+                $body,                             // HTML body content
+                null, null, null, null, null,
+                !empty($this->replyTos) ? implode(', ', $this->replyTos) : null
             );
 
             // Return a standardized response structure

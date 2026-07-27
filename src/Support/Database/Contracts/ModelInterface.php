@@ -2,6 +2,8 @@
 
 namespace Eyika\Atom\Framework\Support\Database\Contracts;
 
+use Eyika\Atom\Framework\Support\Auth\User;
+use Eyika\Atom\Framework\Support\Database\Model;
 use Eyika\Atom\Framework\Support\Database\PaginatedData;
 
 interface ModelInterface extends ModelEventsInterface
@@ -44,8 +46,16 @@ interface ModelInterface extends ModelEventsInterface
 
     /**
      * Indicates what database attributes of the model can be exposed outside the application
-     * 
+     *
      * @var array $guarded
+     */
+
+    /**
+     * The attributes that should be cast to native types.
+     *
+     * Supported types: 'boolean', 'bool', 'integer', 'int', 'float', 'double', 'string', 'array', 'json', 'object'
+     *
+     * @var array $casts
      */
 
     /**
@@ -69,7 +79,7 @@ interface ModelInterface extends ModelEventsInterface
     /**
      * Get a new querybuilder instance of the called class
      * 
-     * @return ModelInterface|ModelInterface&UserModelInterface
+     * @return Model|User
      */
     public static function getBuilder();
     /**
@@ -77,7 +87,7 @@ interface ModelInterface extends ModelEventsInterface
      * @param string $column
      * @param string $direction
      * 
-     * @return self
+     * @return Model
      */
     public function orderBy($column = "id", $direction = "ASC");
 
@@ -87,7 +97,7 @@ interface ModelInterface extends ModelEventsInterface
      * Fill a model with array of values
      * @param array $values
      * 
-     * @return self
+     * @return Model
      */
     public function fill($values);
 
@@ -117,9 +127,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param bool $is_protected 'wether to hide or show protected values'
      * @param array $select 'what parameters of model to fetch in results'
      * 
-     * @return self|bool
+     * @return Model|bool
      */
-    public function create($values, $is_protected = true, $select = []);
+    public function _create($values, $is_protected = true, $select = []);
 
     /**
      * save a model object to DB
@@ -133,9 +143,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param int $id
      * @param bool $is_protected 'wether to hide or show protected values'
      * 
-     * @return self|false
+     * @return Model|false
      */
-    public function find($id = 0, $is_protected = true);
+    public function _find($id = 0, $is_protected = true);
 
     /**
      * Find a model by its id, execute the closure if not found
@@ -143,18 +153,18 @@ interface ModelInterface extends ModelEventsInterface
      * @param bool $is_protected 'wether to hide or show protected values'
      * @param callable $callable
      * 
-     * @return self|false
+     * @return Model|false
      */
-    public function findOr($id = 0, $is_protected = true, $callable = null);
+    public function _findOr($id = 0, $is_protected = true, $callable = null);
 
     /**
      * Alias of Find with no id provided
      * Retrieves the first of all results of a query
      * @param bool $is_protected 'wether to hide or show protected values'
      * 
-     * @return self|false
+     * @return Model|false
      */
-    public function first($is_protected = true);
+    public function _first($is_protected = true);
 
     /**
      * Retrieves the first of all results of a query
@@ -164,34 +174,29 @@ interface ModelInterface extends ModelEventsInterface
      * @param mixed $value
      * @param bool $is_protected 'wether to hide or show protected values'
      * 
-     * @return self|false
+     * @return Model|false
      */
-    public function firstWhere($column, $operatorOrValue = null, $value = null, $is_protected = true);
+    public function _firstWhere($column, $operatorOrValue = null, $value = null, $is_protected = true);
 
     /**
      * Retrieve model by key value or create it if it doesn't exist from array values
-     * search and keyvalues will be used together while creating the model
-     * @param array $search
-     * @param array $keyvalues
+     * 
+     * @param array $search will be used to filter wether to create or not and
+     * @param array $keyvalues the values to be insterted if search returns empty
      * @param bool $is_protected 'wether to hide or show protected values'
      * @param array $select 'what parameters of model to fetch in results'
      * 
-     * @return array|bool
+     * @return Model|bool
      */
-    public function firstOrCreate($search, $keyvalues, $is_protected = true, $select = []);
+    public function _firstOrCreate($search, $keyvalues, $is_protected = true, $select = []);
 
     /**
-     * Retrieve model by key value or instantiate it if it doesn't exist from array values
+     * Retrieve model its current values or instantiate it if it doesn't exist from array values
      * The model still needs to be save to the DB by calling save()
-     * search and keyvalues will be used together while creating the model
-     * @param array $search
-     * @param array $keyvalues
-     * @param bool $is_protected 'wether to hide or show protected values'
-     * @param array $select 'what parameters of model to fetch in results'
      * 
-     * @return array|bool
+     * @return Model|bool
      */
-    public function firstOrNew($search, $keyvalues, $is_protected = true, $select = []);
+    public function _firstOrNew($search, $values = [], $is_protected = true);
 
     /**
      * Find a model by key and value
@@ -201,9 +206,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param bool $is_protected 'wether to hide or show protected values'
      * @param array $select 'what parameters of model to fetch in results'
      * 
-     * @return array|false
+     * @return Model|false
      */
-    public function findBy($key, $value, $is_protected = true, $select = []);
+    public function _findBy($key, $value, $is_protected = true, $select = []);
     
     /**
      * Find a model by a set of keys and values
@@ -214,94 +219,196 @@ interface ModelInterface extends ModelEventsInterface
      * @param bool $is_protected 'wether to hide or show protected values'
      * @param array $select 'what parameters of model to fetch in results'
      * 
-     * @return array|false
+     * @return Model|false
      */
-    public function findByArray($keys, $values, $or_and = "AND", $is_protected = true, $select = []);
+    public function _findByArray($keys, $values, $or_and = "AND", $is_protected = true, $select = []);
 
     /**
      * Find all elements of a model
-     * 
+     *
      * @param bool $is_protected 'wether to hide or show protected values'
      * @param array $select 'what parameters of model to fetch in results'
-     * 
-     * @return array|false
+     *
+     * @return \Eyika\Atom\Framework\Support\Collections\Collection
      */
-    public function all($is_protected = true, $select = []);
+    public function _all($is_protected = true, $select = []);
 
     /**
      * Attach the related model to a model's query result
      * 
-     * @param string $model
+     * @param array<string>|string $models
      * 
-     * @return self
+     * @return Model|User
      */
 
-    public function with($model);
+    public function with($models);
 
     
     /**
      * Alias for all(), Find all elements of a model
-     * 
+     *
      * @param bool $is_protected 'wether to hide or show protected values'
      * @param array $select 'what parameters of model to fetch in results'
-     * 
-     * @return array|false
+     *
+     * @return \Eyika\Atom\Framework\Support\Collections\Collection
      */
-    public function get($is_protected = true, $select = []);
+    public function _get($is_protected = true, $select = []);
+
+    /**
+     * Stream results as a memory-efficient LazyCollection (one model per DB-cursor row).
+     *
+     * @param bool $is_protected
+     * @param array $select
+     * @return \Eyika\Atom\Framework\Support\Collections\LazyCollection
+     */
+    public function _cursor($is_protected = true, $select = []);
+
+    /**
+     * Alias for cursor().
+     *
+     * @param bool $is_protected
+     * @param array $select
+     * @return \Eyika\Atom\Framework\Support\Collections\LazyCollection
+     */
+    public function _lazy($is_protected = true, $select = []);
 
     /**
      * Return a paginated results for the current query
      * 
      * @param int $currentPage indicate the current page
      * @param int $recordsPerPage indicate the number of records to display per page
-     * @param bool $is_protected 'wether to hide or show protected values'
+     * @param bool $isProtected 'wether to hide or show protected values'
      * @param array $select 'what parameters of model to fetch in results'
+     * @param ?string $routeName used to generate the base url for previous and nextPages
      * 
      * @return PaginatedData|false
      */
-    public function paginate($currentPage = null, $recordsPerPage = null, $is_protected = true, $select = []);
+    public function _paginate($currentPage = null, $recordsPerPage = null, $isProtected = true, $select = [], $routeName = null);
 
     /**
      * Return a random result from the current query
      * 
-     * @return self|false;
+     * @return Model|false;
      */
-    public function random();
+    public function _random();
 
     /**
      * Count total number of elements in a model from results of a query
      * @param string $column
      * 
-     * @return int|false
+     * @return int
      */
-    public function count(string $column = '');
+    public function _count(string $column = '');
     
     /**
      * Given a column, return the avearage of all values of that
      * column from results of a query
      * @param string $column
      * 
-     * @return int|false
+     * @return int
      */
-    public function avg(string $column);
+    public function _avg(string $column);
     
     /**
      * Given a column, return the element in a model with greatest value of that
      * column from results of a query
      * @param string $column
      * 
-     * @return int|false
+     * @return int
      */
-    public function max(string $column);
+    public function _max(string $column);
         
     /**
      * Given a column, return the element in a model with smallest value of that
      * column from results of a query
      * @param string $column
      * 
-     * @return int|false
+     * @return int
      */
-    public function min(string $column);
+    public function _min(string $column);
+
+    /**
+     * Given a column, return the mathematical sum of all values of that
+     * column from results of a query
+     * @param string $column
+     * 
+     * @return int
+     */
+    public function _sum(string $column);
+
+    /**
+     * Given a column, return the string result of concatinating all values of that
+     * column from results of a query
+     * @param string $column
+     * 
+     * @return string
+     */
+    public function _group_concat(string $column);
+    
+    /**
+     * Given a column, return the statistical variance population evaluation of all values of that
+     * column from results of a query
+     * @param string $column
+     * 
+     * @return int
+     */
+    public function _var_pop(string $column);
+
+    /**
+     * Given a column, return the standard deviation evaluation of all values of that
+     * column from results of a query
+     * @param string $column
+     * 
+     * @return int
+     */
+    public function _stddev(string $column);
+    
+    /**
+     * Given a column, return the bit_and evaluation of all values of that
+     * column from results of a query
+     * @param string $column
+     * 
+     * @return int
+     */
+    public function _bit_and(string $column);
+
+    /**
+     * Given a column, return the bit_or evaluation of all values of that
+     * column from results of a query
+     * @param string $column
+     * 
+     * @return int
+     */
+    public function _bit_or(string $column);
+
+    /**
+     * Given a column, return the bit_xor evaluation of all values of that
+     * column from results of a query
+     * @param string $column
+     * 
+     * @return int
+     */
+    public function _bit_xor(string $column);
+
+    /**
+     * Increment the given column by 1 or the given number of steps
+     * 
+     * @param string $column
+     * @param int $step
+     * 
+     * @return bool
+     */
+    public function _increment(string $column, int $step = 1);
+
+    /**
+     * Decrement the given column by 1 or the given number of steps
+     * 
+     * @param string $column
+     * @param int $step
+     * 
+     * @return bool
+     */
+    public function _decrement(string $column, int $step = 1);
 
     /**
      * update a model
@@ -310,9 +417,20 @@ interface ModelInterface extends ModelEventsInterface
      * @param int $id
      * @param bool $is_protected
      * 
-     * @return self|bool
+     * @return Model|bool
      */
-    public function update($values, $id=0, $is_protected = true);
+    public function _update($values, $id=0, $is_protected = true);
+
+    /**
+     * update a model
+     * 
+     * @param array $values
+     * @param int $id
+     * @param bool $is_protected
+     * 
+     * @return Model|bool
+     */
+    public function _updateOrCreate($values, $id=0, $is_protected = true);
 
     /**
      * update a model
@@ -320,35 +438,35 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return bool
      */
-    public function delete($id = 0);
+    public function _delete($id = 0);
 
     /**
      * restore a soft deleted model
      * 
      * @param int $id
      * 
-     * @return self|bool
+     * @return Model|bool
      * @throws Exception
      */
-    public function restore($id = 0);
+    public function _restore($id = 0);
 
     /**
      * limit the number results from a query
      * 
      * @param int $amount the maximum number of query results to show
      * 
-     * @return self
+     * @return Model
      */
-    public function limit($amount);
+    public function _limit($amount);
 
     /**
      * set the position of the first query result
      * 
      * @param int $position indicates the position of the first query result
      * 
-     * @return self
+     * @return Model
      */
-    public function offset($postion);
+    public function _offset($postion);
 
     /**
      * Add a where clause to the query instance
@@ -357,9 +475,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param string|null $operatorOrValue
      * @param mixed $value
      * 
-     * @return self
+     * @return Model
      */
-    public function where($column, $operatorOrValue = null, $value = null);
+    public function _where($column, $operatorOrValue = null, $value = null);
     
     /**
      * Add a where clause to the query instance
@@ -367,9 +485,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param string $column
      * @param array $values
      * 
-     * @return self
+     * @return Model
      */
-    public function whereIn($column, array $values);
+    public function _whereIn($column, array $values);
     
     /**
      * Add a where clause to the query instance
@@ -377,9 +495,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param string $column
      * @param array $values
      * 
-     * @return self
+     * @return Model
      */
-    public function whereNotIn($column, array $values);
+    public function _whereNotIn($column, array $values);
     
     /**
      * Add a where clause to the query instance
@@ -387,9 +505,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param string $column
      * @param mixed $value
      * 
-     * @return self
+     * @return Model
      */
-    public function whereLike($column, $value);
+    public function _whereLike($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -397,9 +515,39 @@ interface ModelInterface extends ModelEventsInterface
      * @param string $column
      * @param mixed $value
      * 
-     * @return self
+     * @return Model
      */
-    public function whereNotLike($column, $value);
+    public function _whereNotLike($column, $value);
+
+    /**
+     * Add a where BETWEEN clause for a [min, max] range on a single column.
+     *
+     * @param string $column
+     * @param array $range [min, max]
+     *
+     * @return Model
+     */
+    public function _whereBetween($column, array $range);
+
+    /**
+     * Add a where NOT BETWEEN clause for a [min, max] range on a single column.
+     *
+     * @param string $column
+     * @param array $range [min, max]
+     *
+     * @return Model
+     */
+    public function _whereNotBetween($column, array $range);
+
+    /**
+     * Add a where clause to the query instance
+     *
+     * @param string $column
+     * @param mixed $value
+     *
+     * @return Model
+     */
+    public function _whereLessThan($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -407,9 +555,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param string $column
      * @param mixed $value
      * 
-     * @return self
+     * @return Model
      */
-    public function whereLessThan($column, $value);
+    public function _whereGreaterThan($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -417,9 +565,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param string $column
      * @param mixed $value
      * 
-     * @return self
+     * @return Model
      */
-    public function whereGreaterThan($column, $value);
+    public function _whereLessThanOrEqual($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -427,9 +575,27 @@ interface ModelInterface extends ModelEventsInterface
      * @param string $column
      * @param mixed $value
      * 
-     * @return self
+     * @return Model
      */
-    public function whereLessThanOrEqual($column, $value);
+    public function _whereGreaterThanOrEqual($column, $value);
+
+    /**
+     * Add a where clause to the query instance
+     * 
+     * @param string $column
+     * 
+     * @return Model
+     */
+    public function _whereNull($column);
+
+    /**
+     * Add a where clause to the query instance
+     * 
+     * @param string $column
+     * 
+     * @return Model
+     */
+    public function _whereNotNull($column);
 
     /**
      * Add a where clause to the query instance
@@ -437,27 +603,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param string $column
      * @param mixed $value
      * 
-     * @return self
+     * @return Model
      */
-    public function whereGreaterThanOrEqual($column, $value);
-
-    /**
-     * Add a where clause to the query instance
-     * 
-     * @param string $column
-     * 
-     * @return self
-     */
-    public function whereNull($column);
-
-    /**
-     * Add a where clause to the query instance
-     * 
-     * @param string $column
-     * 
-     * @return self
-     */
-    public function whereNotNull($column);
+    public function _whereEqual($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -465,19 +613,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param string $column
      * @param mixed $value
      * 
-     * @return self
+     * @return Model
      */
-    public function whereEqual($column, $value);
-
-    /**
-     * Add a where clause to the query instance
-     * 
-     * @param string $column
-     * @param mixed $value
-     * 
-     * @return self
-     */
-    public function whereNotEqual($column, $value);
+    public function _whereNotEqual($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -486,9 +624,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param string|null $operatorOrValue
      * @param mixed $value
      * 
-     * @return self
+     * @return Model
      */
-    public function orWhere($column, $operatorOrValue = null, $value = null);
+    public function _orWhere($column, $operatorOrValue = null, $value = null);
 
     /**
      * Add a where clause to the query instance
@@ -496,9 +634,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param string $column
      * @param mixed $value
      * 
-     * @return self
+     * @return Model
      */
-    public function orWhereLike($column, $value);
+    public function _orWhereLike($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -506,9 +644,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param string $column
      * @param mixed $value
      * 
-     * @return self
+     * @return Model
      */
-    public function orWhereNotLike($column, $value);
+    public function _orWhereNotLike($column, $value);
     
     /**
      * Add a where clause to the query instance
@@ -516,9 +654,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param string $column
      * @param mixed $value
      * 
-     * @return self
+     * @return Model
      */
-    public function orWhereLessThan($column, $value);
+    public function _orWhereLessThan($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -526,9 +664,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param string $column
      * @param mixed $value
      * 
-     * @return self
+     * @return Model
      */
-    public function orWhereGreaterThan($column, $value);
+    public function _orWhereGreaterThan($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -536,9 +674,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param string $column
      * @param mixed $value
      * 
-     * @return self
+     * @return Model
      */
-    public function orWhereLessThanOrEqual($column, $value);
+    public function _orWhereLessThanOrEqual($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -546,9 +684,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param string $column
      * @param mixed $value
      * 
-     * @return self
+     * @return Model
      */
-    public function orWhereGreaterThanOrEqual($column, $value);
+    public function _orWhereGreaterThanOrEqual($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -556,9 +694,9 @@ interface ModelInterface extends ModelEventsInterface
      * @param string $column
      * @param mixed $value
      * 
-     * @return self
+     * @return Model
      */
-    public function orWhereEqual($column, $value);
+    public function _orWhereEqual($column, $value);
 
     /**
      * Add a where clause to the query instance
@@ -566,52 +704,100 @@ interface ModelInterface extends ModelEventsInterface
      * @param string $column
      * @param mixed $value
      * 
-     * @return self
+     * @return Model
      */
-    public function orWhereNotEqual($column, $value);
+    public function _orWhereNotEqual($column, $value);
 
     /**
      * Add an orWhereNull clause to the query instance
      * 
      * @param string $column
      * 
-     * @return self
+     * @return Model
      */
-    public function orWhereNull($column);
+    public function _orWhereNull($column);
 
     /**
      * Add an orWhereNotNull clause to the query instance
      * 
      * @param string $column
      * 
-     * @return self
+     * @return Model
      */
-    public function orWhereNotNull($column);
+    public function _orWhereNotNull($column);
 
     /**
      * Begin a Transaction (all subsequent statements will be executed in that transaction)
      */
-    public function beginTransaction();
+    public function _beginTransaction();
 
     /**
      * commit all changes made in the transaction chain
      * 
      * @return void
      */
-    public function commit();
+    public function _commit();
 
     /**
      * rollback all changes made in the transaction chain
      * 
      * @return void
      */
-    public function rollback();
+    public function _rollback();
 
     /**
-     * rollback all changes made in the transaction chain
+     * Add a join clause to the query instance
+     * 
+     * @param string $table
+     * @param string $first
+     * @param string $operator
+     * @param string $second
+     * 
+     * @return Model
+     */
+    public function _join($table, $first, $operator, $second);
+
+    /**
+     * Add a join clause to the query instance
+     * 
+     * @param string $table
+     * @param string $first
+     * @param string $operator
+     * @param string $second
+     * 
+     * @return Model
+     */
+    public function _leftJoin($table, $first, $operator, $second);
+
+    /**
+     * Add a join clause to the query instance
+     * 
+     * @param string $table
+     * @param string $first
+     * @param string $operator
+     * @param string $second
+     * 
+     * @return Model
+     */
+    public function _rightJoin($table, $first, $operator, $second);
+
+    /**
+     * Add a join clause to the query instance
+     * 
+     * @param string $table
+     * @param string $first
+     * @param string $operator
+     * @param string $second
+     * 
+     * @return Model
+     */
+    public function _fullOuterJoin($table, $first, $operator, $second);
+
+    /**
+     * specify that the query should return distinct results based on specified column
      * @param string $column
      * 
-     * @return self
+     * @return Model
      */
-    public function distinct(string $column);
+    public function _distinct(string $column);
 }

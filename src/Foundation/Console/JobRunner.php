@@ -10,17 +10,13 @@ class JobRunner {
     public function __invoke()
     {
         //TODO: there should be db abstraction so we can be db agnostic
-        $dbtype = config('database.connections.mysql.driver'); // env('DB_ADAPTER');
-        $dbhost = config('database.connections.mysql.host'); //env("DB_HOST");
-        $dbname = config('database.connections.mysql.database'); //env('DB_NAME');
-        $dbuser = config('database.connections.mysql.username'); //env('DB_USER');
-        $dbpass = config('database.connections.mysql.password'); //env('DB_PASS');
-        $dbport = config('database.connections.mysql.port'); //env('DB_PORT');
-        $dbcharset = config('database.connections.mysql.charset'); //env('DB_CHARSET');
-        $chron_interval = (int)env('CHRON_INTERVAL', 60);
-
-        $start_time = time();
-        $end_time = $start_time + $chron_interval;
+        $dbtype = config('database.connections.mysql.driver');
+        $dbhost = config('database.connections.mysql.host');
+        $dbname = config('database.connections.mysql.database');
+        $dbuser = config('database.connections.mysql.username');
+        $dbpass = config('database.connections.mysql.password');
+        $dbport = config('database.connections.mysql.port');
+        $dbcharset = config('database.connections.mysql.charset');
 
         $job_Queue = new Job_Queue(Job_Queue::QUEUE_TYPE_MYSQL, [
             $dbtype => [
@@ -33,41 +29,44 @@ class JobRunner {
         $job_Queue->addQueueConnection($pdo);
         $job_Queue->watchPipeline('default');
 
-        while ($end_time > time()) {
+        while (true) {
             // Process Pending Jobs
-            $job = $job_Queue->getNextJobAndReserve();
-            
-            if(!empty($job)) {
+            if(!empty($job = $job_Queue->getNextJobAndReserve())) {
                 $payload = $job['payload'];
     
                 try {
-                    $job_obj = unserialize($payload);
+                    $job_obj = \Eyika\Atom\Framework\Support\SignedPayload::verify($payload);
     
                     if ($job_obj instanceof QueueInterface) {
                         $job_obj->setJob($job);
                         $job_obj->setQueue($job_Queue);
                         $resp = $job_obj->handle();
+                    } else {
+                        info('job object is not an instance of Queue Interface');
                     }
                 } catch(Exception $e) {
                     $job_Queue->buryJob($job, $job_obj->getDelay());
+                    throw $e;
                 }
             } else if (!empty($job = $job_Queue->getNextBuriedJob())) { // Process Pending Buried Jobs
                 $payload = $job['payload'];
 
                 try {
-                    $job_obj = unserialize($payload);
+                    $job_obj = \Eyika\Atom\Framework\Support\SignedPayload::verify($payload);
     
                     if ($job_obj instanceof QueueInterface) {
                         $job_obj->setJob($job);
                         $job_obj->setQueue($job_Queue);
                         $resp = $job_obj->handle();
+                    } else {
+                        info('buried job object is not an instance of Queue Interface');
                     }
                 } catch (Exception $e) {
                     $job_Queue->buryJob($job, $job_obj->getDelay());
+                    throw $e;
                 }
             } else {
-                sleep(1);
-                continue;
+                break;
             }
         }
     }
