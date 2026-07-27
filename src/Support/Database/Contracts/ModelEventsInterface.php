@@ -31,4 +31,13 @@ interface ModelEventsInterface extends CanBeDeepCloned
     public static function deleted(callable $callback): void;
 
     public static function retrieved(callable $callback): void;
+
+    /** Register one or more observers (classes with lifecycle-named methods). */
+    public static function observe(string|object|array $observers): void;
+
+    /** The lifecycle events an observer may hook. @return string[] */
+    public static function observableEvents(): array;
+
+    /** Remove all registered listeners for this model class. */
+    public static function flushEventListeners(): void;
 }

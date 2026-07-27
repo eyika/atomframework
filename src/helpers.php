@@ -104,12 +104,16 @@ if (! function_exists("app")) {
 }
 
 if (! function_exists('paginate')) {
-    function paginate(array $data, Model|User $model, $currentPage = PaginatedData::currentPage, $recordsPerPage = PaginatedData::recordsPerPage, ?string $routeName = null)
+    function paginate(iterable $data, Model|User $model, $currentPage = PaginatedData::currentPage, $recordsPerPage = PaginatedData::recordsPerPage, ?string $routeName = null)
     {
-        $currentPage = $currentPage;
-        $recordsPerPage = $recordsPerPage;
+        // Accept a Collection (query/relation results are Collections now) or an array.
+        if ($data instanceof \Eyika\Atom\Framework\Support\Collections\Collection) {
+            $data = $data->all();
+        } elseif (!is_array($data)) {
+            $data = iterator_to_array($data);
+        }
+
         $totalRecords = $model->count($model->primaryKey, false);
-        // Calculate total pages
         $totalPages = ceil($totalRecords / $recordsPerPage);
 
         return PaginatedData::init($data, $totalRecords, $recordsPerPage, $totalPages, $currentPage, $routeName);

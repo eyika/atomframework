@@ -53,4 +53,12 @@ interface ModelRelationshipInterface extends ModelInterface
         ?string $relatedKey = null,
         ?callable $pivotFilter = null
     );
+
+    /**
+     * Lazily resolve a relation defined by a method on this model (single parent).
+     *
+     * @param string $name
+     * @return mixed
+     */
+    public function getRelation(string $name): mixed;
 }

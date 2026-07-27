@@ -87,13 +87,14 @@ class ResolvesRelationsTest extends DatabaseTestCase
         $this->assertNull($user->team());
     }
 
-    public function test_has_many_resolves_to_an_array_of_models(): void
+    public function test_has_many_resolves_to_a_collection_of_models(): void
     {
         $user = (new RRUser())->where('id', 1)->first(true);
 
+        // hasMany now returns a Collection (iterable/countable/ArrayAccess).
         $logins = $user->logins();
 
-        $this->assertIsArray($logins);
+        $this->assertInstanceOf(\Eyika\Atom\Framework\Support\Collections\Collection::class, $logins);
         $this->assertCount(2, $logins);
         $this->assertInstanceOf(RRLogin::class, $logins[0]);
     }

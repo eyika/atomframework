@@ -452,8 +452,64 @@ trait QueryBuilder
             $model = $this->fill($model, true);
             $this->boot($model, 'retrieved');
         }
+        unset($model);
 
-        return $this->fetchRelationship($models, true, is_protected: $is_protected);
+        // Multi-result reads return a Collection (iterable/countable/ArrayAccess), so
+        // foreach/count/[] keep working while gaining the fluent Collection API.
+        return collect($this->fetchRelationship($models, true, is_protected: $is_protected));
+    }
+
+    /**
+     * Stream results as a memory-efficient LazyCollection: each model is built ONE row
+     * at a time straight from the DB cursor (fetch_cursor), so a huge scan never loads
+     * the whole result set into memory. The cursor is forward-only / single-pass, and
+     * with() eager-loading is not applied (that would require buffering every row).
+     */
+    public function _cursor($is_protected = true, $select = [])
+    {
+        $query_arr = [];
+        if ($this->bind_or_filter) {
+            $query_arr = $this->bind_or_filter;
+        }
+
+        $or_ands = $this->or_ands;
+        if ($this->softdeletes) {
+            $query_arr['deleted_at'] = "IS NULL";
+            is_array($or_ands) ? $or_ands[] = "AND" : $or_ands = ["AND"];
+        }
+
+        $this->useHashForEncryptedColumnComparisonQueries($query_arr);
+        $fields = count($select) ? $select
+            : ($is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable);
+
+        // fetch_cursor()'s arg order is (…, $joins, $lock) — the reverse of fetch().
+        $statement = DatabaseConnection::fetch_cursor($this->table, $query_arr, $fields, $this->operators, $or_ands, $this->joins, $this->for_update);
+        $this->resetInstance();
+
+        if (!$statement) {
+            return \Eyika\Atom\Framework\Support\Collections\LazyCollection::make([]);
+        }
+
+        return \Eyika\Atom\Framework\Support\Collections\LazyCollection::make(function () use ($statement) {
+            while (($row = $statement->fetch(\PDO::FETCH_ASSOC)) !== false) {
+                // Mirror Connection::fetch()'s JSON-column decode.
+                foreach ($row as $k => $v) {
+                    if (strpos($k, '_json')) {
+                        $row[$k] = json_decode($v, true);
+                    }
+                }
+                $this->decryptValues($row);
+                $model = $this->fill($row, true);
+                $this->boot($model, 'retrieved');
+                yield $model;
+            }
+        });
+    }
+
+    /** Alias for cursor() — stream results lazily. */
+    public function _lazy($is_protected = true, $select = [])
+    {
+        return $this->_cursor($is_protected, $select);
     }
 
     public function with($models)
@@ -486,6 +542,11 @@ trait QueryBuilder
         $this->offset($offset);
 
         $data = $this->all($isProtected, $select);
+        // all() returns a Collection; PaginatedData works on the underlying array (and
+        // an empty Collection is truthy, so unwrap before the emptiness check).
+        if ($data instanceof \Eyika\Atom\Framework\Support\Collections\Collection) {
+            $data = $data->all();
+        }
 
         if (!$data) {
             return false;

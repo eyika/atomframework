@@ -20,10 +20,14 @@ use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
  * @method static self|null findOr(int $id = 0, bool $is_protected = true, callable $callable = null)
  * @method static self|null firstWhere(string $column, string|null $operatorOrValue = null, mixed $value = null, bool $is_protected = true)
  * @method static self|null firstOrCreate(array $search, array $keyvalues, bool $is_protected = true, array $select = [])
+ * @method static self firstOrNew(array $search, array $values = [], bool $is_protected = true)
  * @method static self|null findBy(string $key, string $value, bool $is_protected = true, array $select = [])
  * @method static self|null findByArray(array $keys, array $values, string $or_and = "AND", bool $is_protected = true, array $select = [])
- * @method static array|false all(bool $is_protected = true, array $select = [])
- * @method static array|false get(bool $is_protected = true, array $select = [])
+ * @method static \Eyika\Atom\Framework\Support\Collections\Collection all(bool $is_protected = true, array $select = [])
+ * @method static \Eyika\Atom\Framework\Support\Collections\Collection get(bool $is_protected = true, array $select = [])
+ * @method static \Eyika\Atom\Framework\Support\Collections\LazyCollection cursor(bool $is_protected = true, array $select = [])
+ * @method static \Eyika\Atom\Framework\Support\Collections\LazyCollection lazy(bool $is_protected = true, array $select = [])
+ * @method static void observe(string|object|array $observers)
  * @method self lockForUpdate()
  * @method static PaginatedData|false paginate(int $currentPage = null, int $recordsPerPage = null, bool $isProtected = true, array $select = [], ?string $routeName = null)
  * @method static self|null random()
@@ -86,7 +90,7 @@ abstract class Model implements ModelInterface
 
     protected const DYNAMIC_STATIC_METHODS = [
         'create', 'find', 'findByEmail', 'findByUsername', 'findOr', 'first', 'firstOr', 'firstWhere', 'firstOrCreate', 'findBy',
-        'findByArray', 'all', 'get', 'paginate', 'random', 'count', 'avg', 'max', 'min', 'increment', 'decrement',
+        'findByArray', 'all', 'get', 'cursor', 'lazy', 'paginate', 'random', 'count', 'avg', 'max', 'min', 'increment', 'decrement',
         'sum', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor', 'group_concat', 'update',
         'updateOrCreate', 'delete', 'restore', 'limit', 'offset', 'where', 'whereIn',
         'whereNotIn', 'whereNotIn', 'whereLike', 'whereNotLike', 'whereBetween', 'whereNotBetween', 'whereLessThan',

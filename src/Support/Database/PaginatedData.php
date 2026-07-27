@@ -3,6 +3,7 @@
 namespace Eyika\Atom\Framework\Support\Database;
 
 use Eyika\Atom\Framework\Http\Route;
+use Eyika\Atom\Framework\Support\Collections\Collection;
 
 /**
  * Holds paginated records and allows converting to array while computing the nextpage and previous page urls
@@ -21,9 +22,11 @@ class PaginatedData
     protected static int $current_page;
     protected static string|null $route_name;
 
-    public function __construct(array $data, int $total_records, int $records_per_page, int $total_pages, int $current_page, ?string $route_name = null)
+    public function __construct(array|Collection $data, int $total_records, int $records_per_page, int $total_pages, int $current_page, ?string $route_name = null)
     {
-        static::$data = $data;
+        // Accept a Collection (query/relation results are Collections now); store the
+        // page items as a plain array so toArray()/JSON output is unchanged.
+        static::$data = $data instanceof Collection ? $data->all() : $data;
         static::$total_records = $total_records;
         static::$records_per_page = $records_per_page;
         static::$total_pages = $total_pages;
@@ -31,9 +34,15 @@ class PaginatedData
         static::$route_name = $route_name;
     }
 
-    public static function init(array $data, int $total_records, int $records_per_page, int $total_pages, int $current_page, ?string $route_name = null)
+    public static function init(array|Collection $data, int $total_records, int $records_per_page, int $total_pages, int $current_page, ?string $route_name = null)
     {
         return new static($data, $total_records, $records_per_page, $total_pages, $current_page, $route_name);
+    }
+
+    /** The current page's items as a Collection (paginated collection). */
+    public static function collection(): Collection
+    {
+        return collect(static::$data);
     }
 
     /**

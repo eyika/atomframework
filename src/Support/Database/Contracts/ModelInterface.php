@@ -225,11 +225,11 @@ interface ModelInterface extends ModelEventsInterface
 
     /**
      * Find all elements of a model
-     * 
+     *
      * @param bool $is_protected 'wether to hide or show protected values'
      * @param array $select 'what parameters of model to fetch in results'
-     * 
-     * @return array|false
+     *
+     * @return \Eyika\Atom\Framework\Support\Collections\Collection
      */
     public function _all($is_protected = true, $select = []);
 
@@ -246,13 +246,31 @@ interface ModelInterface extends ModelEventsInterface
     
     /**
      * Alias for all(), Find all elements of a model
-     * 
+     *
      * @param bool $is_protected 'wether to hide or show protected values'
      * @param array $select 'what parameters of model to fetch in results'
-     * 
-     * @return array|false
+     *
+     * @return \Eyika\Atom\Framework\Support\Collections\Collection
      */
     public function _get($is_protected = true, $select = []);
+
+    /**
+     * Stream results as a memory-efficient LazyCollection (one model per DB-cursor row).
+     *
+     * @param bool $is_protected
+     * @param array $select
+     * @return \Eyika\Atom\Framework\Support\Collections\LazyCollection
+     */
+    public function _cursor($is_protected = true, $select = []);
+
+    /**
+     * Alias for cursor().
+     *
+     * @param bool $is_protected
+     * @param array $select
+     * @return \Eyika\Atom\Framework\Support\Collections\LazyCollection
+     */
+    public function _lazy($is_protected = true, $select = []);
 
     /**
      * Return a paginated results for the current query
