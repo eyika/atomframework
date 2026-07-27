@@ -152,11 +152,9 @@ class BaseResponse
         // File download and redirects take precedence over content-negotiation —
         // otherwise an API/XHR request (isNotHtml) swallowed them by echoing body.
         if ($this->isFileResponse) {
-            http_response_code($this->statusCode);
+            $this->emitStatus($this->statusCode);
             $this->sendHeaders();
-            ob_clean();
-            flush();
-            readfile($this->file_path);
+            $this->emitFile($this->file_path);
             return $terminate;
         }
 
@@ -168,16 +166,16 @@ class BaseResponse
             if (count($this->inputs))
                 Session::set(self::REQUEST_OLD_INPUTS_KEY, $this->inputs);
 
-            http_response_code($this->statusCode);
+            $this->emitStatus($this->statusCode);
             $this->sendHeaders();
             return $terminate;
         }
 
         // JSON / XHR: emit the body as-is (no view compilation).
         if (FacadeRequest::isNotHtml()) {
-            http_response_code($this->statusCode);
+            $this->emitStatus($this->statusCode);
             $this->sendHeaders();
-            echo $this->body;
+            $this->emitBody($this->body);
             return $terminate;
         }
 
@@ -185,9 +183,9 @@ class BaseResponse
             $this->compileView();
         }
 
-        http_response_code($this->statusCode);
+        $this->emitStatus($this->statusCode);
         $this->sendHeaders();
-        echo $this->body;
+        $this->emitBody($this->body);
         return $terminate;
     }
 
@@ -220,14 +218,85 @@ class BaseResponse
             // Emit a real Set-Cookie header (with all attributes/flags) rather than a
             // plain "name: value" header. `false` = don't replace, so multiple cookies
             // each get their own Set-Cookie line.
-            header('Set-Cookie: ' . $cookie->toString(), false);
+            $this->emitHeader('Set-Cookie: ' . $cookie->toString(), false);
         });
         foreach ($this->headers as $header) {
             foreach ($header as $key => $value) {
                 $val = str_contains($key, 'Set-Cookie') ? (string) $value[0] : $value[0];
-                isset($value[2]) ? header("{$key}: {$val}", $value[1], $value[2]) : header("{$key}: {$val}", $value[1]);
+                $this->emitHeader("{$key}: {$val}", (bool) $value[1], $value[2] ?? null);
             }
         }
+    }
+
+    // -----------------------------------------------------------------------------
+    // Worker-safety (WRK-02): route ALL response output through the object so a
+    // persistent worker can CAPTURE the status/headers/body and send them itself,
+    // instead of the framework emitting them directly. Under FPM (capture off) these
+    // fall through to the native http_response_code()/header()/echo/readfile().
+    // -----------------------------------------------------------------------------
+
+    protected static bool $captureOutput = false;
+    protected ?int $sentStatus = null;
+    protected array $sentHeaders = [];
+    protected string $sentBody = '';
+
+    /** Turn response capture on/off (a worker enables it per request). */
+    public static function captureOutput(bool $capture = true): void
+    {
+        self::$captureOutput = $capture;
+    }
+
+    protected function emitStatus(int $code): void
+    {
+        $this->sentStatus = $code;
+        if (!self::$captureOutput) {
+            http_response_code($code);
+        }
+    }
+
+    protected function emitHeader(string $header, bool $replace = true, ?int $code = null): void
+    {
+        $this->sentHeaders[] = $header;
+        if (!self::$captureOutput) {
+            $code !== null ? header($header, $replace, $code) : header($header, $replace);
+        }
+    }
+
+    protected function emitBody(string $body): void
+    {
+        $this->sentBody .= $body;
+        if (!self::$captureOutput) {
+            echo $body;
+        }
+    }
+
+    protected function emitFile(string $path): void
+    {
+        if (self::$captureOutput) {
+            $this->sentBody .= (file_get_contents($path) ?: '');
+            return;
+        }
+        ob_clean();
+        flush();
+        readfile($path);
+    }
+
+    /** The captured status code (worker mode). */
+    public function sentStatus(): ?int
+    {
+        return $this->sentStatus;
+    }
+
+    /** The captured header lines (worker mode). @return string[] */
+    public function sentHeaders(): array
+    {
+        return $this->sentHeaders;
+    }
+
+    /** The captured body (worker mode). */
+    public function sentBody(): string
+    {
+        return $this->sentBody;
     }
 
     protected function create(mixed $data = null, int $statusCode = 200): self
