@@ -282,7 +282,7 @@ CRITICAL / HIGH / MED / LOW — framework-level exploitability or breakage. Some
 | PKG-06 | `Support/ServiceProvider.php`, `Foundation/ServiceProvider.php:41` | ✅ DONE — deleted the 0-byte `Support/ServiceProvider.php` stub; removed `defaultProviders()` (framework no longer hardcodes `\App\Providers\*`). **APP REWRITE:** fx-data-server `config/app.php` now inlines its 6 providers instead of `ServiceProvider::defaultProviders()->merge(...)`. Boot smoke green. |
 | PKG-07 | `…/Concerns/ServiceContainer.php` | Container niceties: contextual binding, tags, scoped, `call()` injection, `extend()`, populate `$aliases`. |
 | PKG-08 | `Foundation/Console/Commands/Make/*` | `make:` scaffolds: provider/command/middleware/event/listener/job/mail/rule/policy/request/resource/cast. |
-| PKG-09 | `Support/View/*` | Namespaced package views (`view('pkg::x')`). |
+| PKG-09 | `Support/View/*` | ✅ DONE — `view('pkg::name')` resolves via `resolve_view_template()` against the package dirs registered with `loadViewsFrom()` (PKG-01) + app-views fallback; passed to Blade as a multi-path template search (BladeOne supports an array of template paths). `ViewNamespaceTest`. |
 | PKG-10 | — | ✅ DONE (P2) — `config:cache`/`config:clear` (PERF-10) + `route:cache`/`route:clear` (PERF-11) commands built. |
 | PKG-11 | `Support/Database/Schema/*` | (Optional) grammar abstraction — schema is MySQL-hardcoded; note portability limit. |
 

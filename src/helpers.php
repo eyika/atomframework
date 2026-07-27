@@ -700,15 +700,45 @@ if (!function_exists('view')) {
      * @return string
      */
     function view($file_name, $data = []) {
-        $path = resource_path('views');
+        $appPath = resource_path('views');
+
+        // Namespaced package views ('pkg::name') resolve against the dirs a package
+        // registered via ServiceProvider::loadViewsFrom() (PKG-09), app views as
+        // fallback; plain names resolve against the app views unchanged.
+        [$templatePath, $file_name] = resolve_view_template($file_name, $appPath);
 
         if (config('view.use_advance_engine')) {
-            $view = new Blade($path);
+            $view = new Blade($templatePath);
             $code = $view->run("$file_name", $data);
         } else {
-            $code = Twig::make("$file_name.blade.php", "$path/", $data, true);
+            $twigBase = is_array($templatePath) ? ($templatePath[0] ?? $appPath) : $templatePath;
+            $code = Twig::make("$file_name.blade.php", "$twigBase/", $data, true);
         }
         return $code;
+    }
+}
+
+if (! function_exists('resolve_view_template')) {
+    /**
+     * Resolve a (possibly namespaced) view name to its template search path(s) and
+     * the bare view name. 'pkg::name' → the package's registered view directories
+     * (PKG-09) with the app views path appended as fallback; a plain name → the app
+     * views path unchanged. An unknown namespace falls through untouched so the view
+     * engine surfaces a clear "not found" for the full 'pkg::name'.
+     *
+     * @return array{0: string|array, 1: string}
+     */
+    function resolve_view_template(string $file_name, string $appPath): array
+    {
+        if (str_contains($file_name, '::')) {
+            [$namespace, $viewName] = explode('::', $file_name, 2);
+            $namespaces = \Eyika\Atom\Framework\Foundation\ServiceProvider::viewNamespaces();
+            if (!empty($namespaces[$namespace])) {
+                return [array_merge($namespaces[$namespace], [$appPath]), $viewName];
+            }
+        }
+
+        return [$appPath, $file_name];
     }
 }
 
