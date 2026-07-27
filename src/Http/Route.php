@@ -158,8 +158,12 @@ class Route
         }
     
         $requestMethod = $request->method();
-        $requestUri = rtrim(filter_var($request->requestUri(), FILTER_SANITIZE_URL), '/');
-        $requestUri = strtok($requestUri, '?');
+        // Strip the query string BEFORE trimming the trailing slash. Doing it the other
+        // way round makes the root URL "/" rtrim to "" and then strtok("", "?") returns
+        // FALSE — so the homepage route (registered under "") never matched and every
+        // "/" request 404'd.
+        $requestUri = strtok(filter_var($request->requestUri(), FILTER_SANITIZE_URL), '?');
+        $requestUri = rtrim($requestUri === false ? '' : $requestUri, '/');
     
         // Find matching route and set route parameters
         $parameters = [];
