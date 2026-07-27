@@ -247,11 +247,11 @@ CRITICAL / HIGH / MED / LOW — framework-level exploitability or breakage. Some
 | PERF-02 | HIGH | `Http/Route.php:177,304` | ✅ DONE (P1 routing) — dispatch reuses the matched route's own middlewares; no second scan. |
 | PERF-03 | MED | `Connection.php:87` | ✅ DONE — opt-in `PDO::ATTR_PERSISTENT` via `database.connections.<driver>.persistent` (off by default). `ConnectionOptionsTest`. |
 | PERF-04 | MED | `MysqlSessionHandler.php:25` | ✅ DONE — removed the dead 2nd `new Connection(...)`; every method already uses the shared `DB` facade connection. |
-| PERF-05 | MED | `QueryBuilder.php:881,898,1040` | Drop post-write confirmation `SELECT`; use `RETURNING`/`lastInsertId`. |
+| PERF-05 | MED | `QueryBuilder.php:881,898,1040` | ⏸ DEFERRED (behavior-sensitive) — post-write `SELECT` returns DB-populated defaults/triggers/timestamps; dropping it changes the returned model, and `RETURNING` is Postgres-only. Needs an opt-in cross-driver design + dedicated tests, not a blind swap. |
 | PERF-06 | MED | `QueryBuilder.php:416` | ✅ DONE — removed 16 dead `booted()`/`booting()` per-row calls (empty no-ops post-BUG-20); `boot()` still dispatches once per event. |
 | PERF-07 | LOW | `Http/Request.php:49,56,59` | ✅ DONE (loop hoist) — `config('cookies.whitelisted_cookies')` fetched once, not per cookie. (Lazy `input`/`headers` = deferred follow-up.) |
-| PERF-08 | MED | `QueryBuilder.php:69` | Skip decode-then-encode cast round-trip on writes. |
-| PERF-09 | MED | `Connection.php:553` | Precompute JSON columns instead of per-column `_json` `strpos` scan. |
+| PERF-08 | MED | `QueryBuilder.php:69` | ⏸ DEFERRED (behavior-sensitive) — the write-time cast decodes JSON columns that `serializeCastedValues()` then re-encodes (documented in fx-data-server CLAUDE.md); short-circuiting risks corrupting every JSON write. Needs an app-aware round-trip test pass first. |
+| PERF-09 | MED | `Connection.php:553` | ✅ DONE — JSON-column set (`strpos($k,'_json')>0`) precomputed once per result set instead of scanning every column of every row. `JsonColumnDecodeTest`. |
 | PERF-19 | LOW | `Route.php:167`, `SubstituteBindings.php:36` | ✅ DONE — removed the redundant second `sanitize_data()` in `SubstituteBindings` (params already sanitized at `Route::dispatch`). |
 
 ### 2.2 Structural

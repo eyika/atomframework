@@ -619,19 +619,32 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
       return false;
     }
     $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
-
-    $list = [];
-    foreach ( $rows as $row ) {
-      foreach ( $row as $k => $v ) {
-        if ( strpos($k, '_json') ) {
-          $row[$k] = json_decode($v, 1);
-        }
-      }
-      
-      $list[] = $row;
+    if (empty($rows)) {
+      return [];
     }
-    
-    return $list;
+
+    // Precompute which columns are JSON (name contains '_json', with strpos > 0 —
+    // same truthiness as before) from the shared column set ONCE, instead of
+    // strpos-scanning every column of every row (PERF-09).
+    $jsonKeys = [];
+    foreach ( array_keys($rows[0]) as $k ) {
+      if ( strpos($k, '_json') ) {
+        $jsonKeys[] = $k;
+      }
+    }
+
+    if ( empty($jsonKeys) ) {
+      return $rows;
+    }
+
+    foreach ( $rows as &$row ) {
+      foreach ( $jsonKeys as $k ) {
+        $row[$k] = json_decode($row[$k], 1);
+      }
+    }
+    unset($row);
+
+    return $rows;
   }
 
   //**
