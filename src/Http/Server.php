@@ -48,10 +48,11 @@ class Server
             static::$app->registerProviders();
             // ErrorHandler::register();
             if (preg_match('/^.*$/i', $request->requestUri())) {
-                // Which route file handles this request is decided by the maps the
-                // app registered in its RouteServiceProvider (Route::map(...)), so the
-                // app owns the wiring and can add its own map types. When no maps are
-                // registered, fall back to the legacy hardcoded web/api heuristic.
+                // Route wiring is owned by the app's RouteServiceProvider: each
+                // Route::map() declares a matcher + middleware group + route file, and
+                // the first map whose matcher accepts the request handles it (a
+                // matcher-less map is the fallback). No matching map → no routes are
+                // loaded and dispatch returns a not-found response.
                 $map = Route::resolveMapFor($request);
                 if ($map !== null && $map->getFile() !== null) {
                     Route::isApiRequest($map->isStateless());
@@ -59,16 +60,8 @@ class Server
                         static::loadMiddlewares($middleware);
                     }
                     Route::loadRoutesFile($map->getName(), $map->getFile());
-                } elseif (!preg_match('#^/api(/|$)#', strtok($request->pathInfo(), '?')) && !$request->wantsJson() && !$request->isXmlHttpRequest() && !$request->isOptions()) {
-                    static::loadMiddlewares('web');
-                    ///TODO: load all default web middlewares
-                    Route::loadRoutesFile('web', base_path().'/routes/web.php');
-                } else {
-                    Route::isApiRequest(true);
-                    static::loadMiddlewares('api');
-                    ///TODO: load all default api middlewares
-                    Route::loadRoutesFile('api', base_path().'/routes/api.php');
                 }
+
                 $status = Route::dispatch($request);
                 // Only remember the "previous URL" for web GET navigation. Storing it
                 // for API, AJAX/JSON, or non-GET requests forced a needless session
