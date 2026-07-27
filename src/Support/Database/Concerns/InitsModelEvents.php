@@ -89,6 +89,43 @@ trait InitsModelEvents
     }
 
     /**
+     * The model lifecycle events an observer may hook. A "before" event
+     * (creating/updating/saving/deleting/restoring) returning false aborts the write.
+     *
+     * @return string[]
+     */
+    public static function observableEvents(): array
+    {
+        return [
+            'retrieved', 'creating', 'created', 'updating', 'updated',
+            'saving', 'saved', 'deleting', 'deleted', 'restoring', 'restored',
+        ];
+    }
+
+    /**
+     * Register one or more OBSERVERS for this model. An observer is a class (or
+     * instance) with methods named after lifecycle events — creating(), created(),
+     * updating(), deleting(), … each receiving the model. Only the methods it actually
+     * defines are wired up.
+     *
+     *   User::observe(UserObserver::class);
+     *
+     * @param string|object|array<string|object> $observers
+     */
+    public static function observe(string|object|array $observers): void
+    {
+        foreach ((array) $observers as $observer) {
+            $instance = is_string($observer) ? new $observer() : $observer;
+
+            foreach (static::observableEvents() as $event) {
+                if (method_exists($instance, $event)) {
+                    static::on($event, [$instance, $event]);
+                }
+            }
+        }
+    }
+
+    /**
      * Remove all registered listeners for this model class (test isolation).
      */
     public static function flushEventListeners(): void

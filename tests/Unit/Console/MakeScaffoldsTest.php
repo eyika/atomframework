@@ -9,6 +9,7 @@ use Eyika\Atom\Framework\Foundation\Console\Commands\Make\Job;
 use Eyika\Atom\Framework\Foundation\Console\Commands\Make\Listener;
 use Eyika\Atom\Framework\Foundation\Console\Commands\Make\Mail;
 use Eyika\Atom\Framework\Foundation\Console\Commands\Make\Middleware;
+use Eyika\Atom\Framework\Foundation\Console\Commands\Make\Observer;
 use Eyika\Atom\Framework\Foundation\Console\Commands\Make\Policy;
 use Eyika\Atom\Framework\Foundation\Console\Commands\Make\Provider;
 use Eyika\Atom\Framework\Foundation\Console\Commands\Make\Request;
@@ -58,6 +59,7 @@ class MakeScaffoldsTest extends TestCase
             [Policy::class,         'ScafPolicy',     'App\\Policies\\ScafPolicy'],
             [Resource::class,       'ScafResource',   'App\\Http\\Resources\\ScafResource'],
             [Cast::class,           'ScafCast',       'App\\Casts\\ScafCast'],
+            [Observer::class,       'ScafObserver',   'App\\Observers\\ScafObserver'],
         ];
 
         foreach ($cases as [$commandClass, $name, $fqcn]) {
