@@ -184,9 +184,12 @@ class JwtGuard extends Authenticator
 
     protected static function extractToken(): ?string
     {
-        if (!isset($_SERVER['HTTP_AUTHORIZATION']))
-            return null;
-        $auth_header = $_SERVER['HTTP_AUTHORIZATION'];
+        // Read the Authorization header from the bound request (WRK-11), falling back
+        // to $_SERVER when no app/request is bound (CLI / unit context).
+        $app = function_exists('app') ? app() : null;
+        $auth_header = ($app && $app->bound('request'))
+            ? app('request')->server('HTTP_AUTHORIZATION')
+            : ($_SERVER['HTTP_AUTHORIZATION'] ?? null);
         if (empty($auth_header)) {
             return null;
         }

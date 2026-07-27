@@ -24,7 +24,7 @@ class ServePublicAssets implements MiddlewareInterface
                 'woff' => 'font/woff'
             ];
 
-            $uri = explode('?', $_SERVER["REQUEST_URI"])[0];
+            $uri = explode('?', $request->server('REQUEST_URI') ?? '')[0];
             if (preg_match('/\.(?:js|css|svg|ico|woff|woff2|ttf|webp|pdf|png|jpg|json|jpeg|gif|md)$/', $uri)) {
                 $request->isAssetRequest(true);
                 $path = public_path().$uri;

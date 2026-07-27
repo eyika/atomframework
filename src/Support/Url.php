@@ -17,6 +17,31 @@ class Url
     }
 
     /**
+     * Read a server value from the CURRENT bound request (WRK-11) so URL generation
+     * doesn't read the $_SERVER process global directly; falls back to $_SERVER when no
+     * request is bound (CLI).
+     */
+    protected static function server(string $key, $default = null)
+    {
+        $app = function_exists('app') ? app() : null;
+        if ($app && $app->bound('request')) {
+            $value = app('request')->server($key);
+            if ($value !== null) {
+                return $value;
+            }
+        }
+        return $_SERVER[$key] ?? $default;
+    }
+
+    /** http:// or https:// for the current request. */
+    protected static function protocol(): string
+    {
+        $https = static::server('HTTPS');
+        $port = static::server('SERVER_PORT');
+        return ((!empty($https) && $https !== 'off') || $port == 443) ? 'https://' : 'http://';
+    }
+
+    /**
      * Generate an absolute URL.
      *
      * @param string $path
@@ -24,16 +49,10 @@ class Url
      */
     public static function to($path = '')
     {
-        // Get the protocol
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+        $protocol = static::protocol();
+        $host = static::server('HTTP_HOST');
 
-        // Get the host
-        $host = $_SERVER['HTTP_HOST'];
-
-        // Build the URL
-        $url = $protocol . $host . '/' . ltrim($path, '/');
-
-        return $url;
+        return $protocol . $host . '/' . ltrim($path, '/');
     }
 
     /**
@@ -43,13 +62,11 @@ class Url
      */
     public static function current($fullpath = true)
     {
-        $requestUri = $_SERVER['REQUEST_URI'];
+        $requestUri = static::server('REQUEST_URI');
         if (!$fullpath) {
             return $requestUri;
         }
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-        $host = $_SERVER['HTTP_HOST'];
-        return $protocol . $host . $requestUri;
+        return static::protocol() . static::server('HTTP_HOST') . $requestUri;
     }
 
     /**
