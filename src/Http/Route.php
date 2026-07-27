@@ -22,6 +22,9 @@ class Route
     private static $apiRequest = false;
     private static array $lastGroupMiddleware = [];
 
+    /** @var RouteMap[] Request-routed maps registered by the RouteServiceProvider. */
+    protected static array $maps = [];
+
     public function __construct()
     {
         static::$instantiated = true;
@@ -245,6 +248,49 @@ class Route
     public static function storeCurrent()
     {
         url()->storeCurrent();
+    }
+
+    /**
+     * Register a request-routed map (typically from a RouteServiceProvider) and return
+     * it for fluent configuration. Maps are consulted in registration order — list
+     * specific (matcher) maps first and the fallback (no when()) last.
+     */
+    public static function map(string $name): RouteMap
+    {
+        return self::$maps[$name] = new RouteMap($name);
+    }
+
+    /** All registered maps, in registration order. */
+    public static function maps(): array
+    {
+        return self::$maps;
+    }
+
+    /**
+     * The map that should handle $request: the first whose matcher accepts it, else
+     * the first matcher-less fallback map, else null when no maps are registered (the
+     * Server then uses its legacy web/api heuristic).
+     */
+    public static function resolveMapFor(Request $request): ?RouteMap
+    {
+        $fallback = null;
+        foreach (self::$maps as $map) {
+            if ($map->isFallback()) {
+                $fallback ??= $map;
+                continue;
+            }
+            if ($map->matches($request)) {
+                return $map;
+            }
+        }
+
+        return $fallback;
+    }
+
+    /** Reset the map registry (tests / worker reload). */
+    public static function flushMaps(): void
+    {
+        self::$maps = [];
     }
 
     /** The full registered route table (used by route:cache). */

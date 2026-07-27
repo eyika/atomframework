@@ -285,6 +285,7 @@ CRITICAL / HIGH / MED / LOW — framework-level exploitability or breakage. Some
 | PKG-09 | `Support/View/*` | ✅ DONE — `view('pkg::name')` resolves via `resolve_view_template()` against the package dirs registered with `loadViewsFrom()` (PKG-01) + app-views fallback; passed to Blade as a multi-path template search (BladeOne supports an array of template paths). `ViewNamespaceTest`. |
 | PKG-10 | — | ✅ DONE (P2) — `config:cache`/`config:clear` (PERF-10) + `route:cache`/`route:clear` (PERF-11) commands built. |
 | PKG-11 | `Support/Database/Schema/*` | ⏸ DEFERRED (optional) — schema builder emits MySQL grammar directly; a driver-grammar abstraction (like the query builder's) would enable Postgres/SQLite DDL. Documented portability limit; large, not required for the packaging goal. |
+| PKG-12 | `Http/Server.php`, `Http/Route.php`, `Http/RouteMap.php` | ✅ DONE — route wiring moved out of `Server`'s hardcoded web/api heuristic into a `RouteMap` registry the app owns via its `RouteServiceProvider`: `Route::map(name)->middleware()->stateless()->when(matcher)->load(file)`; `Server` loads the first map whose matcher accepts the request (matcher-less = fallback), else the legacy heuristic (non-breaking). Apps can add any number of map types. `RouteMapTest`; app RouteServiceProvider updated (boot smoke green). |
 
 ---
 

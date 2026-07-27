@@ -48,8 +48,18 @@ class Server
             static::$app->registerProviders();
             // ErrorHandler::register();
             if (preg_match('/^.*$/i', $request->requestUri())) {
-                //register controllers
-                if (!preg_match('#^/api(/|$)#', strtok($request->pathInfo(), '?')) && !$request->wantsJson() && !$request->isXmlHttpRequest() && !$request->isOptions()) {
+                // Which route file handles this request is decided by the maps the
+                // app registered in its RouteServiceProvider (Route::map(...)), so the
+                // app owns the wiring and can add its own map types. When no maps are
+                // registered, fall back to the legacy hardcoded web/api heuristic.
+                $map = Route::resolveMapFor($request);
+                if ($map !== null && $map->getFile() !== null) {
+                    Route::isApiRequest($map->isStateless());
+                    if ($middleware = $map->getMiddleware()) {
+                        static::loadMiddlewares($middleware);
+                    }
+                    Route::loadRoutesFile($map->getName(), $map->getFile());
+                } elseif (!preg_match('#^/api(/|$)#', strtok($request->pathInfo(), '?')) && !$request->wantsJson() && !$request->isXmlHttpRequest() && !$request->isOptions()) {
                     static::loadMiddlewares('web');
                     ///TODO: load all default web middlewares
                     Route::loadRoutesFile('web', base_path().'/routes/web.php');
