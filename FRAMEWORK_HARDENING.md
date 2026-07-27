@@ -307,7 +307,7 @@ Under PHP-FPM these are latent; under a persistent worker (the Octane package) t
 | WRK-11 | `JwtGuard.php:157`, `Support/Url.php:28`, `Http/Middlewares/ServePublicAssets.php:27` | ✅ DONE — `Url` (server()/protocol() helpers) + `JwtGuard::extractToken()` read server data from the bound request (`app('request')->server()`) with a `$_SERVER` fallback for CLI/no-app; `ServePublicAssets` uses its `$request->server('REQUEST_URI')`. |
 | WRK-12 | `Support/Database/DB.php:47` | ✅ DONE (= PERF-16) — removed the 3 `$_SESSION['transaction_mode']` writes (written but never read anywhere; process-shared under a worker). Transaction state already lives on the `Connection` object (`Connection::$transaction_mode` + begin/commit/rollback) and `DB::$transaction_mode`. |
 | WRK-13 | `Http/Request.php:158` | ✅ DONE — PUT-multipart parsing stashes files on `$this->rawFiles` instead of writing the `$_FILES` global; `initRequestFiles()` reads `rawFiles ?: $_FILES`. Behavior-preserving (full suite green); PUT-multipart-path test gated on WRK-01 (injectable php://input). |
-| PERF-15 | — | (folded from P2) `opcache.preload` script for framework core + models — most valuable under persistent workers; ship with the Octane demo. |
+| PERF-15 | — | ✅ DONE — reusable `Foundation\Preloader` (`->paths()->ignore()->load()`; opcache_compile_file over framework src + app, safe no-op without OPcache) + fx-data-server `preload.php` template (php.ini `opcache.preload=`). `PreloaderTest`. |
 
 ---
 
