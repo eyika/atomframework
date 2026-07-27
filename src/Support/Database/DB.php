@@ -46,8 +46,10 @@ class DB
 
     public static function beginTransaction()
     {
+        // Transaction state lives on the connection object (Connection::$transaction_mode),
+        // not in $_SESSION (WRK-12/PERF-16) — the session global was written but never
+        // read, and is process-shared under a worker.
         DatabaseConnection::beginTransaction();
-        $_SESSION['transaction_mode'] = true;
 
         if (! self::$instantiated)
             self::$transaction_mode = true;
@@ -56,7 +58,6 @@ class DB
     public static function commit()
     {
         DatabaseConnection::commit();
-        $_SESSION['transaction_mode'] = false;
 
         if (! self::$instantiated)
             self::$transaction_mode = false;
@@ -65,7 +66,6 @@ class DB
     public static function rollback()
     {
         DatabaseConnection::rollback();
-        $_SESSION['transaction_mode'] = false;
 
         if (! self::$instantiated)
             self::$transaction_mode = false;
