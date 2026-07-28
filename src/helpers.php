@@ -512,11 +512,11 @@ if (! function_exists('logger')) {
         $log = new Logger($name);
 
         if ($isConsole) {
-            // Date format: Tue Mar  4 10:25:40 2025
+            // Console output is user-facing command output, not a log line — emit just the
+            // (colorized) message, without the "[datetime] channel.LEVEL:" log prefix.
             $dateFormat = 'D M  j H:i:s Y';
-            // Custom formatter with colorized output
             $formatter = new ConsoleColorizer(
-                "%datetime% %channel%.%level_name%: %message%\n",
+                "%message%\n",
                 $dateFormat,
                 true,
                 true
