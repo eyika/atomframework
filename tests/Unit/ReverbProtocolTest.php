@@ -3,17 +3,23 @@
 namespace Eyika\Atom\Framework\Tests\Unit;
 
 use Eyika\Atom\Reverb\ChannelManager;
+use Eyika\Atom\Reverb\Connection;
 use Eyika\Atom\Reverb\Protocol\Frame;
 use Eyika\Atom\Reverb\Protocol\Handshake;
 use Eyika\Atom\Reverb\Server;
 use PHPUnit\Framework\TestCase;
 
-// atom-reverb is a sibling repo; pull in the classes under test. These four have no
-// framework dependencies. Path: atomframework/tests/Unit -> eyika/ -> atom-reverb/src/*
+// atom-reverb is a sibling repo; pull in the classes under test (no framework deps).
+// Path: atomframework/tests/Unit -> eyika/ -> atom-reverb/src/*
 $reverb = dirname(__DIR__, 3) . '/atom-reverb/src';
 require_once $reverb . '/Protocol/Handshake.php';
 require_once $reverb . '/Protocol/Frame.php';
 require_once $reverb . '/ChannelManager.php';
+require_once $reverb . '/Connection.php';
+require_once $reverb . '/Auth/Signature.php';
+require_once $reverb . '/Backplane/Backplane.php';
+require_once $reverb . '/Backplane/LocalBackplane.php';
+require_once $reverb . '/Backplane/RedisBackplane.php';
 require_once $reverb . '/Server.php';
 
 /**
@@ -111,11 +117,22 @@ class ReverbProtocolTest extends TestCase
     public function test_server_client_subscribe_message_updates_channels(): void
     {
         $server = new Server();
+        $conn = $this->connection(5);
 
-        $server->handleClientText(5, json_encode(['event' => 'subscribe', 'data' => ['channel' => 'orders']]));
+        // A public channel needs no auth.
+        $server->handleClientMessage($conn, json_encode(['event' => 'pusher:subscribe', 'data' => ['channel' => 'orders']]));
         $this->assertSame([5], $server->channels()->subscribers('orders'));
 
-        $server->handleClientText(5, json_encode(['event' => 'unsubscribe', 'data' => ['channel' => 'orders']]));
+        $server->handleClientMessage($conn, json_encode(['event' => 'pusher:unsubscribe', 'data' => ['channel' => 'orders']]));
         $this->assertSame([], $server->channels()->subscribers('orders'));
+    }
+
+    /** A handshook Connection over an in-memory socket (no real network). */
+    private function connection(int $id): Connection
+    {
+        $conn = new Connection($id, fopen('php://memory', 'r+'), 0.0);
+        $conn->handshook = true;
+        $conn->socketId = $id . '.1';
+        return $conn;
     }
 }
