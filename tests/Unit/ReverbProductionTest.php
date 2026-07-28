@@ -6,9 +6,11 @@ use Eyika\Atom\Reverb\Auth\Signature;
 use Eyika\Atom\Reverb\Backplane\RedisBackplane;
 use Eyika\Atom\Reverb\Connection;
 use Eyika\Atom\Reverb\Presence\LocalPresenceStore;
+use Eyika\Atom\Reverb\Presence\RedisPresenceStore;
 use Eyika\Atom\Reverb\Protocol\Frame;
 use Eyika\Atom\Reverb\Server;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 
 $reverb = dirname(__DIR__, 3) . '/atom-reverb/src';
 foreach ([
@@ -124,6 +126,19 @@ class ReverbProductionTest extends TestCase
         $this->assertTrue(Signature::isPresence('presence-x'));
         $this->assertFalse(Signature::isPresence('private-x'));
         $this->assertFalse(Signature::isPrivate('public-x'));
+    }
+
+    public function test_redis_presence_keys_use_a_cluster_hash_tag(): void
+    {
+        $store = (new ReflectionClass(RedisPresenceStore::class))->newInstanceWithoutConstructor();
+        $keys = (new ReflectionClass($store))->getMethod('keys');
+        $keys->setAccessible(true);
+
+        // All three keys must share the {channel} hash tag → same Redis Cluster slot.
+        $this->assertSame(
+            ['presence:{presence-room}', 'presence:{presence-room}:u', 'presence:{presence-room}:i'],
+            $keys->invoke($store, 'presence-room')
+        );
     }
 
     // --- Backplane RESP parser ---------------------------------------------------------
