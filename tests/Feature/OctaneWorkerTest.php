@@ -137,6 +137,22 @@ class OctaneWorkerTest extends IntegrationTestCase
         @rmdir($dir);
     }
 
+    public function test_worker_recycles_after_its_request_quota(): void
+    {
+        Route::get('/r', fn ($request) => JsonResponse::ok('ok'));
+        $worker = new Worker($this->app, maxRequests: 2);
+
+        $this->assertFalse($worker->shouldRecycle());
+
+        $worker->handle($this->source('GET', '/r'));
+        $this->assertSame(1, $worker->requestsHandled());
+        $this->assertFalse($worker->shouldRecycle());
+
+        $worker->handle($this->source('GET', '/r'));
+        $this->assertSame(2, $worker->requestsHandled());
+        $this->assertTrue($worker->shouldRecycle()); // quota reached → recycle
+    }
+
     /** A request source that asks for JSON (so the api map's matcher accepts it). */
     private function jsonSource(string $method, string $target): array
     {
