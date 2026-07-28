@@ -28,6 +28,7 @@ class OctaneWorkerTest extends IntegrationTestCase
         // tests that expect native emit behaviour aren't affected by test ordering.
         BaseResponse::captureOutput(false);
         BaseResponse::resetCapture();
+        Route::flushMaps(); // maps are static — don't leak into other tests
         parent::tearDown();
     }
 
@@ -104,6 +105,45 @@ class OctaneWorkerTest extends IntegrationTestCase
         $this->assertStringContainsString("Content-Type: application/json\r\n", $http);
         $this->assertStringContainsString("Content-Length: 11\r\n", $http); // auto-added
         $this->assertStringEndsWith("\r\n\r\n" . '{"ok":true}', $http);
+    }
+
+    public function test_maps_sharing_a_path_do_not_collide(): void
+    {
+        // Two maps whose route files BOTH define "/". A single merged route table would let
+        // one overwrite the other; the worker's per-map snapshots keep them separate.
+        $dir = sys_get_temp_dir() . '/atomtest_octane_' . uniqid('', true);
+        mkdir($dir, 0775, true);
+        $webFile = $dir . '/web.php';
+        $apiFile = $dir . '/api.php';
+        file_put_contents($webFile, "<?php use Eyika\\Atom\\Framework\\Http\\Route; Route::get('/', fn () => 'WEB-ROOT');");
+        file_put_contents($apiFile, "<?php use Eyika\\Atom\\Framework\\Http\\Route; Route::get('/', fn () => 'API-ROOT');");
+
+        Route::map('api')->stateless()->when(fn ($request) => $request->wantsJson())->load($apiFile);
+        Route::map('web')->load($webFile);
+
+        $worker = new Worker($this->app);
+
+        $web = $worker->handle($this->source('GET', '/'));
+        $api = $worker->handle($this->jsonSource('GET', '/'));
+
+        $this->assertStringContainsString('WEB-ROOT', $web['body']);
+        $this->assertStringNotContainsString('API-ROOT', $web['body']);
+
+        $this->assertStringContainsString('API-ROOT', $api['body']);
+        $this->assertStringNotContainsString('WEB-ROOT', $api['body']);
+
+        @unlink($webFile);
+        @unlink($apiFile);
+        @rmdir($dir);
+    }
+
+    /** A request source that asks for JSON (so the api map's matcher accepts it). */
+    private function jsonSource(string $method, string $target): array
+    {
+        $source = $this->source($method, $target);
+        $source['server']['HTTP_ACCEPT'] = 'application/json';
+        $source['headers']['Accept'] = 'application/json';
+        return $source;
     }
 
     /** Build a Worker request source array (see Request::__construct) from method + target. */
