@@ -122,8 +122,11 @@ class Inspiring
     {
         [$text, $author] = str($quote)->explode('-');
 
+        // Emit ANSI escapes directly (bold quote, dim attribution) so the output is
+        // self-contained and doesn't depend on a formatter to interpret markup — Atom's
+        // console pipeline is Monolog-based, not Symfony's OutputFormatter.
         return sprintf(
-            "\n  <options=bold>“ %s ”</>\n  <fg=gray>— %s</>\n",
+            "\n  \033[1m“ %s ”\033[0m\n  \033[2m— %s\033[0m\n",
             trim($text),
             trim($author),
         );
