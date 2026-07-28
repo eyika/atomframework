@@ -127,7 +127,7 @@ class ExceptionHandler implements ContractExceptionHandler
             return Response::json(['message' => 'An error occured', [
                 'success' => false,
                 'message' => $message,
-                'data' => config('app.debug', false) ? $exception->getTrace() : null,
+                'data' => config('app.debug', false) ? $this->sanitizeTrace($exception) : null,
             ]], is_numeric($code) ? intval($code) : 500);
 
             // if ($request->expectsJson() or $request->isXmlHttpRequest()) {
@@ -184,7 +184,10 @@ class ExceptionHandler implements ContractExceptionHandler
             $whoops = new \Whoops\Run;
             $whoops->allowQuit(false);
             $whoops->writeToOutput(false);
-            $whoops->pushHandler(new \Whoops\Handler\PrettyPageHandler);
+
+            $handler = new \Whoops\Handler\PrettyPageHandler;
+            $this->hideSecretsFromWhoops($handler);
+            $whoops->pushHandler($handler);
 
             return response()->html($whoops->handleException($exception));
         }
@@ -196,6 +199,39 @@ class ExceptionHandler implements ContractExceptionHandler
         }
 
         return response()->html('An error occured, contact administrator', $exception->getCode() ?? BaseResponse::STATUS_INTERNAL_SERVER_ERROR);
+    }
+
+    /**
+     * A stack trace with the per-frame `args` stripped. Frame args hold live values —
+     * including objects like the Request, whose server bag carries the entire $_SERVER /
+     * environment — so returning them in a debug response leaks secrets (API keys, tokens,
+     * DB passwords). File/line/function/class are kept; only the argument values are dropped.
+     */
+    protected function sanitizeTrace(Throwable $exception): array
+    {
+        return array_map(function ($frame) {
+            if (is_array($frame)) {
+                unset($frame['args']);
+            }
+            return $frame;
+        }, $exception->getTrace());
+    }
+
+    /**
+     * Redact secret-looking environment values from the Whoops debug page so tokens, keys,
+     * and passwords don't render in its $_SERVER / $_ENV data tables.
+     */
+    protected function hideSecretsFromWhoops(\Whoops\Handler\PrettyPageHandler $handler): void
+    {
+        $secretish = '/(KEY|SECRET|TOKEN|PASS|PWD|_PAT$|_PAT_|CREDENTIAL|AUTH|SIGNATURE|SALT|CIPHER|PRIVATE|SESSION|APP_KEY)/i';
+
+        foreach (['_SERVER' => $_SERVER, '_ENV' => $_ENV] as $bag => $vars) {
+            foreach (array_keys((array) $vars) as $key) {
+                if (preg_match($secretish, (string) $key)) {
+                    $handler->blacklist($bag, (string) $key);
+                }
+            }
+        }
     }
 
      /**
