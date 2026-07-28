@@ -20,6 +20,10 @@ require_once $reverb . '/Auth/Signature.php';
 require_once $reverb . '/Backplane/Backplane.php';
 require_once $reverb . '/Backplane/LocalBackplane.php';
 require_once $reverb . '/Backplane/RedisBackplane.php';
+require_once $reverb . '/Presence/PresenceStore.php';
+require_once $reverb . '/Presence/LocalPresenceStore.php';
+require_once $reverb . '/Redis/RedisClient.php';
+require_once $reverb . '/Presence/RedisPresenceStore.php';
 require_once $reverb . '/Server.php';
 
 /**

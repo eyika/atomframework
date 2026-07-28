@@ -5,6 +5,7 @@ namespace Eyika\Atom\Framework\Tests\Unit;
 use Eyika\Atom\Reverb\Auth\Signature;
 use Eyika\Atom\Reverb\Backplane\RedisBackplane;
 use Eyika\Atom\Reverb\Connection;
+use Eyika\Atom\Reverb\Presence\LocalPresenceStore;
 use Eyika\Atom\Reverb\Protocol\Frame;
 use Eyika\Atom\Reverb\Server;
 use PHPUnit\Framework\TestCase;
@@ -13,7 +14,8 @@ $reverb = dirname(__DIR__, 3) . '/atom-reverb/src';
 foreach ([
     '/Protocol/Handshake.php', '/Protocol/Frame.php', '/ChannelManager.php', '/Connection.php',
     '/Auth/Signature.php', '/Backplane/Backplane.php', '/Backplane/LocalBackplane.php',
-    '/Backplane/RedisBackplane.php', '/Server.php',
+    '/Backplane/RedisBackplane.php', '/Presence/PresenceStore.php', '/Presence/LocalPresenceStore.php',
+    '/Redis/RedisClient.php', '/Presence/RedisPresenceStore.php', '/Server.php',
 ] as $file) {
     require_once $reverb . $file;
 }
@@ -77,10 +79,33 @@ class ReverbProductionTest extends TestCase
             'data'  => ['channel' => 'presence-room', 'auth' => $auth, 'channel_data' => $channelData],
         ]));
 
-        $members = $server->channels()->members('presence-room');
-        $this->assertArrayHasKey(9, $members);
-        $this->assertSame('u1', $members[9]['user_id']);
-        $this->assertSame(['name' => 'Ada'], $members[9]['user_info']);
+        // Membership lives in the presence store, deduped by user_id.
+        $members = $server->presence()->members('presence-room');
+        $this->assertArrayHasKey('u1', $members);
+        $this->assertSame(['name' => 'Ada'], $members['u1']);
+        $this->assertSame(1, $server->presence()->count('presence-room'));
+    }
+
+    public function test_presence_store_reference_counts_users(): void
+    {
+        $store = new LocalPresenceStore();
+
+        // Two connections for the SAME user → one member; member_added fires only once.
+        $this->assertTrue($store->join('presence-x', 'n:1', 'u1', ['name' => 'Ada']));
+        $this->assertFalse($store->join('presence-x', 'n:2', 'u1', ['name' => 'Ada']));
+        $this->assertSame(1, $store->count('presence-x'));
+
+        // A second user → member_added.
+        $this->assertTrue($store->join('presence-x', 'n:3', 'u2', ['name' => 'Bo']));
+        $this->assertSame(2, $store->count('presence-x'));
+        $this->assertEqualsCanonicalizing(['u1', 'u2'], array_keys($store->members('presence-x')));
+
+        // First user's first connection leaves → NOT the last, no member_removed.
+        $this->assertFalse($store->leave('presence-x', 'n:1', 'u1'));
+        // Second connection leaves → last, member_removed.
+        $this->assertTrue($store->leave('presence-x', 'n:2', 'u1'));
+        $this->assertSame(1, $store->count('presence-x'));
+        $this->assertArrayNotHasKey('u1', $store->members('presence-x'));
     }
 
     public function test_ingest_signature_roundtrip(): void
