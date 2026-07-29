@@ -3,6 +3,7 @@ namespace Eyika\Atom\Framework\Support\Database\Schema;
 
 use Closure;
 use Eyika\Atom\Framework\Support\Arr;
+use Eyika\Atom\Framework\Support\Database\Connection;
 use InvalidArgumentException;
 
 class Blueprint
@@ -46,67 +47,84 @@ class Blueprint
 
     public function bigIncrements(string $column): ColumnDefinition
     {
-        return $this->addColumn("BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY", $column);
+        return $this->addColumn('bigInteger', $column)->unsigned()->autoIncrement()->primary();
+    }
+
+    public function increments(string $column): ColumnDefinition
+    {
+        return $this->addColumn('integer', $column)->unsigned()->autoIncrement()->primary();
     }
 
     public function string(string $column, int $length = 255): ColumnDefinition
     {
-        return $this->addColumn("VARCHAR", $column, [$length]);
+        return $this->addColumn('string', $column, ['length' => $length]);
+    }
+
+    public function char(string $column, int $length = 255): ColumnDefinition
+    {
+        return $this->addColumn('char', $column, ['length' => $length]);
     }
 
     public function integer(string $column, bool $unsigned = false): ColumnDefinition
     {
-        return $this->addColumn("INT" . ($unsigned ? " UNSIGNED" : ""), $column);
+        $col = $this->addColumn('integer', $column);
+        return $unsigned ? $col->unsigned() : $col;
+    }
+
+    public function bigInteger(string $column, bool $unsigned = false): ColumnDefinition
+    {
+        $col = $this->addColumn('bigInteger', $column);
+        return $unsigned ? $col->unsigned() : $col;
     }
 
     public function unsignedInteger(string $column): ColumnDefinition
     {
         return $this->integer($column, true);
     }
-    
+
     public function unsignedBigInteger(string $column): ColumnDefinition
     {
-        return $this->addColumn("BIGINT UNSIGNED", $column);
+        return $this->addColumn('bigInteger', $column)->unsigned();
     }
 
     public function text(string $column): ColumnDefinition
     {
-        return $this->addColumn("TEXT", $column);
+        return $this->addColumn('text', $column);
     }
 
     public function tinyText(string $column): ColumnDefinition
     {
-        return $this->addColumn("TINYTEXT", $column);
+        return $this->addColumn('tinyText', $column);
     }
 
     public function mediumText(string $column): ColumnDefinition
     {
-        return $this->addColumn("MEDIUMTEXT", $column);
+        return $this->addColumn('mediumText', $column);
     }
 
     public function longText(string $column): ColumnDefinition
     {
-        return $this->addColumn("LONGTEXT", $column);
+        return $this->addColumn('longText', $column);
     }
 
     public function json(string $column): ColumnDefinition
     {
-        return $this->addColumn("JSON", $column);
+        return $this->addColumn('json', $column);
     }
 
     public function uuid(string $name): ColumnDefinition
     {
-        return $this->addColumn('CHAR(36)', $name)->unique();
+        return $this->addColumn('char', $name, ['length' => 36])->unique();
     }
 
     public function decimal(string $name, int $precision = 8, int $scale = 2): ColumnDefinition
     {
-        return $this->addColumn("DECIMAL", $name, [$precision, $scale]);
+        return $this->addColumn('decimal', $name, compact('precision', 'scale'));
     }
 
     public function boolean(string $column): ColumnDefinition
     {
-        return $this->addColumn("TINYINT", $column, [1]);
+        return $this->addColumn('boolean', $column);
     }
 
     public function geometry(string $name): ColumnDefinition
@@ -121,43 +139,43 @@ class Blueprint
 
     public function tinyBlob(string $name): ColumnDefinition
     {
-        return $this->addColumn('TINYBLOB', $name);
+        return $this->addColumn('tinyBlob', $name);
     }
 
     public function blob(string $name): ColumnDefinition
     {
-        return $this->addColumn('BLOB', $name);
+        return $this->addColumn('blob', $name);
     }
 
     public function mediumBlob(string $name): ColumnDefinition
     {
-        return $this->addColumn('MEDIUMBLOB', $name);
+        return $this->addColumn('mediumBlob', $name);
     }
 
     public function longBlob(string $name): ColumnDefinition
     {
-        return $this->addColumn('LONGBLOB', $name);
+        return $this->addColumn('longBlob', $name);
     }
 
     public function enum(string $name, array $values): ColumnDefinition
     {
-        return $this->addColumn("ENUM", $name, $values);
+        return $this->addColumn('enum', $name, ['allowed' => $values]);
     }
-    
-    public function dateTime(string $column, int $precision = 0)
+
+    public function dateTime(string $column, int $precision = 0): ColumnDefinition
     {
-        return $this->addColumn('datetime', $column, compact('precision'));
+        return $this->addColumn('dateTime', $column, compact('precision'));
     }
 
     public function timestamp(string $column): ColumnDefinition
     {
-        return $this->addColumn("TIMESTAMP", $column);
+        return $this->addColumn('timestamp', $column);
     }
 
     public function timestamps(): self
     {
-        $this->addColumn("TIMESTAMP DEFAULT CURRENT_TIMESTAMP", "created_at");
-        $this->addColumn("TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP", "updated_at");
+        $this->addColumn('timestamp', 'created_at')->useCurrent();
+        $this->addColumn('timestamp', 'updated_at')->useCurrent()->useCurrentOnUpdate();
         return $this;
     }
 
@@ -187,7 +205,7 @@ class Blueprint
 
     public function rollback(): string
     {
-        return sprintf('DROP TABLE IF EXISTS `%s`;', $this->table);
+        return Connection::grammar()->compileDropIfExists($this->table);
     }
 
     public function foreign(string $column): ForeignKeyDefinition
@@ -199,7 +217,7 @@ class Blueprint
 
     public function foreignId(string $column): ForeignKeyDefinition
     {
-        $this->addColumn("BIGINT UNSIGNED", $column);
+        $this->addColumn('bigInteger', $column)->unsigned();
         $foreignKey = new ForeignKeyDefinition($column, $this);
         // $this->foreignKeys[] = $foreignKey;
         return $foreignKey;
@@ -359,67 +377,77 @@ class Blueprint
         return strtolower(sprintf('%s_%s_%s', $type, implode('_', $columns), uniqid()));
     }
 
+    /**
+     * SQL statement(s) for this blueprint, compiled for the connection's active grammar.
+     * CREATE may yield several statements (e.g. SQLite emits secondary indexes separately);
+     * ALTER likewise. Schema::create()/table() execute each in order.
+     *
+     * @return string[]
+     */
+    public function compile(): array
+    {
+        $grammar = Connection::grammar();
+        return $this->alter ? $grammar->compileAlter($this) : $grammar->compileCreate($this);
+    }
+
+    /** Back-compat single-string form (statements joined by ";\n"). */
     public function toSql(): string
     {
-        if ($this->alter) {
-            $statements = [];
+        return implode(";\n", $this->compile());
+    }
 
-            // Partition columns into ADD and MODIFY COLUMN
-            foreach ($this->columns as $col) {
-                if ($col instanceof ColumnDefinition && $col->isChange) {
-                    $statements[] = "MODIFY COLUMN " . $col->toSql();
-                } else {
-                    $sql = $col instanceof ColumnDefinition ? $col->toSql() : (string) $col;
-                    $statements[] = "ADD " . $sql;
-                }
-            }
+    // --- Accessors used by the grammar to compile this blueprint --------------------------
 
-            foreach ($this->foreignKeys as $foreign) {
-                $statements[] = "ADD " . $foreign->toSql();
-            }
+    public function getTable(): string
+    {
+        return $this->table;
+    }
 
-            foreach ($this->indexes as $index) {
-                $statements[] = "ADD " . $index->toSql();
-            }
+    public function isAlter(): bool
+    {
+        return $this->alter;
+    }
 
-            foreach ($this->modifyColumns as $col) {
-                $statements[] = "MODIFY COLUMN " . $col->toSql();
-            }
+    /** @return array<int, ColumnDefinition|string> */
+    public function getColumns(): array
+    {
+        return $this->columns;
+    }
 
-            foreach ($this->dropColumns as $col) {
-                $statements[] = "DROP COLUMN `$col`";
-            }
+    /** @return ForeignKeyDefinition[] */
+    public function getForeignKeys(): array
+    {
+        return $this->foreignKeys;
+    }
 
-            foreach ($this->renameColumns as $pair) {
-                $statements[] = "RENAME COLUMN `{$pair['from']}` TO `{$pair['to']}`";
-            }
+    /** @return IndexDefinition[] */
+    public function getIndexes(): array
+    {
+        return $this->indexes;
+    }
 
-            foreach ($this->dropIndexes as $entry) {
-                if (($entry['kind'] ?? null) === 'PRIMARY') {
-                    $statements[] = 'DROP PRIMARY KEY';
-                    continue;
-                }
-                if (!isset($entry['name'])) {
-                    // resolveDropIndexes() should have run; if it didn't,
-                    // we'd be emitting an ALTER with an unbound drop.
-                    throw new \RuntimeException(
-                        'Blueprint::resolveDropIndexes() must run before toSql() when there are column-based drops queued.'
-                    );
-                }
-                $statements[] = 'DROP INDEX `' . $entry['name'] . '`';
-            }
+    /** @return ColumnDefinition[] */
+    public function getModifyColumns(): array
+    {
+        return $this->modifyColumns;
+    }
 
-            $alterStatements = implode(",\n    ", $statements);
-            return sprintf("ALTER TABLE `%s`\n    %s;", $this->table, $alterStatements);
-        }
+    /** @return string[] */
+    public function getDropColumns(): array
+    {
+        return $this->dropColumns;
+    }
 
-        // Otherwise, it's a CREATE TABLE
-        $columnsSql = array_map(fn(ColumnDefinition $column) => $column->toSql(), $this->columns);
-        $foreignKeysSql = array_map(fn(ForeignKeyDefinition $foreign) => $foreign->toSql(), $this->foreignKeys);
-        $indexesSql = array_map(fn(IndexDefinition $index) => $index->toSql(), $this->indexes);
+    /** @return array<int, array{from:string,to:string}> */
+    public function getRenameColumns(): array
+    {
+        return $this->renameColumns;
+    }
 
-        $definitions = implode(",\n    ", array_merge($columnsSql, $foreignKeysSql, $indexesSql));
-        return sprintf("CREATE TABLE `%s` (\n    %s\n);", $this->table, $definitions);
+    /** @return array<int, array<string,mixed>> */
+    public function getDropIndexes(): array
+    {
+        return $this->dropIndexes;
     }
 
     public function afterCreate(Closure $callback): void
@@ -460,25 +488,14 @@ class Blueprint
         return $this->columns[$name];
     }
 
+    /**
+     * Record a portable column. $type is a canonical token ('string', 'bigInteger', 'enum', …)
+     * and $parameters carries type params (length / precision+scale / allowed / precision). The
+     * active grammar compiles the token to dialect SQL at toSql()/compile() time.
+     */
     protected function addColumn(string $type, string $name, array $parameters = []): ColumnDefinition
     {
-        $str_params = [];
-        $number_params = [];
-        foreach ($parameters as $parameter) {
-            if (is_string($parameter)) {
-                $str_params[] = $parameter;
-                continue;
-            }
-            $number_params[] = $parameter;
-        }
-        if (count($parameters)) {
-            $separator = (bool)count($number_params) ? "', " : "'";
-            $param_str = count($str_params) ? "'". implode("', '", $str_params). $separator : "";
-            $param_num = implode(",", $number_params);
-            $type = "$type({$param_str}{$param_num})";
-        }
-        $column = new ColumnDefinition("`$name` $type");
-        $column->name = $name;
+        $column = new ColumnDefinition($type, $name, $parameters);
         $this->columns[] = $column;
         return $column;
     }
@@ -491,9 +508,15 @@ class Blueprint
         return $this;
     }
 
+    /**
+     * Queue a column change on an ALTER. $type is a portable token (e.g. 'string'); $options
+     * carries type params. The column is flagged isChange so the grammar compiles it as a
+     * MODIFY (MySQL) or a table-rebuild (SQLite).
+     */
     public function modifyColumn(string $name, string $type, array $options = []): static
     {
-        $definition = new ColumnDefinition($name, $type, $options);
+        $definition = new ColumnDefinition($type, $name, $options);
+        $definition->isChange = true;
         $this->modifyColumns[] = $definition;
         return $this;
     }
