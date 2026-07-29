@@ -86,6 +86,21 @@ class SqliteDatabaseTest extends TestCase
         $this->assertSame(1, DatabaseConnection::count('users'));
     }
 
+    public function test_count_with_a_multi_column_filter(): void
+    {
+        $this->migrateUsers();
+        DatabaseConnection::insert('users', ['name' => 'Ada', 'email' => 'a1@x.co', 'active' => true]);
+        DatabaseConnection::insert('users', ['name' => 'Ada', 'email' => 'a2@x.co', 'active' => false]);
+        DatabaseConnection::insert('users', ['name' => 'Bo',  'email' => 'b@x.co',  'active' => true]);
+
+        // Regression: a MULTI-column filter used to emit malformed SQL because count()
+        // Arr::wrap()ed the scalar operator and then under-indexed it per column.
+        $this->assertSame(1, DatabaseConnection::count('users', ['name' => 'Ada', 'active' => true]));
+        // Single-column and no-filter counts still work.
+        $this->assertSame(2, DatabaseConnection::count('users', ['name' => 'Ada']));
+        $this->assertSame(3, DatabaseConnection::count('users'));
+    }
+
     public function test_unique_constraint_is_enforced(): void
     {
         $this->migrateUsers();

@@ -698,11 +698,19 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
   public function count($sql_or_table, $bind_or_filter = [], array|string $operators = '=', array|string $or_ands = "AND")
   {
     $_select_str = '*';
-    $operators = Arr::wrap($operators);
 
-    foreach ($operators as $key => $op) {
-      if ($op && str_starts_with(strtoupper($op), 'DISTINCT ')) {
-        $_select_str = Arr::pull($operators, $key) ?? '*';
+    // An optional "DISTINCT <col>" may be passed via $operators to count distinct values.
+    // Detect + extract it WITHOUT collapsing a scalar operator into a 1-element array —
+    // doing so used to under-index the per-column operators against a multi-column filter
+    // ($operators[1] on a 2-column filter → "Undefined array key" + malformed SQL).
+    foreach (Arr::wrap($operators) as $op) {
+      if (is_string($op) && str_starts_with(strtoupper($op), 'DISTINCT ')) {
+        $_select_str = $op;
+        // Drop the DISTINCT token from the operators forwarded to the filter builder;
+        // fall back to the default '=' comparator when nothing else remains.
+        $operators = is_array($operators)
+          ? (array_values(array_filter($operators, fn ($o) => $o !== $op)) ?: '=')
+          : '=';
         break;
       }
     }
