@@ -140,4 +140,38 @@ class SqliteDatabaseTest extends TestCase
         $this->assertSame('7', (string) $row['logins']);
         $this->assertSame('ada@x.co', $row['email']);
     }
+
+    public function test_transactions_commit_and_rollback_on_sqlite(): void
+    {
+        $this->migrateUsers();
+
+        // COMMIT persists. (beginTransaction() must emit SQLite's BEGIN, not MySQL's
+        // 'START TRANSACTION', which SQLite rejects as a syntax error.)
+        DatabaseConnection::beginTransaction();
+        DatabaseConnection::insert('users', ['name' => 'Ada', 'email' => 'ada@x.co']);
+        DatabaseConnection::commit();
+        $this->assertSame(1, DatabaseConnection::count('users'));
+
+        // ROLLBACK discards — which also proves BEGIN actually opened a transaction
+        // (under autocommit the insert would have stuck and the count would be 2).
+        DatabaseConnection::beginTransaction();
+        DatabaseConnection::insert('users', ['name' => 'Bo', 'email' => 'bo@x.co']);
+        DatabaseConnection::rollback();
+        $this->assertSame(1, DatabaseConnection::count('users'), 'rolled-back insert must not persist');
+    }
+
+    public function test_locked_read_runs_on_sqlite(): void
+    {
+        $this->migrateUsers();
+        DatabaseConnection::insert('users', ['name' => 'Ada', 'email' => 'ada@x.co']);
+
+        // The pessimistic-lock read path (SELECT ... FOR UPDATE on MySQL — the wallet
+        // read-modify-write) must also run on SQLite, where the grammar suppresses the
+        // unsupported FOR UPDATE suffix rather than emitting invalid SQL.
+        DatabaseConnection::beginTransaction();
+        $rows = DatabaseConnection::fetch('users', ['id' => 1], '*', '=', 'AND', true); // $lock = true
+        DatabaseConnection::commit();
+
+        $this->assertSame('Ada', $rows[0]['name']);
+    }
 }

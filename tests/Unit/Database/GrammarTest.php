@@ -107,4 +107,15 @@ class GrammarTest extends TestCase
         $this->assertSame('DROP TABLE IF EXISTS `t`', (new MySqlGrammar())->compileDropIfExists('t'));
         $this->assertSame('DROP TABLE IF EXISTS "t"', (new SqliteGrammar())->compileDropIfExists('t'));
     }
+
+    public function test_begin_transaction_and_for_update_are_dialect_specific(): void
+    {
+        // MySQL keeps its historical spelling; SQLite uses BEGIN and has no row-lock suffix
+        // (the transaction serializes writes on its own).
+        $this->assertSame('START TRANSACTION', (new MySqlGrammar())->compileBeginTransaction());
+        $this->assertSame(' FOR UPDATE', (new MySqlGrammar())->compileForUpdate());
+
+        $this->assertSame('BEGIN', (new SqliteGrammar())->compileBeginTransaction());
+        $this->assertSame('', (new SqliteGrammar())->compileForUpdate());
+    }
 }

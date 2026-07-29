@@ -102,6 +102,25 @@ abstract class Grammar
         return 'current_timestamp';
     }
 
+    /**
+     * Statement that opens a transaction. MySQL/Postgres accept 'START TRANSACTION';
+     * SQLite requires 'BEGIN'. COMMIT/ROLLBACK are standard SQL across all three.
+     */
+    public function compileBeginTransaction(): string
+    {
+        return 'START TRANSACTION';
+    }
+
+    /**
+     * Pessimistic row-lock suffix for SELECT ... (within a transaction). MySQL/Postgres
+     * use ' FOR UPDATE'; SQLite has no row locks (the transaction itself serializes) so
+     * it returns an empty string.
+     */
+    public function compileForUpdate(): string
+    {
+        return ' FOR UPDATE';
+    }
+
     // === Schema / DDL =====================================================================
 
     /** Portable type token -> this dialect's base SQL type (no length/params). */
