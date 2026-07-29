@@ -104,6 +104,15 @@ class Connection {
               $this->getOptions()
           );
 
+          // SQLite enforces foreign keys only when asked, per-connection. Honour the
+          // connection's foreign_key_constraints flag (default ON) — accepting both a real
+          // bool and a stringy env value like "false".
+          if ($this->driver === 'sqlite') {
+              $fk = $this->config['connections']['sqlite']['foreign_key_constraints'] ?? true;
+              $fk = is_bool($fk) ? $fk : filter_var($fk, FILTER_VALIDATE_BOOLEAN);
+              $this->db->exec('PRAGMA foreign_keys = ' . ($fk ? 'ON' : 'OFF'));
+          }
+
           // if ( !$this->auth ) {
           //   if (env('DB_USERNAME') && env('DB_PASSWORD') && env('DB_DATABASE')) {
           //     $this->auth(env('DB_USERNAME'), env('DB_PASSWORD'), env('DB_DATABASE'), env('DB_HOST'));
