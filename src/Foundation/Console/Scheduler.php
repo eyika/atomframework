@@ -118,9 +118,53 @@ class Scheduler implements ShouldLogMessages
         return $this->expression('@hourly');
     }
 
-    public function daily(): self
+    /**
+     * Run the task once per day. Pass a 24-hour "HH:MM" (or "HH") to pick the time of
+     * day — e.g. daily('03:30'); with no argument it runs at midnight.
+     */
+    public function daily(?string $time = null): self
     {
-        return $this->expression('@daily');
+        return $time === null
+            ? $this->expression('@daily')
+            : $this->dailyAt($time);
+    }
+
+    /** Run the task once per day at the given 24-hour "HH:MM" time. */
+    public function dailyAt(string $time): self
+    {
+        [$hour, $minute] = $this->parseTime($time);
+
+        return $this->expression("{$minute} {$hour} * * *");
+    }
+
+    /** Alias of dailyAt(): pin the current task to a specific time of day. */
+    public function at(string $time): self
+    {
+        return $this->dailyAt($time);
+    }
+
+    /** Run the task every hour, at the given minute past the hour. */
+    public function hourlyAt(int $minute): self
+    {
+        return $this->expression(((int) $minute) . ' * * * *');
+    }
+
+    /**
+     * Split a "HH:MM" (or bare "HH") 24-hour time into [hour, minute] ints.
+     *
+     * @return array{0:int,1:int}
+     */
+    protected function parseTime(string $time): array
+    {
+        $segments = explode(':', trim($time));
+        $hour = (int) ($segments[0] ?? 0);
+        $minute = (int) ($segments[1] ?? 0);
+
+        if ($hour < 0 || $hour > 23 || $minute < 0 || $minute > 59) {
+            throw new BaseConsoleException("Invalid schedule time [{$time}]; expected 24-hour HH:MM.");
+        }
+
+        return [$hour, $minute];
     }
 
     public function midnight(): self
@@ -148,21 +192,58 @@ class Scheduler implements ShouldLogMessages
         return $this->yearly();
     }
 
+    /**
+     * Prevent this task from starting if a previous run of it is still in flight — e.g. two
+     * overlapping schedule:run ticks, or a long task that outlives its interval. Backed by an
+     * flock the OS releases automatically if the runner dies, so it can't wedge shut.
+     */
+    public function withoutOverlapping(): self
+    {
+        if (empty($this->tasks)) {
+            throw new BaseConsoleException('no command to apply withoutOverlapping to');
+        }
+
+        $this->tasks[count($this->tasks) - 1]['without_overlapping'] = true;
+
+        return $this;
+    }
+
     public function run(ConsoleKernel $registry): void
     {
-        $now = new \DateTime();
+        // Evaluate "is due" against the application's timezone, not whatever the CLI's
+        // php.ini default happens to be — otherwise dailyAt('05:00') fires at 05:00
+        // server-local instead of the intended app time.
+        $now = new \DateTime('now', new \DateTimeZone($this->timezone()));
         $registry->schedule();
 
         $ranCount = 0;
-        foreach ($this->tasks as $task) {
+        foreach ($this->tasks as $index => $task) {
             if (!($task['expression'] ?? null))
                 continue;
             $expression = new CronExpression($task['expression']);
-            if ($expression->isDue($now)) {
-                $command = is_string($task['command']) ? $task['command'] : 'closure';
+            if (!$expression->isDue($now)) {
+                continue;
+            }
+
+            $command = is_string($task['command']) ? $task['command'] : 'closure';
+
+            // withoutOverlapping(): if a previous run of this same task is still in flight
+            // (overlapping schedule:run ticks), skip this one instead of double-firing.
+            $lock = null;
+            if (!empty($task['without_overlapping'])) {
+                $lock = $this->acquireTaskLock($task, $index);
+                if ($lock === null) {
+                    $this->info("Skipping (already running): {$command}");
+                    continue;
+                }
+            }
+
+            try {
                 $this->info("Running scheduled command: {$command}");
                 $registry->run($task['command'], $task['arguements'], false);
                 $ranCount++;
+            } finally {
+                $this->releaseLock($lock);
             }
         }
 
@@ -170,6 +251,60 @@ class Scheduler implements ShouldLogMessages
             $this->info('No scheduled commands are ready to run.');
         } else {
             $this->info("Ran {$ranCount} scheduled command(s).");
+        }
+    }
+
+    /** The application timezone cron expressions are matched against (defaults to UTC). */
+    protected function timezone(): string
+    {
+        if (function_exists('config')) {
+            try {
+                $tz = config('app.timezone', 'UTC');
+            } catch (\Throwable) {
+                $tz = 'UTC';
+            }
+            if (is_string($tz) && $tz !== '') {
+                return $tz;
+            }
+        }
+
+        return 'UTC';
+    }
+
+    /**
+     * Take an exclusive, non-blocking flock keyed by the task, or null if another run holds it.
+     * The handle is returned so the caller can release it once the task finishes.
+     *
+     * @param array<string,mixed> $task
+     * @return resource|null
+     */
+    protected function acquireTaskLock(array $task, int $index)
+    {
+        $key = is_string($task['command']) ? $task['command'] : "closure_{$index}";
+        $dir = function_exists('storage_path') ? storage_path('framework') : sys_get_temp_dir();
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        $file = $dir . '/schedule-' . md5($key) . '.lock';
+
+        $handle = @fopen($file, 'c');
+        if ($handle === false) {
+            return $handle; // can't lock — fail open, run the task
+        }
+        if (!flock($handle, LOCK_EX | LOCK_NB)) {
+            fclose($handle);
+            return null; // still running
+        }
+
+        return $handle;
+    }
+
+    /** Release a lock taken by acquireTaskLock(). Accepts null/false for the no-lock path. */
+    protected function releaseLock($handle): void
+    {
+        if (is_resource($handle)) {
+            @flock($handle, LOCK_UN);
+            @fclose($handle);
         }
     }
 }
