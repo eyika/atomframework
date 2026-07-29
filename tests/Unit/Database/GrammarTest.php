@@ -2,6 +2,8 @@
 
 namespace Eyika\Atom\Framework\Tests\Unit\Database;
 
+use Eyika\Atom\Framework\Support\Database\Grammars\Grammar;
+use Eyika\Atom\Framework\Support\Database\Grammars\GrammarFactory;
 use Eyika\Atom\Framework\Support\Database\Grammars\MySqlGrammar;
 use Eyika\Atom\Framework\Support\Database\Grammars\SqliteGrammar;
 use Eyika\Atom\Framework\Support\Database\Schema\Blueprint;
@@ -106,6 +108,28 @@ class GrammarTest extends TestCase
     {
         $this->assertSame('DROP TABLE IF EXISTS `t`', (new MySqlGrammar())->compileDropIfExists('t'));
         $this->assertSame('DROP TABLE IF EXISTS "t"', (new SqliteGrammar())->compileDropIfExists('t'));
+    }
+
+    public function test_a_custom_grammar_can_be_registered_and_overrides_a_builtin(): void
+    {
+        $custom = new class extends SqliteGrammar {};
+        try {
+            // A brand-new driver…
+            GrammarFactory::extend('firebird', fn () => $custom);
+            $this->assertSame($custom, GrammarFactory::make('firebird'));
+            $this->assertInstanceOf(Grammar::class, GrammarFactory::make('firebird'));
+
+            // …and overriding a built-in driver.
+            GrammarFactory::extend('pgsql', fn () => $custom);
+            $this->assertSame($custom, GrammarFactory::make('pgsql'));
+        } finally {
+            GrammarFactory::flushExtensions();
+        }
+
+        // Built-ins resolve normally again once extensions are flushed.
+        $this->assertInstanceOf(MySqlGrammar::class, GrammarFactory::make('mysql'));
+        $this->expectException(\InvalidArgumentException::class);
+        GrammarFactory::make('firebird');
     }
 
     public function test_begin_transaction_and_for_update_are_dialect_specific(): void
