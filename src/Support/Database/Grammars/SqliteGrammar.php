@@ -35,6 +35,18 @@ class SqliteGrammar extends Grammar
         return 'CURRENT_TIMESTAMP';
     }
 
+    /** SQLite opens a transaction with BEGIN, not MySQL's 'START TRANSACTION'. */
+    public function compileBeginTransaction(): string
+    {
+        return 'BEGIN';
+    }
+
+    /** SQLite has no row-level locks — the transaction serializes writes on its own. */
+    public function compileForUpdate(): string
+    {
+        return '';
+    }
+
     public function insertKeyword(bool $ignore): string
     {
         return 'INSERT' . ($ignore ? ' OR IGNORE' : '');
