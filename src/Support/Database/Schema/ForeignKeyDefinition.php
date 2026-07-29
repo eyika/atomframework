@@ -49,6 +49,31 @@ class ForeignKeyDefinition
         return $this;
     }
 
+    public function getColumn(): string
+    {
+        return $this->column;
+    }
+
+    public function getReferences(): ?string
+    {
+        return $this->references;
+    }
+
+    public function getOn(): ?string
+    {
+        return $this->on;
+    }
+
+    public function getOnDelete(): ?string
+    {
+        return $this->onDelete;
+    }
+
+    public function getOnUpdate(): ?string
+    {
+        return $this->onUpdate;
+    }
+
     public function toSql(): string
     {
         $sql = sprintf(
