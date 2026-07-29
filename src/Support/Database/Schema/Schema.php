@@ -1,94 +1,81 @@
 <?php
 namespace Eyika\Atom\Framework\Support\Database\Schema;
 
+use Eyika\Atom\Framework\Support\Database\Connection;
 use Eyika\Atom\Framework\Support\Facade\DatabaseConnection;
 
 class Schema
 {
     /**
-     * Create a new table.
-     *
-     * @param string $table
-     * @param callable $callback
-     * @return void
+     * Create a new table. A blueprint may compile to more than one statement (e.g. SQLite emits
+     * secondary indexes as their own CREATE INDEX), so every statement is executed in order.
      */
     public static function create(string $table, callable $callback): void
     {
         $blueprint = new Blueprint($table);
         $callback($blueprint);
-        $sql = $blueprint->toSql();
-        DatabaseConnection::exec($sql);
+        self::run($blueprint->compile());
     }
 
     /**
      * Drop a table if it exists.
-     *
-     * @param string $table
-     * @return void
      */
     public static function dropIfExists(string $table): void
     {
-        DatabaseConnection::exec((new Blueprint($table))->rollback());
+        DatabaseConnection::exec(Connection::grammar()->compileDropIfExists($table));
     }
 
     /**
      * Check if a table exists.
-     *
-     * @param string $table
-     * @return bool
      */
     public static function hasTable(string $table): bool
     {
-        $sql = "SHOW TABLES LIKE '$table'";
-        $statement = DatabaseConnection::exec($sql);
-        return $statement->rowCount() > 0;
+        $statement = DatabaseConnection::exec(Connection::grammar()->compileTableExists($table));
+        return $statement->rowCount() > 0 || $statement->fetch() !== false;
     }
 
     /**
-     * Check if a table exists.
-     *
-     * @param string $table
-     * @return bool
+     * Check if a table has the given column.
      */
     public static function columnExists(string $table, string $column): bool
     {
-        $stmt = DatabaseConnection::query("SHOW COLUMNS FROM `$table` LIKE '$column'");
+        $stmt = DatabaseConnection::exec(Connection::grammar()->compileColumnExists($table, $column));
         return $stmt->fetch() !== false;
     }
 
     /**
-     * Check if a table has given column names.
-     *
-     * @param array $table
-     * @return bool
+     * Check if a table has ALL of the given columns.
      */
     public static function columnsExists(string $table, array $columns): bool
     {
-        $column = array_pop($columns);
-        $q_string = "SHOW COLUMNS FROM `$table` LIKE '$column'";
-
-        foreach ($columns as $_column) {
-            $q_string .= " OR LIKE '$_column'";
+        foreach ($columns as $column) {
+            if (!self::columnExists($table, $column)) {
+                return false;
+            }
         }
-        $stmt = DatabaseConnection::query($q_string);
-        return $stmt->fetch() !== false;
+        return true;
     }
 
     /**
      * Alter an existing table.
-     *
-     * @param string $table
-     * @param callable $callback
-     * @return void
      */
     public static function table(string $table, callable $callback): void
     {
         $blueprint = new Blueprint($table, true);
         $callback($blueprint);
-        // Resolve column-based dropUnique/dropIndex calls to real index
-        // names by querying INFORMATION_SCHEMA before generating the ALTER.
+        // Resolve column-based dropUnique/dropIndex calls to real index names before compiling.
         $blueprint->resolveDropIndexes();
-        $sql = $blueprint->toSql();
-        DatabaseConnection::exec($sql);
+        self::run($blueprint->compile());
+    }
+
+    /** Execute a list of compiled DDL statements in order. */
+    protected static function run(array $statements): void
+    {
+        foreach ($statements as $sql) {
+            $sql = trim((string) $sql);
+            if ($sql !== '') {
+                DatabaseConnection::exec($sql);
+            }
+        }
     }
 }

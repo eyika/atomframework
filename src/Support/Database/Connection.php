@@ -3,6 +3,9 @@ namespace Eyika\Atom\Framework\Support\Database;
 
 use Exception;
 use Eyika\Atom\Framework\Support\Arr;
+use Eyika\Atom\Framework\Support\Database\Grammars\Grammar;
+use Eyika\Atom\Framework\Support\Database\Grammars\GrammarFactory;
+use Eyika\Atom\Framework\Support\Database\Grammars\MySqlGrammar;
 use PDO;
 use PDOException;
 
@@ -19,10 +22,31 @@ class Connection {
   protected array $config;
   protected string $driver;
 
+  /** Dialect grammar for this connection's driver. */
+  protected Grammar $grammar;
+
+  /**
+   * Grammar backing the STATIC identifier helpers (quoteIdent/quoteQualified). Points at the
+   * most-recently constructed connection's grammar; defaults to MySQL so the static helpers
+   * behave exactly as before when no connection has been built (e.g. isolated unit tests).
+   */
+  protected static ?Grammar $activeGrammar = null;
+
   public function __construct(array $config)
   {
       $this->config = $config;
+      // Resolve the grammar eagerly: SQL is assembled (condition()/values()/…) BEFORE exec()
+      // lazily connect()s, so the dialect must be known at construction, not at connect time.
+      $this->driver = $config['default'] ?? 'mysql';
+      $this->grammar = GrammarFactory::make($this->driver);
+      self::$activeGrammar = $this->grammar;
       // $this->connect();
+  }
+
+  /** Active dialect grammar for the static identifier helpers (defaults to MySQL). */
+  public static function grammar(): Grammar
+  {
+      return self::$activeGrammar ??= new MySqlGrammar();
   }
 
   /**
@@ -32,7 +56,7 @@ class Connection {
    */
   public static function quoteIdent($part): string
   {
-      return '`' . str_replace('`', '``', (string) $part) . '`';
+      return self::grammar()->wrapValue((string) $part);
   }
 
   /**
@@ -40,11 +64,7 @@ class Connection {
    */
   public static function quoteQualified($col): string
   {
-      $col = (string) $col;
-      if (strpos($col, '.') !== false) {
-          return implode('.', array_map([self::class, 'quoteIdent'], explode('.', $col)));
-      }
-      return self::quoteIdent($col);
+      return self::grammar()->wrap((string) $col);
   }
 
   /** Whitelist a JOIN type; anything unrecognised falls back to INNER. */
@@ -177,7 +197,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
     // (any embedded backtick is doubled) so a crafted column name — e.g. a query
     // param NAME looped into where() — can never break out of the quoting into raw
     // SQL. This closes column-identifier injection at the builder for every call site.
-    $quoteIdent = static fn($part) => '`' . str_replace('`', '``', (string) $part) . '`';
+    $quoteIdent = fn($part) => $this->grammar->wrapValue((string) $part);
     if (strpos($k_col, '.') !== false) {
         $parts = explode('.', $k_col);
         $__k  = end($parts) . (preg_match('/__dup\d+$/', $k, $m) ? $m[0] : '');
@@ -218,7 +238,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
     } else if ($v !== null && is_string($v) && strtolower($v) === 'now') {
         // NOW() — exact match only. A substring test wrongly rewrote any value
         // CONTAINING "now" (e.g. "Know Sure Thing") to the now() function → no match.
-        $where[] = "{$_k} $_operator now(){$or_and}";
+        $where[] = "{$_k} $_operator " . $this->grammar->now() . "{$or_and}";
         $incr_operator = true;
 
     } else if ($_operator !== null && is_string($_operator) && str_contains(strtoupper($_operator), 'LIKE')) {
@@ -318,7 +338,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
         $bind[":{$place_holder}"] = is_bool($value) ? (int)$value : $value;
       }
       else if ($value !== null && is_string($value) && strtolower($value) === 'now') {
-        $values[] = self::quoteIdent($name) . " = current_timestamp";
+        $values[] = self::quoteIdent($name) . " = " . $this->grammar->currentTimestamp();
       } else if ($value === null or $value === 'null') {
         $values[] = self::quoteIdent($name) . " = NULL";
         // $bind[":{$name}"] = null;
@@ -413,7 +433,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
   }
   
   public function now() {
-    return $this->fetch('SELECT NOW() now')[0]['now'];
+    return $this->fetch('SELECT ' . $this->grammar->now() . ' now')[0]['now'];
   }
   
   /**
@@ -695,7 +715,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
   public function random($table, $filter = [], string|array $operators = '=', string|array $or_ands = "AND")
   {
     list($where, $bind) = $this->filter($filter, $or_ands, $operators);
-    $sql = 'SELECT * FROM ' . self::quoteIdent($table) . ' ' . $where . ' ORDER BY RAND() LIMIT 1';
+    $sql = 'SELECT * FROM ' . self::quoteIdent($table) . ' ' . $where . ' ORDER BY ' . $this->grammar->random() . ' LIMIT 1';
     return $this->fetch($sql, $bind)[0];
   }
   
@@ -729,9 +749,9 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
     }
 
     $parts = explode('.', $column);
-    $column = implode('.', array_map(fn($part) => "`{$part}`", $parts)); // quote each part
-    
-    $sql = "UPDATE `{$table}` SET {$column} = {$column} {$step}{$where_sql}";
+    $column = implode('.', array_map(fn($part) => $this->grammar->wrapValue($part), $parts)); // quote each part
+
+    $sql = "UPDATE " . $this->grammar->wrapTable($table) . " SET {$column} = {$column} {$step}{$where_sql}";
     // info($sql);
     return $this->exec($sql, $bind);
   }
@@ -772,8 +792,9 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
     $bind[':then'] = $then;
 
     $parts = explode('.', $column);
-    $column = implode('.', array_map(fn($part) => "`{$part}`", $parts)); // quote each part
-    return $this->exec("UPDATE `{$table}` SET {$column} = IF({$column} = :if, :then, :v) {$where_sql}", $bind);
+    $column = implode('.', array_map(fn($part) => $this->grammar->wrapValue($part), $parts)); // quote each part
+    $ifExpr = $this->grammar->compileIf("{$column} = :if", ':then', ':v');
+    return $this->exec("UPDATE " . $this->grammar->wrapTable($table) . " SET {$column} = {$ifExpr} {$where_sql}", $bind);
   }
   
   
@@ -789,8 +810,15 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
   
   public function insert($table, $data, $ignore = false) {
     $bind = [];
-    $values = $this->values($data, $bind);
-    $sql = 'INSERT ' . ($ignore ? ' IGNORE ' : '') . "INTO `{$table}` SET {$values}";
+    if ($this->grammar->supportsInsertSetSyntax()) {
+      // MySQL `INSERT ... SET col = val` — kept byte-for-byte from the original.
+      $values = $this->values($data, $bind);
+      $sql = $this->grammar->insertKeyword($ignore) . ' INTO ' . $this->grammar->wrapTable($table) . " SET {$values}";
+    } else {
+      // Standard `INSERT INTO t (cols) VALUES (...)` for sqlite/pgsql.
+      [$columns, $exprs] = $this->insertParts($data, $bind);
+      $sql = $this->grammar->compileInsert($table, $columns, $exprs, $ignore);
+    }
 
     // logger()->info($sql, $bind);
     try {
@@ -799,8 +827,45 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
     catch ( PDOException $e ) {
       $this->handle_insert_exception($e, $table, $data, $ignore);
     }
-    
+
     return $this->db->lastInsertId();
+  }
+
+  /**
+   * Column/expression pairs for a standard column-list INSERT (the non-MySQL form). Mirrors
+   * values()'s per-field handling (JSON path, "now" literal, null, bound value) but returns
+   * the columns and their value expressions separately so the grammar can assemble VALUES(...).
+   *
+   * @return array{0: string[], 1: string[]} [columns, value-expressions]
+   */
+  private function insertParts($data, &$bind = []): array {
+    $columns = [];
+    $exprs = [];
+    foreach ($data as $name => $value) {
+      if (strpos($name, '.')) {
+        $path = explode('.', $name);
+        $place_holder = implode('_', $path);
+        $col = array_shift($path);
+        $key = implode('.', $path);
+        if (!preg_match('/^[A-Za-z0-9_.\[\]]+$/', $key)) {
+          throw new \InvalidArgumentException("Invalid JSON path segment: {$key}");
+        }
+        $columns[] = $col;
+        $exprs[] = "JSON_SET(" . $this->grammar->wrapValue($col) . ", '$.{$key}', :{$place_holder})";
+        $bind[":{$place_holder}"] = is_bool($value) ? (int) $value : $value;
+      } elseif ($value !== null && is_string($value) && strtolower($value) === 'now') {
+        $columns[] = $name;
+        $exprs[] = $this->grammar->currentTimestamp();
+      } elseif ($value === null || $value === 'null') {
+        $columns[] = $name;
+        $exprs[] = 'NULL';
+      } else {
+        $columns[] = $name;
+        $exprs[] = ":{$name}";
+        $bind[":{$name}"] = is_bool($value) ? (int) $value : $value;
+      }
+    }
+    return [$columns, $exprs];
   }
   
   /**
@@ -811,9 +876,14 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
    * @return void
    */
   public function insert_update($table, $data) {
+    if (!$this->grammar->supportsInsertSetSyntax()) {
+      // Upsert is MySQL's `ON DUPLICATE KEY UPDATE`; the sqlite/pgsql `ON CONFLICT` form is
+      // not wired yet. Fail loud rather than emit SQL the driver will choke on.
+      throw new \RuntimeException("insert_update() (upsert) is not yet implemented for driver [{$this->driver}].");
+    }
     $bind = [];
     $values = $this->values($data, $bind);
-    $sql = "INSERT INTO `{$table}` SET {$values} ON DUPLICATE KEY UPDATE {$values}";
+    $sql = "INSERT INTO " . $this->grammar->wrapTable($table) . " SET {$values} ON DUPLICATE KEY UPDATE {$values}";
     // logger()->info($sql, $bind);
     
     try {
