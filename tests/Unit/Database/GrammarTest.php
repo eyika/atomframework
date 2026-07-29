@@ -94,6 +94,14 @@ class GrammarTest extends TestCase
         $this->assertStringNotContainsString('UNSIGNED', $sqlite);
     }
 
+    public function test_char_type_compiles_with_length(): void
+    {
+        $b = new Blueprint('tokens');
+        $b->char('hash', 64);
+        $this->assertStringContainsString('`hash` CHAR(64)', (new MySqlGrammar())->compileCreate($b)[0]);
+        $this->assertStringContainsString('"hash" CHAR(64)', (new SqliteGrammar())->compileCreate($b)[0]);
+    }
+
     public function test_drop_if_exists_is_dialect_quoted(): void
     {
         $this->assertSame('DROP TABLE IF EXISTS `t`', (new MySqlGrammar())->compileDropIfExists('t'));

@@ -60,6 +60,11 @@ class Blueprint
         return $this->addColumn('string', $column, ['length' => $length]);
     }
 
+    public function char(string $column, int $length = 255): ColumnDefinition
+    {
+        return $this->addColumn('char', $column, ['length' => $length]);
+    }
+
     public function integer(string $column, bool $unsigned = false): ColumnDefinition
     {
         $col = $this->addColumn('integer', $column);
