@@ -104,6 +104,15 @@ class Connection {
               $this->getOptions()
           );
 
+          // SQLite enforces foreign keys only when asked, per-connection. Honour the
+          // connection's foreign_key_constraints flag (default ON) — accepting both a real
+          // bool and a stringy env value like "false".
+          if ($this->driver === 'sqlite') {
+              $fk = $this->config['connections']['sqlite']['foreign_key_constraints'] ?? true;
+              $fk = is_bool($fk) ? $fk : filter_var($fk, FILTER_VALIDATE_BOOLEAN);
+              $this->db->exec('PRAGMA foreign_keys = ' . ($fk ? 'ON' : 'OFF'));
+          }
+
           // if ( !$this->auth ) {
           //   if (env('DB_USERNAME') && env('DB_PASSWORD') && env('DB_DATABASE')) {
           //     $this->auth(env('DB_USERNAME'), env('DB_PASSWORD'), env('DB_DATABASE'), env('DB_HOST'));
@@ -445,7 +454,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
   */
   
   public function transaction($callback) {
-    $this->exec('START TRANSACTION');
+    $this->exec($this->grammar->compileBeginTransaction());
     $result = $callback();
     $this->exec( $result ? 'COMMIT' : 'ROLLBACK' );
   }
@@ -457,7 +466,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
    * @return void
    */
   public function beginTransaction() {
-    $this->exec('START TRANSACTION');
+    $this->exec($this->grammar->compileBeginTransaction());
     $this->transaction_mode = true;
   }
   
@@ -616,7 +625,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
       // Pessimistic row lock (SELECT ... FOR UPDATE) — serializes concurrent readers
       // within a transaction so read-modify-write flows (e.g. wallet balances) are safe.
       if ($lock) {
-        $sql .= ' FOR UPDATE';
+        $sql .= $this->grammar->compileForUpdate();
       }
     }
     // logger()->info($sql, isset($bind) &&  is_array($bind) ? $bind : []);
