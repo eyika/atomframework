@@ -53,6 +53,25 @@ class NamespaceHelper
     }
 
     /**
+     * Resolve the APPLICATION's base namespace independent of test-mode. Standard apps keep their
+     * code in app/ (`App\`); the framework repo itself uses src/ (`Eyika\Atom\Framework\`). Try both,
+     * then fall back to the first autoload psr-4 entry. This lets DatabaseTestCase / the test-env
+     * Application boot an app whose code lives in app/ (previously it forced "src" under test and
+     * threw for standard apps).
+     */
+    public static function getProjectNamespace(?string $composerJsonPath = null): string
+    {
+        foreach (['app', 'src'] as $folder) {
+            try {
+                return self::getBaseNamespace($composerJsonPath, $folder);
+            } catch (\RuntimeException) {
+                // not this folder — try the next candidate
+            }
+        }
+        return self::getBaseNamespace($composerJsonPath); // last resort: first autoload psr-4
+    }
+
+    /**
      * Drop the memoized composer.json cache (test isolation / worker reload).
      */
     public static function flushComposerCache(): void
