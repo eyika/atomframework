@@ -14,7 +14,7 @@ class CreateMigrationsTable
         if (!Schema::hasTable('migrations')) {
             Schema::create('migrations', function (Blueprint $table) {
                 $table->id();
-                $table->string('migration')->varChar(191)->notNullable()->charset('utf8mb4')->collation('utf8mb4_unicode_ci')->comment('sampple comment');
+                $table->string('migration', 191)->notNullable();
                 $table->integer('batch')->notNullable();
             });
         }
