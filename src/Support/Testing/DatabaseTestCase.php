@@ -31,6 +31,11 @@ use Throwable;
  *     }
  *
  * Requires base_path() to resolve (set $GLOBALS['base_path'] in your tests bootstrap).
+ *
+ * MINIMAL boot: this binds only the DB Connection, NOT the service providers. If a test also needs
+ * the Cache / Storage / Auth (Request) facades, call `$this->app->registerProviders()` in your
+ * setUp() after parent::setUp() — or extend the integration {@see TestCase}, which boots the full
+ * app (providers included) for get()/postJson()/TestResponse-style tests.
  */
 abstract class DatabaseTestCase extends PHPUnitTestCase
 {
