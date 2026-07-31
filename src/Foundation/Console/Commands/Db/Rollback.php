@@ -17,9 +17,9 @@ class Rollback extends Command
 
     public function handle(): bool
     {
-        ///TODO implement --pretend option handling
         try {
-            $this->info("Rolling back migrations...");
+            $pretend = (bool) $this->option('pretend');
+            $this->info($pretend ? "Pretend mode — no migrations will be rolled back." : "Rolling back migrations...");
 
             // Ensure migrations table exists
             (new CreateMigrationsTable())->up();
@@ -49,7 +49,18 @@ class Rollback extends Command
                 if (!$migrations || count($migrations) < 1) {
                     throw new BaseConsoleException('Nothing to rollback.');
                 }
-    
+
+                // --pretend: list the migrations that WOULD roll back, in order, then return
+                // without calling any down() or deleting any migrations-table row — the schema
+                // and the migrations table are left exactly as they were.
+                if ($pretend) {
+                    foreach ($migrations as $migration) {
+                        $this->info("  would roll back: {$migration['migration']}");
+                    }
+                    $this->info(count($migrations) . " migration(s) would be rolled back.");
+                    return true;
+                }
+
                 foreach ($migrations as $migration) {
                     $className = $migration['migration'];
                     $file = base_path("database/migrations/{$className}.php");

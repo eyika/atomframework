@@ -245,6 +245,17 @@ abstract class Grammar
         return '';
     }
 
+    /**
+     * Trailing table-level options appended after the closing `)` of CREATE TABLE — engine,
+     * default charset, collation. Empty for standard-SQL dialects (sqlite/pgsql have no such
+     * clause); MySQL overrides it so tables are created utf8mb4 instead of inheriting the
+     * server default (which is latin1 on many MariaDB installs and rejects multi-byte UTF-8).
+     */
+    protected function tableOptions(): string
+    {
+        return '';
+    }
+
     /** Compile CREATE TABLE. Returns 1+ statements (sqlite emits secondary indexes separately). */
     public function compileCreate(Blueprint $blueprint): array
     {
@@ -268,7 +279,7 @@ abstract class Grammar
         }
 
         $body = implode(",\n    ", $lines);
-        $statements = [sprintf("CREATE TABLE %s (\n    %s\n)", $this->wrapTable($blueprint->getTable()), $body)];
+        $statements = [sprintf("CREATE TABLE %s (\n    %s\n)%s", $this->wrapTable($blueprint->getTable()), $body, $this->tableOptions())];
 
         foreach ($separate as $idx) {
             if (($sql = $this->compileCreateIndex($idx, $blueprint->getTable())) !== null) {

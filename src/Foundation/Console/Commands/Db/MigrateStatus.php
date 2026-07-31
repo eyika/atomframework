@@ -15,13 +15,16 @@ class MigrateStatus extends Command
 
     public function handle(): bool
     {
-        $migrated = DB::table('migrations')->get('migration');
+        // get('migration') returns ROWS (['migration' => name], …); flatten to a plain list of
+        // names so the in_array() below compares string-to-string, not string-to-row (which was
+        // always false — every migration showed as not-migrated). Empty table → get() is false.
+        $migrated = array_column(DB::table('migrations')->get('migration') ?: [], 'migration');
         $migrationFiles = glob(database_path('migrations/*.php'));
 
         $this->info("Migration Status:\n");
         $this->table(['Migration', 'Migrated?'], array_map(function ($file) use ($migrated) {
             $name = basename($file, '.php');
-            return [$name, in_array($name, $migrated) ? '✔️ Yes' : '❌ No'];
+            return [$name, in_array($name, $migrated, true) ? '✔️ Yes' : '❌ No'];
         }, $migrationFiles));
 
         return true;

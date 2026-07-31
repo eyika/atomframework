@@ -77,6 +77,21 @@ class MySqlGrammar extends Grammar
         return $c->onUpdateCurrent ? ' ON UPDATE CURRENT_TIMESTAMP' : '';
     }
 
+    /**
+     * ` ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`, so every table is
+     * explicitly utf8mb4 rather than inheriting the server's default charset (latin1 on many
+     * MariaDB installs — a σ into such a column dies with `1366 Incorrect string value`).
+     * Overridable per app via `database.connections.mysql.{engine,charset,collation}`.
+     */
+    protected function tableOptions(): string
+    {
+        $engine    = config('database.connections.mysql.engine')    ?: 'InnoDB';
+        $charset   = config('database.connections.mysql.charset')   ?: 'utf8mb4';
+        $collation = config('database.connections.mysql.collation') ?: 'utf8mb4_unicode_ci';
+
+        return " ENGINE={$engine} DEFAULT CHARSET={$charset} COLLATE={$collation}";
+    }
+
     protected function compileColumnExtras(ColumnDefinition $c): string
     {
         $sql = '';

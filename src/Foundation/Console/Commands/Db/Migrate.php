@@ -18,18 +18,19 @@ class Migrate extends Command
 
     private Filesystem $filesystem;
 
-    public string $signature = 'migrate {--seed} {--path=} {--basepath=} {--pretend} {--force}';
+    public string $signature = 'migrate {--seed} {--path=} {--basepath=} {--pretend}';
 
     public function __construct()
     {
+        parent::__construct(); // initialize base option/argument state
         $this->filesystem = new Filesystem;
     }
 
     public function handle(): bool
     {
-        ///TODO implement --pretend and --force option handling
         try {
-            $this->info("Running migrations...");
+            $pretend = (bool) $this->option('pretend');
+            $this->info($pretend ? "Pretend mode — no migrations will run." : "Running migrations...");
 
             // Get migrations path (supports custom path)
             if (($path = $this->option('path')) && $this->filesystem->missing($path)) {
@@ -40,10 +41,33 @@ class Migrate extends Command
             // Include package migration directories registered via
             // ServiceProvider::loadMigrationsFrom() (PKG-01) alongside the app's.
             $migrations = $path ? [$path] : $this->gatherMigrations($migrationPath);
-    
+
+            // --pretend: list the migrations that WOULD run, in order, then return without
+            // touching the database — no CreateMigrationsTable, no up(), no inserts. If the
+            // migrations table doesn't exist yet, every gathered migration would run.
+            if ($pretend) {
+                $already = [];
+                try {
+                    $already = array_column(DB::table('migrations')->get('migration') ?: [], 'migration');
+                } catch (\Throwable $e) {
+                    // migrations table not created yet — nothing has run
+                }
+                $pending = 0;
+                foreach ($migrations as $migration) {
+                    $filename = pathinfo($migration, PATHINFO_FILENAME);
+                    if (in_array($filename, $already, true)) {
+                        continue;
+                    }
+                    $this->info("  would migrate: $filename");
+                    $pending++;
+                }
+                $this->info($pending === 0 ? "Nothing to migrate." : "$pending migration(s) would run.");
+                return true;
+            }
+
             // Ensure migrations table exists
             (new CreateMigrationsTable())->up();
-    
+
             // Get last batch number
             $lastBatch = DB::table('migrations')->max('batch') ?? 0;
             $batch = $lastBatch + 1;
