@@ -21,12 +21,26 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   multiple guards/providers with different user classes work. (`ba98484`)
 - **Testing** — `NamespaceHelper::getProjectNamespace()` resolves the application namespace
   independent of test-mode (tries `app/`, then `src/`, then the first psr-4 entry). (`e65d31a`)
+- **Migrations** — `migrate --pretend` and `migrate:rollback --pretend` are now implemented: each
+  prints the ordered list of migrations that would run / roll back and returns without any
+  `up()`/`down()` or migrations-table write (previously the flag was a no-op and silently ran the
+  real, destructive operation). (`2ae39bd`)
 
 ### Changed
 - **Scheduler** — cron matching now uses `config('app.timezone')` (default `UTC`) instead of the
   CLI's php.ini timezone, so `dailyAt('05:00')` fires at the intended app time. (`00b204d`)
+- **Migrations** — removed the unimplemented `--force` flag from the `migrate` signature (there was
+  no confirmation prompt for it to bypass). (`2ae39bd`)
 
 ### Fixed
+- **Migrations / Schema** — MySQL `CREATE TABLE` emitted no table options, so on a latin1-default
+  server (e.g. MariaDB) tables inherited latin1 and rejected multi-byte UTF-8 (`1366 Incorrect
+  string value`). A new `tableOptions()` grammar hook now appends
+  `ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci` on MySQL (overridable via
+  `database.connections.mysql.{engine,charset,collation}`); sqlite/pgsql emit nothing. (`2ae39bd`)
+- **Migrations** — `migrate:status` showed every migration as not-migrated: it compared a name
+  string against migration *rows* (`['migration' => name]`). The row set is now flattened to a
+  name list before the membership check. (`2ae39bd`)
 - **Migrations** — the bootstrap `CreateMigrationsTable` emitted invalid MySQL 8 DDL (a leftover
   debug column chain), making the very first `php artisan migrate` fatal on a fresh database.
   (`c0f2a41`)
