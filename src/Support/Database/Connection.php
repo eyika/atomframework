@@ -67,6 +67,30 @@ class Connection {
       return self::grammar()->wrap((string) $col);
   }
 
+  /**
+   * Build a SELECT column list. An ARRAY of columns is quoted per-identifier so reserved-word
+   * names (a column literally called `values`, `order`, …) don't produce invalid SQL; `*`,
+   * expressions (`count(*)`), aliases (`x as y`) and already-quoted names pass through untouched,
+   * and an empty result falls back to `*` (never `SELECT  FROM`). A STRING is returned verbatim —
+   * it may be a raw expression the caller built deliberately (e.g. `count(id)`).
+   */
+  public static function compileSelectList($select_what): string
+  {
+      if (!is_array($select_what)) {
+          return (string) $select_what;
+      }
+      $cols = array_map(function ($col) {
+          $col = (string) $col;
+          if ($col === '' || $col === '*'
+              || str_contains($col, '(') || str_contains($col, ' ') || str_contains($col, '`')) {
+              return $col;
+          }
+          return self::quoteQualified($col);
+      }, $select_what);
+      $cols = array_filter($cols, fn ($c) => $c !== '');
+      return $cols ? implode(', ', $cols) : '*';
+  }
+
   /** Whitelist a JOIN type; anything unrecognised falls back to INNER. */
   public static function safeJoinType($type): string
   {
@@ -556,7 +580,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
       $bind = $bind_or_filter;
     }
     else {
-      $select_str = is_array($select_what) ? implode(', ', $select_what) : $select_what;
+      $select_str = self::compileSelectList($select_what);
       $sql = "SELECT {$select_str} FROM " . self::quoteIdent($sql_or_table);
 
       if ($joins = $this->compileJoins($joins)) {
