@@ -46,7 +46,8 @@ class DatabaseDriver implements DriverInterface
 
     protected function toAuthenticatable(array $user): AuthenticatableInterface
     {
-        $class = config('auth.user.model');
+        // Wrap the row in the provider's model (multi-provider), not always the global user model.
+        $class = config("auth.providers.{$this->provider}.model") ?? config('auth.user.model');
         return new $class($user);
     }
 }
