@@ -5,6 +5,7 @@ namespace Eyika\Atom\Framework\Tests\Unit\Database;
 use Eyika\Atom\Framework\Support\Database\Grammars\Grammar;
 use Eyika\Atom\Framework\Support\Database\Grammars\GrammarFactory;
 use Eyika\Atom\Framework\Support\Database\Grammars\MySqlGrammar;
+use Eyika\Atom\Framework\Support\Database\Grammars\PostgresGrammar;
 use Eyika\Atom\Framework\Support\Database\Grammars\SqliteGrammar;
 use Eyika\Atom\Framework\Support\Database\Schema\Blueprint;
 use PHPUnit\Framework\TestCase;
@@ -61,6 +62,27 @@ class GrammarTest extends TestCase
         // SQLite can't ON UPDATE — the modifier is dropped, not emitted as invalid SQL.
         $this->assertStringNotContainsString('ON UPDATE', $ddl);
         $this->assertStringNotContainsString('AUTO_INCREMENT PRIMARY', $ddl);   // MySQL spelling gone
+    }
+
+    public function test_mysql_create_table_declares_utf8mb4_charset(): void
+    {
+        // Without an explicit DEFAULT CHARSET, a table inherits the server default (latin1 on
+        // many MariaDB installs) and rejects multi-byte UTF-8 — a σ dies with 1366. MySQL must
+        // emit the charset; sqlite/pgsql have no such clause and must NOT.
+        $mysql = (new MySqlGrammar())->compileCreate($this->usersBlueprint())[0];
+        $this->assertStringContainsString('DEFAULT CHARSET=utf8mb4', $mysql);
+        $this->assertStringContainsString('ENGINE=InnoDB', $mysql);
+        $this->assertStringContainsString('COLLATE=utf8mb4_unicode_ci', $mysql);
+        // The charset is a trailing table option, after the closing paren of the column list.
+        $this->assertMatchesRegularExpression('/\)\s+ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci$/', $mysql);
+
+        $sqlite = (new SqliteGrammar())->compileCreate($this->usersBlueprint())[0];
+        $this->assertStringNotContainsString('CHARSET', $sqlite);
+        $this->assertStringNotContainsString('ENGINE', $sqlite);
+
+        $pgsql = (new PostgresGrammar())->compileCreate($this->usersBlueprint())[0];
+        $this->assertStringNotContainsString('CHARSET', $pgsql);
+        $this->assertStringNotContainsString('ENGINE', $pgsql);
     }
 
     public function test_secondary_index_is_inline_on_mysql_but_separate_on_sqlite(): void
