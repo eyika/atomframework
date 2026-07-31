@@ -728,7 +728,16 @@ trait QueryBuilder
     public function _delete($id = 0)
     {
         $id = $id > 0 ? $id : $this->{$this->primaryKey};
-        
+
+        if ($this->isSaved() && $id > 0) {
+            // Instance delete on a PERSISTED row targets exactly that row by primary key, ignoring
+            // any WHERE carried over from the query it was hydrated from (see __update). Bulk
+            // Model::where(...)->delete() has no PK on the scratch builder, so it keeps its filter.
+            $this->bind_or_filter = [$this->primaryKey => $id];
+            $this->operators = '=';
+            $this->or_ands = 'AND';
+        }
+
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
         // A 'deleting' listener returning false aborts the delete.
@@ -973,9 +982,19 @@ trait QueryBuilder
     private function __update(array $values, int $id=0, $internal = false, $is_protected = true, $should_fill = true, $create_if_not_exist = false)
     {
         $id = $id > 0 ? $id : $this->{$this->primaryKey};
-        
-        if ($this->bind_or_filter === null)
-            $this->bind_or_filter['id'] = $id;
+
+        if ($this->isSaved() && $id > 0) {
+            // Instance write on a PERSISTED row targets exactly that row by its primary key,
+            // regardless of any WHERE carried over from the query it was hydrated from (a row from
+            // a multi-row ->get() clones the builder, inheriting e.g. `store_id = X` — which would
+            // otherwise update EVERY matching row). A bulk `Model::where(...)->update()` is not
+            // "saved" (no PK on the scratch builder), so it still uses its filter.
+            $this->bind_or_filter = [$this->primaryKey => $id];
+            $this->operators = '=';
+            $this->or_ands = 'AND';
+        } elseif ($this->bind_or_filter === null) {
+            $this->bind_or_filter[$this->primaryKey] = $id;
+        }
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
 
         if ($this->softdeletes && !$internal) {
