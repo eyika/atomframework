@@ -33,6 +33,12 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   no confirmation prompt for it to bypass). (`2ae39bd`)
 
 ### Fixed
+- **Testing** — `Support\Testing\TestCase` (and the internal `IntegrationTestCase`) pointed the
+  global facade application at their own booted container and never restored it, so a test running
+  after one had `App::make()`/facades — and thus `$this->app->instance($fake)` overrides — resolving
+  from the wrong container (order-dependent; passed in isolation). The base now restores the prior
+  facade app on teardown; `Facade::setFacadeApplication()` accepts `null` so a "none set" prior
+  state restores exactly. (`6f68c86`)
 - **Migrations / Schema** — MySQL `CREATE TABLE` emitted no table options, so on a latin1-default
   server (e.g. MariaDB) tables inherited latin1 and rejected multi-byte UTF-8 (`1366 Incorrect
   string value`). A new `tableOptions()` grammar hook now appends
