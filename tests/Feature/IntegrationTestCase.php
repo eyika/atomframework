@@ -26,6 +26,9 @@ abstract class IntegrationTestCase extends TestCase
 {
     protected Application $app;
 
+    /** Facade app in effect before this test — restored in tearDown so it doesn't leak forward. */
+    private ?Application $previousFacadeApp = null;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -33,6 +36,7 @@ abstract class IntegrationTestCase extends TestCase
         $this->resetRouteState();
 
         // Boot the app in test mode (skips Dotenv; reads the fixture composer.json).
+        $this->previousFacadeApp = Facade::getFacadeApplication();
         $this->app = new Application($GLOBALS['base_path'], true);
         Facade::setFacadeApplication($this->app);
 
@@ -46,6 +50,7 @@ abstract class IntegrationTestCase extends TestCase
     {
         $this->resetRouteState();
         Facade::clearResolvedInstances();
+        Facade::setFacadeApplication($this->previousFacadeApp);
         $_GET = $_POST = $_COOKIE = $_FILES = [];
         parent::tearDown();
     }

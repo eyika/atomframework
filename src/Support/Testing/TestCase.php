@@ -46,6 +46,15 @@ abstract class TestCase extends PHPUnitTestCase
 {
     protected Application $app;
 
+    /**
+     * The facade application in effect before this test booted — captured in setUp and restored
+     * in tearDown. bootApplication() points the global (static) facade app at $bootedApp; without
+     * restoring it, that pointer leaks past this test class, so a later test running a DIFFERENT
+     * container (e.g. a DB-only base that only sets the facade app on its first build) has
+     * App::make()/facades resolving from THIS test's app — a silent, order-dependent bug.
+     */
+    private ?Application $previousFacadeApp = null;
+
     /** Booted once for the whole run; the route table is snapshotted alongside it. */
     protected static ?Application $bootedApp = null;
     /**
@@ -61,6 +70,7 @@ abstract class TestCase extends PHPUnitTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->previousFacadeApp = Facade::getFacadeApplication();
         $this->app = $this->bootApplication();
     }
 
@@ -70,6 +80,8 @@ abstract class TestCase extends PHPUnitTestCase
         Facade::clearResolvedInstances();
         BaseResponse::captureOutput(false);
         BaseResponse::resetCapture();
+        // Put the facade application back the way we found it (see $previousFacadeApp).
+        Facade::setFacadeApplication($this->previousFacadeApp);
         parent::tearDown();
     }
 

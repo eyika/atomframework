@@ -209,10 +209,11 @@ class Facade
     }
 
     /**
-     * Set the application instance.
-     *
+     * Set (or, with null, clear) the application instance behind the facades. Nullable so a
+     * test harness can restore the exact prior facade app on teardown — including the
+     * "none was set" state — instead of leaking its own container across test classes.
      */
-    public static function setFacadeApplication(Application $app)
+    public static function setFacadeApplication(?Application $app)
     {
         static::$app = $app;
     }
