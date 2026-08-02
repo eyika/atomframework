@@ -442,11 +442,23 @@ trait QueryBuilder
             $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
         }
 
-        if (!$models = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $or_ands, $this->for_update, $this->joins)) {
+        $models = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $or_ands, $this->for_update, $this->joins);
+
+        // fetch() already separates the two cases: false means the cursor failed, [] means the
+        // query ran and matched nothing. Collapsing both into false (the old `!$models` check)
+        // made an empty result indistinguishable from an error, and broke the documented
+        // "multi-result reads return a Collection" contract precisely when it mattered — count()
+        // and foreach on a legitimately empty read.
+        if ($models === false) {
             $this->resetInstance();
             return false;
         }
-    
+
+        if ($models === []) {
+            $this->resetInstance();
+            return collect([]);
+        }
+
         foreach ($models as &$model) {
             $this->decryptValues($model);
             $model = $this->fill($model, true);
