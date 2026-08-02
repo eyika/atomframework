@@ -28,6 +28,14 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   <https://basttyydev.serv00.net/docs/beta/advanced/key-rotation>
 
 ### Added
+- **Validation** — wildcard rule keys: `items.*.name` applies a rule to every element of a
+  collection, so repeated line-item payloads can be validated declaratively instead of by hand in
+  the controller. Wildcards are expanded against the payload before any rule runs (so every rule,
+  built-in or custom, works inside one) and nest left to right (`orders.*.lines.*.sku`). Errors are
+  keyed by the concrete path — `items.1.name` — identifying the offending element. A wildcard over
+  a missing or empty array expands to nothing, so pair it with `'items' => 'required|array'` when
+  the collection is mandatory. (`PENDING`)
+
 - **Scheduler** — `dailyAt('HH:MM')`, `at()`, `hourlyAt(int $minute)`, and `withoutOverlapping()`
   (flock-based, auto-released if the runner dies). (`00b204d`)
 - **Queue** — `queue:work` flags: `--daemon` (stay resident, sleep when idle), `--once`,
@@ -48,12 +56,35 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   real, destructive operation). (`2ae39bd`)
 
 ### Changed
+- **Query builder** — a multi-result read that matches **nothing** now returns an empty
+  `Collection` instead of `false`. `_all()` bailed on any falsy `fetch()` result, but `fetch()`
+  already distinguishes `false` (the cursor failed) from `[]` (ran, matched nothing) — collapsing
+  them made an empty read indistinguishable from an error and broke the documented "multi-result
+  reads return a Collection" contract exactly when it mattered, so `count()`/`assertCount()` on an
+  empty `get()` raised a `TypeError`. A genuine failure still returns `false`.
+  **Audit `if (!$rows)` checks**: an empty `Collection` is an object and therefore truthy, so code
+  using falsiness to mean "nothing found" must switch to `count($rows) === 0` or `$rows->isEmpty()`.
+  `foreach` and `$rows ?: []` are unaffected. (`PENDING`)
 - **Scheduler** — cron matching now uses `config('app.timezone')` (default `UTC`) instead of the
   CLI's php.ini timezone, so `dailyAt('05:00')` fires at the intended app time. (`00b204d`)
 - **Migrations** — removed the unimplemented `--force` flag from the `migrate` signature (there was
   no confirmation prompt for it to bypass). (`2ae39bd`)
 
+### Removed
+- **Phinx** — the abandoned Phinx integration is gone: the `make:migrations` and `make:seed`
+  commands, the `phinxCommander` runner and the `atom_phinx` bin. `robmorgan/phinx` was already
+  absent from the dependency list, so both commands were dead on arrival — they shelled out to a
+  bin that loads a package that is not installed. Use the framework's own **`make:migration`** and
+  **`make:seeder`**, which generate `Schema`/`Blueprint` migrations and `Seeder` classes for the
+  built-in migration engine. (`PENDING`)
+
 ### Fixed
+- **Console** — `artisan test` (and `serve`) built their subprocess command without quoting, so a
+  project path containing a space — `C:\Users\Some Name\…` — was split by the shell and PHP reported
+  `Could not open input file: C:\Users\Some`. The interpreter, script path and every argument are
+  now quoted, and the interpreter is `PHP_BINARY` so the child cannot pick up a different `php`
+  from `PATH`. `serve`'s router script was also concatenated onto the option list with no
+  separator. (`PENDING`)
 - **Models / casts** — a column cast to `'object'` could not be written. `fill()` runs
   `castAttribute()` on writes as well as reads, so the payload is decoded back into PHP before
   reaching the DB writer and `serializeCastedValues()` re-encodes it just in time — but it only

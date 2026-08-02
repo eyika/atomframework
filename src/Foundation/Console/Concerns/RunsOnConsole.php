@@ -8,7 +8,7 @@ use Eyika\Atom\Framework\Support\Arr;
 trait RunsOnConsole
 {
     // Function to execute the command and display output in real-time
-    function executeCommand($options = [], string $type = 'phinx')
+    function executeCommand($options = [], string $type = 'phpUnit')
     {
         if (!method_exists($this, "{$type}Commander"))
         {
@@ -36,19 +36,23 @@ trait RunsOnConsole
         }
     }
 
-    function phinxCommander($options = [])
+    /**
+     * The interpreter running us, quoted. PHP_BINARY is the exact binary in use (so a child
+     * process can't pick up a different `php` from PATH), and it is quoted because its own
+     * path may contain spaces — e.g. C:\Program Files\php\php.exe.
+     */
+    protected function phpBinary(): string
     {
-        $slash = DIRECTORY_SEPARATOR;
-        $config = "-c ". base_path("config/phinx.php");
-        if (count($options) > 1) {
-            $temp = [$options[0], $config];
-            array_push($temp, ...array_slice($options, 1));
-            $options = $temp;
-        } else {
-            $options[] = $config;
-        }
+        return escapeshellarg(PHP_BINARY ?: 'php');
+    }
 
-        return 'php '. base_path("/vendor/bin/atom_phinx " . implode(' ', $options));
+    /** Quote each argument so a value containing a space survives as ONE argument. */
+    protected function quoteArgs(array $options): string
+    {
+        return implode(' ', array_map(
+            static fn ($option) => escapeshellarg((string) $option),
+            $options
+        ));
     }
 
     function phpInbuiltServerCommander($options = [])
@@ -69,11 +73,19 @@ trait RunsOnConsole
         $port = array_key_exists('--port', $kv_options) || array_key_exists('-p', $kv_options) ? ($kv_options['--port'] ?? $kv_options['-p']) : '80';
         $timeout = array_key_exists('--timeout', $kv_options) || array_key_exists('-t', $kv_options) ? " -d max_execution_time=". ($kv_options['--timeout'] ?? $kv_options['-t']) : ""; 
 
-        return "php{$timeout} -S {$address}:{$port} -t . " . implode(' ', $options). base_path("public/index.php");
+        $args = $this->quoteArgs($options);
+
+        // The router script is a quoted argument of its own — previously it was concatenated
+        // straight onto the option list with no separator, so any option ran into the path.
+        return $this->phpBinary() . "{$timeout} -S {$address}:{$port} -t . "
+            . ($args === '' ? '' : $args . ' ')
+            . escapeshellarg(base_path('public/index.php'));
     }
 
     function phpUnitCommander($options = [])
     {
-        return 'php ' . base_path("vendor/bin/phpunit " . implode(' ', $options));
+        return $this->phpBinary() . ' '
+            . escapeshellarg(base_path('vendor/bin/phpunit')) . ' '
+            . $this->quoteArgs($options);
     }
 }
