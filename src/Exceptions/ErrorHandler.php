@@ -32,19 +32,15 @@ class ErrorHandler
      */
     public static function handleError(int $severity, string $message, string $file, int $line): void
     {
-        logger()->info('got here now ... 1');
         // Check if the error is reportable
         if (!(error_reporting() & $severity)) {
-            logger()->info('got here now ... 1x');
             return; // Suppressed with @ or not included in error_reporting()
         }
 
         // Convert deprecation warnings to exceptions explicitly
         if (in_array($severity, [E_DEPRECATED, E_USER_DEPRECATED], true)) {
-            logger()->info('got here now ... 1xx');
             throw new \ErrorException($message, 0, $severity, $file, $line);
         }
-        logger()->info('got here now ... 1xxx');
 
         // Handle other errors
         throw new \ErrorException($message, 0, $severity, $file, $line);
