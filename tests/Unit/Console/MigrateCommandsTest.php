@@ -76,6 +76,14 @@ class MigrateCommandsTest extends TestCase
 
     protected function tearDown(): void
     {
+        // setUp() skips before the temp dir and base_path are set when pdo_sqlite is missing, but
+        // PHPUnit runs tearDown regardless — bail out before touching uninitialised properties,
+        // otherwise the skip surfaces as an Error.
+        if (!isset($this->baseDir)) {
+            parent::tearDown();
+            return;
+        }
+
         // Remove temp migration files + dirs.
         foreach (glob($this->baseDir . '/database/migrations/*.php') ?: [] as $f) {
             @unlink($f);
