@@ -88,9 +88,13 @@ trait ModelHelpers
     /**
      * Re-serialize values for columns whose cast is 'array' / 'json' / 'object'
      * before they hit the DB writer. fill() runs castAttribute() on writes too,
-     * so a json_encoded payload gets decoded back into a PHP array; without
-     * this step, Connection::values() binds the array as-is and exec() then
-     * tries to expand it as an IN-list, producing SQLSTATE[HY093].
+     * so a json_encoded payload gets decoded back into a PHP value; without
+     * this step, Connection::values() binds it as-is and exec() then tries to
+     * expand an array as an IN-list (SQLSTATE[HY093]), or fails outright on an
+     * object ("Object of class stdClass could not be converted to string").
+     *
+     * Both shapes must be handled: the 'array'/'json' casts decode to an array,
+     * but 'object' decodes to a stdClass.
      */
     private function serializeCastedValues(array &$values)
     {
@@ -99,11 +103,14 @@ trait ModelHelpers
         }
 
         foreach ($values as $key => $value) {
-            if (!array_key_exists($key, static::casts) || !is_array($value)) {
+            if (!array_key_exists($key, static::casts)) {
                 continue;
             }
             $cast = static::casts[$key];
-            if ($cast === 'array' || $cast === 'json' || $cast === 'object') {
+            if ($cast !== 'array' && $cast !== 'json' && $cast !== 'object') {
+                continue;
+            }
+            if (is_array($value) || is_object($value)) {
                 $values[$key] = json_encode($value);
             }
         }
