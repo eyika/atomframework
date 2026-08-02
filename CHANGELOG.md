@@ -54,6 +54,12 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   no confirmation prompt for it to bypass). (`2ae39bd`)
 
 ### Fixed
+- **Models / casts** — a column cast to `'object'` could not be written. `fill()` runs
+  `castAttribute()` on writes as well as reads, so the payload is decoded back into PHP before
+  reaching the DB writer and `serializeCastedValues()` re-encodes it just in time — but it only
+  handled `is_array()` values, and the `'object'` cast decodes to a `stdClass`. Both `create()` and
+  `update()` therefore failed with *"Object of class stdClass could not be converted to string"*.
+  Arrays and objects are now both re-encoded. (`6fe90c0`)
 - **Error handling** — `ErrorHandler::handleError()` carried four leftover
   `logger()->info('got here now …')` debug calls, the first of them *before* the
   `error_reporting()` check. As PHP's registered error handler this ran on every notice, warning
