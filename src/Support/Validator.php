@@ -30,6 +30,10 @@ class Validator {
     {
         $me = new self($req_obj);
 
+        // `items.*.name` becomes items.0.name, items.1.name, … against the actual payload, so
+        // every rule below (and the dot-notation collection) runs unchanged.
+        $params = $me->expandWildcardRules($params);
+
         foreach ($params as $paramKey => $paramValue) {
             $validations = explode($separator, $paramValue);
             $resp = $me->validateValue($paramKey, $validations);
@@ -362,6 +366,81 @@ class Validator {
         } else { $resp = ''; }
 
         return $resp;
+    }
+
+    /**
+     * Expand wildcard rule keys against the payload, leaving every other key untouched.
+     *
+     * `['items.*.name' => 'required|string']` over three items yields
+     * `['items.0.name' => …, 'items.1.name' => …, 'items.2.name' => …]`, so collections of
+     * objects can be validated declaratively instead of by hand in the controller. Errors are
+     * reported under the concrete key (`items.1.name`), which points at the offending element.
+     *
+     * A wildcard over an absent or empty array expands to NOTHING — that is deliberate: a
+     * per-element rule cannot assert the container exists. Pair it with a rule on the container
+     * itself (`'items' => 'required|array'`) when the collection is mandatory.
+     *
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    private function expandWildcardRules(array $params): array
+    {
+        $expanded = [];
+
+        foreach ($params as $key => $rules) {
+            if (!is_string($key) || !str_contains($key, '*')) {
+                $expanded[$key] = $rules;
+                continue;
+            }
+
+            foreach ($this->expandWildcardKey($key) as $concrete) {
+                $expanded[$concrete] = $rules;
+            }
+        }
+
+        return $expanded;
+    }
+
+    /**
+     * Resolve one wildcard key to the concrete keys present in the payload. Nested wildcards
+     * (`items.*.tags.*`) resolve left to right, each pass replacing the leftmost `*`.
+     *
+     * @return list<string>
+     */
+    private function expandWildcardKey(string $key): array
+    {
+        $star = strpos($key, '*');
+
+        if ($star === false) {
+            return [$key];
+        }
+
+        $prefix = rtrim(substr($key, 0, $star), '.');
+        $suffix = ltrim(substr($key, $star + 1), '.');
+
+        $target = $prefix === ''
+            ? array_merge(self::$req_data, self::$req_files)
+            : $this->getParamValue($prefix);
+
+        if (!is_array($target)) {
+            return [];
+        }
+
+        $keys = [];
+
+        foreach (array_keys($target) as $index) {
+            $concrete = $prefix === '' ? (string) $index : "$prefix.$index";
+
+            if ($suffix !== '') {
+                $concrete .= ".$suffix";
+            }
+
+            foreach ($this->expandWildcardKey($concrete) as $resolved) {
+                $keys[] = $resolved;
+            }
+        }
+
+        return $keys;
     }
 
     private function getParamValue(string $param): int|bool|float|string|array|File|null
