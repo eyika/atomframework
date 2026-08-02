@@ -23,8 +23,11 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   **Passwords and JWTs are unaffected**: passwords are hashed (`password_verify`, never encrypted),
   and `JwtGuard` signs with `config('app.key')` directly rather than through the `Encrypter`.
   Remember-me cookies are invalidated but degrade safely — `recall()` catches the failure and the
-  user simply logs in again. **If your app encrypts columns at rest you must re-encrypt them**
-  before upgrading; see the key-rotation guide:
+  user simply logs in again. **If your app encrypts columns at rest you must re-encrypt them**, in
+  this order: back up, upgrade the framework, *then* run a re-encryption pass using a self-contained
+  legacy decrypt. Re-encrypting **before** upgrading is a silent no-op — `Encrypter::encrypt()`
+  resolves to whatever is installed in `vendor/`, so it would re-encrypt with the same weak
+  implementation and the upgrade would still break every value. See the key-rotation guide:
   <https://basttyydev.serv00.net/docs/beta/advanced/key-rotation>
 
 ### Added
