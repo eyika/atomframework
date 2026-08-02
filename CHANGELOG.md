@@ -33,6 +33,13 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   no confirmation prompt for it to bypass). (`2ae39bd`)
 
 ### Fixed
+- **Error handling** — `ErrorHandler::handleError()` carried four leftover
+  `logger()->info('got here now …')` debug calls, the first of them *before* the
+  `error_reporting()` check. As PHP's registered error handler this ran on every notice, warning
+  and deprecation — and on every `@`-suppressed operation — building a Monolog logger, reading
+  config and writing to `storage/logs` each time. Because `logger()` calls `config()`, an error
+  raised before config was loadable also fataled inside the handler itself. All four removed.
+  (`426aaa9`)
 - **Testing** — `Support\Testing\TestCase` (and the internal `IntegrationTestCase`) pointed the
   global facade application at their own booted container and never restored it, so a test running
   after one had `App::make()`/facades — and thus `$this->app->instance($fake)` overrides — resolving
