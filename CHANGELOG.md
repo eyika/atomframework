@@ -34,7 +34,7 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in or custom, works inside one) and nest left to right (`orders.*.lines.*.sku`). Errors are
   keyed by the concrete path — `items.1.name` — identifying the offending element. A wildcard over
   a missing or empty array expands to nothing, so pair it with `'items' => 'required|array'` when
-  the collection is mandatory. (`PENDING`)
+  the collection is mandatory. (`5b458ee`)
 
 - **Scheduler** — `dailyAt('HH:MM')`, `at()`, `hourlyAt(int $minute)`, and `withoutOverlapping()`
   (flock-based, auto-released if the runner dies). (`00b204d`)
@@ -64,7 +64,7 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   empty `get()` raised a `TypeError`. A genuine failure still returns `false`.
   **Audit `if (!$rows)` checks**: an empty `Collection` is an object and therefore truthy, so code
   using falsiness to mean "nothing found" must switch to `count($rows) === 0` or `$rows->isEmpty()`.
-  `foreach` and `$rows ?: []` are unaffected. (`PENDING`)
+  `foreach` and `$rows ?: []` are unaffected. (`5b458ee`)
 - **Scheduler** — cron matching now uses `config('app.timezone')` (default `UTC`) instead of the
   CLI's php.ini timezone, so `dailyAt('05:00')` fires at the intended app time. (`00b204d`)
 - **Migrations** — removed the unimplemented `--force` flag from the `migrate` signature (there was
@@ -76,7 +76,7 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   absent from the dependency list, so both commands were dead on arrival — they shelled out to a
   bin that loads a package that is not installed. Use the framework's own **`make:migration`** and
   **`make:seeder`**, which generate `Schema`/`Blueprint` migrations and `Seeder` classes for the
-  built-in migration engine. (`PENDING`)
+  built-in migration engine. (`5b458ee`)
 
 ### Fixed
 - **Console** — `artisan test` (and `serve`) built their subprocess command without quoting, so a
@@ -84,7 +84,7 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   `Could not open input file: C:\Users\Some`. The interpreter, script path and every argument are
   now quoted, and the interpreter is `PHP_BINARY` so the child cannot pick up a different `php`
   from `PATH`. `serve`'s router script was also concatenated onto the option list with no
-  separator. (`PENDING`)
+  separator. (`5b458ee`)
 - **Models / casts** — a column cast to `'object'` could not be written. `fill()` runs
   `castAttribute()` on writes as well as reads, so the payload is decoded back into PHP before
   reaching the DB writer and `serializeCastedValues()` re-encodes it just in time — but it only
