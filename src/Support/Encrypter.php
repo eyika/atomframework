@@ -6,13 +6,58 @@ use Exception;
 
 class Encrypter
 {
+    /** Key length, in bytes, that each supported cipher requires. */
+    protected const SUPPORTED_CIPHERS = [
+        'aes-128-cbc' => 16,
+        'aes-256-cbc' => 32,
+    ];
+
     protected $key;
     protected $cipher;
 
     public function __construct($key = null, $cipher = 'AES-256-CBC')
     {
-        $this->key = $key ?? env('APP_KEY');
+        $decoded = static::decodeKey((string) ($key ?? env('APP_KEY')));
+
+        $required = static::SUPPORTED_CIPHERS[strtolower($cipher)] ?? null;
+
+        if ($required === null) {
+            throw new Exception(
+                "Unsupported cipher [{$cipher}]. Supported ciphers are: "
+                . implode(', ', array_keys(static::SUPPORTED_CIPHERS)) . '.'
+            );
+        }
+
+        $length = mb_strlen($decoded, '8bit');
+
+        if ($length !== $required) {
+            // Never echo the key itself — only its length.
+            throw new Exception(
+                "The application key must be {$required} bytes for [{$cipher}], got {$length}. "
+                . 'Generate a valid key with `php artisan key:generate`.'
+            );
+        }
+
+        $this->key    = $decoded;
         $this->cipher = $cipher;
+    }
+
+    /**
+     * Decode a `base64:` prefixed key to its raw bytes; other keys are used as-is.
+     */
+    protected static function decodeKey(string $key): string
+    {
+        if (!str_starts_with($key, 'base64:')) {
+            return $key;
+        }
+
+        $decoded = base64_decode(substr($key, 7), true);
+
+        if ($decoded === false) {
+            throw new Exception('The application key is prefixed `base64:` but is not valid base64.');
+        }
+
+        return $decoded;
     }
 
     public function encrypt(mixed $value, bool $serialize = false): string
