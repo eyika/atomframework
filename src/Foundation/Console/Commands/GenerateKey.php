@@ -26,8 +26,10 @@ class GenerateKey extends Command
 
     function generateAndSetAppKey()
     {
-        // Generate a random 32 character key
-        $key = 'base64:' . base64_encode(Str::random(32));
+        // 32 RAW random bytes — the full 256 bits AES-256-CBC expects. Str::random(32) returns
+        // 32 printable characters drawn from the base64 alphabet, i.e. ~6 bits each (~192 bits),
+        // so it is not a substitute here. Encrypter decodes the `base64:` prefix back to bytes.
+        $key = 'base64:' . base64_encode(random_bytes(32));
 
         // Load the .env file content
         $envPath = base_path('.env');
