@@ -6,6 +6,27 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
 
 ## [Unreleased]
 
+### Security
+
+- **BREAKING — `Encrypter` application key.** `key:generate` writes `APP_KEY=base64:…`, but the
+  `Encrypter` passed that string to `openssl_encrypt()` verbatim, which truncates it to the cipher's
+  key length — so the effective AES-256 key literally began with the constant bytes `base64:`, and
+  the remainder was base64 characters (~150 bits, not 256). The key is now decoded to raw bytes and
+  its length asserted against the cipher, failing closed. `key:generate` now derives the key from
+  `random_bytes(32)` instead of `Str::random(32)` (32 base64-alphabet characters, ~192 bits).
+  (`434eef0`)
+
+  There is **deliberately no fallback to the old key** — a fallback would keep the weak key alive
+  and defeat the fix. Payloads written under the old behaviour are rejected with
+  `The MAC is invalid.`
+
+  **Passwords and JWTs are unaffected**: passwords are hashed (`password_verify`, never encrypted),
+  and `JwtGuard` signs with `config('app.key')` directly rather than through the `Encrypter`.
+  Remember-me cookies are invalidated but degrade safely — `recall()` catches the failure and the
+  user simply logs in again. **If your app encrypts columns at rest you must re-encrypt them**
+  before upgrading; see the key-rotation guide:
+  <https://basttyydev.serv00.net/docs/beta/advanced/key-rotation>
+
 ### Added
 - **Scheduler** — `dailyAt('HH:MM')`, `at()`, `hourlyAt(int $minute)`, and `withoutOverlapping()`
   (flock-based, auto-released if the runner dies). (`00b204d`)
