@@ -207,7 +207,11 @@ abstract class Grammar
             $sql .= ' DEFAULT ' . $this->formatDefault($c->default, $c->defaultRaw);
         }
         $sql .= $this->compileOnUpdate($c);
-        if ($c->unique) {
+        // Only grammars that carry indexes inside CREATE TABLE keep the inline constraint.
+        // Where indexes are emitted separately (sqlite/pgsql), compileCreate() promotes this
+        // to a named CREATE UNIQUE INDEX instead — an inline UNIQUE on SQLite becomes an
+        // implicit `sqlite_autoindex_*`, which cannot be dropped by any later migration.
+        if ($c->unique && $this->indexesInline()) {
             $sql .= ' UNIQUE';
         }
         if ($c->primary && !$c->autoIncrement) {
@@ -268,6 +272,17 @@ abstract class Grammar
         }
 
         $separate = [];
+
+        // Column-level ->unique() becomes a real, named index on grammars that emit indexes
+        // separately, so a later dropUnique(['col']) has something it can actually drop.
+        if (!$this->indexesInline()) {
+            foreach ($blueprint->getColumns() as $col) {
+                if ($col instanceof ColumnDefinition && $col->unique) {
+                    $separate[] = new IndexDefinition('UNIQUE', [$col->name], "unique_{$col->name}");
+                }
+            }
+        }
+
         foreach ($blueprint->getIndexes() as $idx) {
             if (strtoupper($idx->type) === 'PRIMARY KEY') {
                 $lines[] = $this->compilePrimaryKey($idx);
@@ -292,6 +307,40 @@ abstract class Grammar
     protected function compilePrimaryKey(IndexDefinition $idx): string
     {
         return 'PRIMARY KEY (' . $this->columnize($idx->columns) . ')';
+    }
+
+    /**
+     * Name of the index on $table covering exactly $columns (in order), or null if none.
+     *
+     * Used by dropUnique(['col'])/dropIndex(['col']), which name the columns rather than the
+     * index. The catalogue is driver-specific, so each grammar answers for its own engine;
+     * this base implementation is the MySQL one. PRIMARY is excluded — it is dropped via
+     * dropPrimary(), not by name.
+     */
+    public function indexNameForColumns(string $table, array $columns, bool $unique): ?string
+    {
+        $sql = "SELECT INDEX_NAME, GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) AS cols
+                FROM INFORMATION_SCHEMA.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = :table
+                  AND NON_UNIQUE = :non_unique
+                  AND INDEX_NAME != 'PRIMARY'
+                GROUP BY INDEX_NAME
+                HAVING cols = :cols
+                LIMIT 1";
+
+        $stmt = \Eyika\Atom\Framework\Support\Facade\DatabaseConnection::exec($sql, [
+            'table' => $table,
+            'non_unique' => $unique ? 0 : 1,
+            'cols' => implode(',', $columns),
+        ]);
+
+        if ($stmt === false) {
+            return null;
+        }
+
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+        return $row['INDEX_NAME'] ?? null;
     }
 
     /** Inline index (MySQL): `UNIQUE INDEX \`name\` (\`a\`,\`b\`)`. */

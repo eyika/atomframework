@@ -71,6 +71,53 @@ class SqliteGrammar extends Grammar
         return false; // secondary indexes are separate CREATE INDEX statements
     }
 
+    /**
+     * SQLite has no INFORMATION_SCHEMA; index metadata comes from PRAGMA index_list (the
+     * indexes on a table, with a uniqueness flag and an origin) and PRAGMA index_info (the
+     * columns of one index, in position order).
+     *
+     * Indexes with origin 'pk' or 'u' are implicit — SQLite creates them for PRIMARY KEY and
+     * for an inline column/table UNIQUE constraint, names them `sqlite_autoindex_*`, and
+     * refuses to DROP them. They are skipped here so the caller reports "no such index"
+     * rather than emitting a DROP that always fails. Column-level ->unique() is compiled as a
+     * real named index precisely so it does not land in that trap.
+     */
+    public function indexNameForColumns(string $table, array $columns, bool $unique): ?string
+    {
+        $list = DatabaseConnection::exec('PRAGMA index_list(' . $this->wrapTable($table) . ')');
+
+        if ($list === false) {
+            return null;
+        }
+
+        foreach ($list->fetchAll(\PDO::FETCH_ASSOC) as $index) {
+            $name = $index['name'] ?? '';
+
+            if ((bool) ($index['unique'] ?? 0) !== $unique) {
+                continue;
+            }
+
+            // 'c' = created by CREATE INDEX; 'u'/'pk' = implicit, undroppable.
+            if (($index['origin'] ?? 'c') !== 'c' || str_starts_with($name, 'sqlite_autoindex_')) {
+                continue;
+            }
+
+            $info = DatabaseConnection::exec('PRAGMA index_info(' . $this->wrapValue($name) . ')');
+
+            if ($info === false) {
+                continue;
+            }
+
+            $cols = array_column($info->fetchAll(\PDO::FETCH_ASSOC), 'name');
+
+            if ($cols === $columns) {
+                return $name;
+            }
+        }
+
+        return null;
+    }
+
     protected function autoIncrementSql(ColumnDefinition $c): string
     {
         // Only `INTEGER PRIMARY KEY AUTOINCREMENT` gives a rowid alias auto-increment in SQLite.

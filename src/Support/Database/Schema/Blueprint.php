@@ -341,27 +341,10 @@ class Blueprint
      */
     protected function lookupIndexNameForColumns(array $columns, bool $unique): ?string
     {
-        $colsCsv = implode(',', $columns);
-        $sql = "SELECT INDEX_NAME, GROUP_CONCAT(COLUMN_NAME ORDER BY SEQ_IN_INDEX) AS cols
-                FROM INFORMATION_SCHEMA.STATISTICS
-                WHERE TABLE_SCHEMA = DATABASE()
-                  AND TABLE_NAME = :table
-                  AND NON_UNIQUE = :non_unique
-                  AND INDEX_NAME != 'PRIMARY'
-                GROUP BY INDEX_NAME
-                HAVING cols = :cols
-                LIMIT 1";
-
-        $stmt = \Eyika\Atom\Framework\Support\Facade\DatabaseConnection::exec($sql, [
-            'table' => $this->table,
-            'non_unique' => $unique ? 0 : 1,
-            'cols' => $colsCsv,
-        ]);
-        if ($stmt === false) {
-            return null;
-        }
-        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-        return $row['INDEX_NAME'] ?? null;
+        // Delegated to the active grammar: the catalogue that knows index names is
+        // driver-specific (INFORMATION_SCHEMA on MySQL, PRAGMA on SQLite, pg_index on
+        // Postgres), and the query previously hard-coded here ran only on MySQL.
+        return Connection::grammar()->indexNameForColumns($this->table, $columns, $unique);
     }
 
     public function addIndex(string $type, array $columns, ?string $name = null): IndexDefinition
