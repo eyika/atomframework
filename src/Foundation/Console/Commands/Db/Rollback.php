@@ -12,6 +12,7 @@ use Eyika\Atom\Framework\Support\Database\Schema\Migrations\Migration;
 class Rollback extends Command
 {
     use RunsOnConsole;
+    use \Eyika\Atom\Framework\Foundation\Console\Concerns\ResolvesMigrationPaths;
 
     public string $signature = 'migrate:rollback {--step=} {--batch=} {--pretend}';
 
@@ -63,9 +64,14 @@ class Rollback extends Command
 
                 foreach ($migrations as $migration) {
                     $className = $migration['migration'];
-                    $file = base_path("database/migrations/{$className}.php");
-    
-                    if (file_exists($file)) {
+
+                    // Search the app directory AND every package directory registered via
+                    // ServiceProvider::loadMigrationsFrom(). Resolving only against the app
+                    // path meant a package migration `migrate` had applied could never be
+                    // rolled back — this threw "Migration file not found" instead.
+                    $file = $this->findMigrationFile($className);
+
+                    if ($file !== null) {
                         $migrationObj = require_once $file;
                         if ($migrationObj instanceof Migration || (is_object($migrationObj) && method_exists($migrationObj, 'down'))) {
                             $this->info("Rolling back: $className");
@@ -78,7 +84,10 @@ class Rollback extends Command
                             throw new BaseConsoleException("Migration $className must return an instance of Eyika\Atom\Framework\Support\Database\Schema\Migrations\Migration or an object that has the methods up and down");
                         }
                     } else {
-                        throw new BaseConsoleException("Migration file $file not found");
+                        throw new BaseConsoleException(
+                            "Migration file for $className not found in: "
+                            . implode(', ', $this->migrationDirectories())
+                        );
                     }
                 }
             // }
