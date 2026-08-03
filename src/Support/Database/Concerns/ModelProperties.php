@@ -65,8 +65,14 @@ trait ModelProperties
     ];
 
     /**
-     * Indicates what database attributes of the model can be exposed outside the application
-     * 
+     * Indicates what database attributes of the model can be exposed outside the application.
+     *
+     * This is an OUTPUT filter, applied by toArray()/serialization — it is deliberately NOT
+     * applied to the SELECT column list. Excluding guarded columns from the read used to leave
+     * the model's own property null, so application logic could not see its own data (a service
+     * reading `created_at` off a `get()` result silently got null), while adding no protection:
+     * `toArray()` guards by default and is what the JSON response path calls.
+     *
      * @var array
      */
     protected const guarded = ['deleted_at'];

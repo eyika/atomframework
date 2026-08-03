@@ -17,7 +17,7 @@ trait UserAwareQueryBuilder
         }
         $this->useHashForEncryptedColumnComparisonQueries($query_arr);
 
-        $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
+        $fields = $this->readableFields();
         info('query array is', $query_arr);
         if (!$user = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
             $this->resetInstance();
@@ -43,7 +43,7 @@ trait UserAwareQueryBuilder
         }
         $this->useHashForEncryptedColumnComparisonQueries($query_arr);
 
-        $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
+        $fields = $this->readableFields();
         if (!$user = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands)) {
             $this->resetInstance();
             return false;
