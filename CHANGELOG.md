@@ -67,6 +67,20 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   real, destructive operation). (`2ae39bd`)
 
 ### Changed
+- **Models — `guarded` no longer restricts what is read.** It is an *output* filter (its own
+  docblock: "what database attributes of the model can be exposed outside the application"), but it
+  was also subtracted from the SELECT column list. A guarded column was therefore never loaded and
+  the model's own property was `null`, so application logic could not read its own data — a service
+  reading `created_at` off a plain `get()` silently got `null` and computed the wrong result. This
+  protected nothing extra: `toArray()` guards by default and is what the JSON response path calls.
+  Exposure is unchanged; only hydration is fixed.
+
+  Read paths also now drop `deleted_at` for models with `softdeletes = false`, since the default
+  `fillable` lists it for the soft-delete case.
+
+  **Compatibility:** if a model lists a column in `fillable` that does not exist in its table and
+  relied on `guarded` to keep it out of the SELECT, reads will now fail with `Unknown column`.
+  Correct the `fillable` list — that column was never actually being read. (`879f54e`)
 - **Query builder** — a multi-result read that matches **nothing** now returns an empty
   `Collection` instead of `false`. `_all()` bailed on any falsy `fetch()` result, but `fetch()`
   already distinguishes `false` (the cursor failed) from `[]` (ran, matched nothing) — collapsing
@@ -88,22 +102,6 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   bin that loads a package that is not installed. Use the framework's own **`make:migration`** and
   **`make:seeder`**, which generate `Schema`/`Blueprint` migrations and `Seeder` classes for the
   built-in migration engine. (`5b458ee`)
-
-### Changed
-- **Models — `guarded` no longer restricts what is read.** It is an *output* filter (its own
-  docblock: "what database attributes of the model can be exposed outside the application"), but it
-  was also subtracted from the SELECT column list. A guarded column was therefore never loaded and
-  the model's own property was `null`, so application logic could not read its own data — a service
-  reading `created_at` off a plain `get()` silently got `null` and computed the wrong result. This
-  protected nothing extra: `toArray()` guards by default and is what the JSON response path calls.
-  Exposure is unchanged; only hydration is fixed.
-
-  Read paths also now drop `deleted_at` for models with `softdeletes = false`, since the default
-  `fillable` lists it for the soft-delete case.
-
-  **Compatibility:** if a model lists a column in `fillable` that does not exist in its table and
-  relied on `guarded` to keep it out of the SELECT, reads will now fail with `Unknown column`.
-  Correct the `fillable` list — that column was never actually being read. (`879f54e`)
 
 ### Fixed
 - **Query builder / `orderBy()`** — two silent ordering defects, in both the model builder and the
