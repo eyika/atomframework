@@ -82,7 +82,14 @@ trait QueryBuilder
         return $fields;
     }
 
-    public function orderBy($column = "id", $direction = "ASC")
+    /**
+     * Underscore-prefixed like every other builder entry point: Model::__callStatic() maps
+     * `Model::orderBy(...)` to `_orderBy(...)`, and __call() does the same for instances.
+     * As a plain public `orderBy()` it was reachable on an instance but NOT statically — PHP
+     * resolves a real public method directly and refuses the static call before __callStatic
+     * runs, so whitelisting the name alone could never have helped.
+     */
+    public function _orderBy($column = "id", $direction = "ASC")
     {
         // SECURITY: escape each column identifier and whitelist the direction so a
         // user-supplied sort column/direction (e.g. from a query string) can't inject.
@@ -160,7 +167,8 @@ trait QueryBuilder
         return $this->_toArray($guard, $select, $ignore, $includeDynamicProperties, false);
     }
 
-    public function raw($sql, $bind)
+    /** Underscore-prefixed so `Model::raw(...)` dispatches statically — see _orderBy(). */
+    public function _raw($sql, $bind)
     {
         return DatabaseConnection::exec($sql, $bind);
     }
@@ -559,7 +567,8 @@ trait QueryBuilder
         return $this->_cursor($is_protected, $select);
     }
 
-    public function with($models)
+    /** Underscore-prefixed so `Model::with(...)` dispatches statically — see _orderBy(). */
+    public function _with($models)
     {
         if (is_array($models))
             $this->with_model_names = empty($this->with_model_names) ? $models : Arr::merge($this->with_model_names, $models);
