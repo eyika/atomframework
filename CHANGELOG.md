@@ -31,6 +31,14 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   <https://basttyydev.serv00.net/docs/beta/advanced/key-rotation>
 
 ### Added
+- **Route model binding** — `Model::getRouteKeyName()` selects the column a URL segment binds
+  against. It defaults to the model's `primaryKey`, so `/users/{user}` still binds by id; override
+  it to bind by a human-readable column instead:
+
+  ```php
+  public function getRouteKeyName(): string { return 'slug'; }
+  ```
+  (`ddd5345`)
 - **Validation** — wildcard rule keys: `items.*.name` applies a rule to every element of a
   collection, so repeated line-item payloads can be validated declaratively instead of by hand in
   the controller. Wildcards are expanded against the payload before any rule runs (so every rule,
@@ -82,6 +90,20 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Route model binding** — four defects on one path, which together meant binding worked only for
+  an existing numeric id and failed silently otherwise:
+  - Only values passing `is_numeric()` were bound, so a slug or UUID segment reached the controller
+    as a raw string — including a model whose **primary key** is a UUID. Every parameter naming a
+    model is now resolved against its **route key** (see `getRouteKeyName()` under Added).
+  - A genuinely missing row was **silently skipped instead of raising**. `find()`/`first()` return
+    `null` on a miss, and `resolveModel()` also used `null` for "this parameter names no model", so
+    the not-found branch never ran. The two cases are now distinct.
+  - `ModelNotFoundException::__construct()` declared a **required** `array $errors` after an
+    optional `$message`, so the middleware's one-argument throw raised `ArgumentCountError` rather
+    than the exception (and PHP deprecated the signature). `$errors` now defaults to `[]`.
+  - `SubstituteBindings` threw `UnexpectedValueException` when `app/Models` did not exist, so an
+    app without that directory **500'd on any route with a parameter**. It now yields an empty map.
+  (`ddd5345`)
 - **Console** — `artisan test` (and `serve`) built their subprocess command without quoting, so a
   project path containing a space — `C:\Users\Some Name\…` — was split by the shell and PHP reported
   `Could not open input file: C:\Users\Some`. The interpreter, script path and every argument are
