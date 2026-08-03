@@ -90,6 +90,19 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Schema / indexes** — `dropUnique(['col'])` and `dropIndex(['col'])` could not work on any
+  driver but MySQL, for two independent reasons:
+  - Index-name resolution ran a hard-coded `INFORMATION_SCHEMA.STATISTICS` query. It is now
+    delegated to the grammar — `Grammar::indexNameForColumns()`, with SQLite overriding it to use
+    `PRAGMA index_list`/`index_info`.
+  - Column-level `->unique()` compiled to an **inline** `UNIQUE` for every grammar. On SQLite that
+    creates an implicit `sqlite_autoindex_*`, which SQLite refuses to drop — so the constraint was
+    unremovable by any later migration. Where indexes are emitted separately (sqlite/pgsql) a
+    column-level unique is now promoted to a named `CREATE UNIQUE INDEX`.
+
+  **MySQL output is unchanged** (it still inlines). On SQLite, `CREATE TABLE` now emits an extra
+  `CREATE UNIQUE INDEX "unique_<column>"` statement per column-level unique; uniqueness is
+  enforced exactly as before. (`dc7817f`)
 - **Route model binding** — four defects on one path, which together meant binding worked only for
   an existing numeric id and failed silently otherwise:
   - Only values passing `is_numeric()` were bound, so a slug or UUID segment reached the controller
