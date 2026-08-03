@@ -58,6 +58,30 @@ trait QueryBuilder
         $this->joins = [];
     }
 
+    /**
+     * Columns a read selects.
+     *
+     * `guarded` deliberately does NOT narrow this — it is an output filter applied by toArray()
+     * (see ModelProperties::$guarded); subtracting it here left the model's own properties null
+     * so application logic could not read its own data.
+     *
+     * `deleted_at` is dropped when the model has soft deletes disabled: the default `fillable`
+     * lists it for the soft-delete case, and such a table usually has no such column. That used
+     * to be masked by the default `guarded = ['deleted_at']` removing it from the select.
+     *
+     * @return array<int, string>
+     */
+    protected function readableFields(): array
+    {
+        $fields = $this::fillable;
+
+        if (!$this->softdeletes) {
+            $fields = array_values(array_diff($fields, ['deleted_at']));
+        }
+
+        return $fields;
+    }
+
     public function orderBy($column = "id", $direction = "ASC")
     {
         // SECURITY: escape each column identifier and whitelist the direction so a
@@ -173,7 +197,7 @@ trait QueryBuilder
         }
         $this->useHashForEncryptedColumnComparisonQueries($query_arr);
     
-        $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
+        $fields = $this->readableFields();
     
         if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands, $this->for_update, $this->joins)) {
             $this->resetInstance();
@@ -374,7 +398,7 @@ trait QueryBuilder
         if (count($select)) {
             $fields = $select;
         } else {
-            $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
+            $fields = $this->readableFields();
         }
 
         if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $this->or_ands, $this->for_update, $this->joins)) {
@@ -414,7 +438,7 @@ trait QueryBuilder
         if (count($select)) {
             $fields = $select;
         } else {
-            $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
+            $fields = $this->readableFields();
         }
 
         if (!$model = DatabaseConnection::fetch($this->table, $query_arr, $fields)) {
@@ -450,7 +474,7 @@ trait QueryBuilder
         if (count($select)) {
             $fields = $select;
         } else {
-            $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
+            $fields = $this->readableFields();
         }
 
         $models = DatabaseConnection::fetch($this->table, $query_arr, $fields, $this->operators, $or_ands, $this->for_update, $this->joins);
@@ -503,7 +527,7 @@ trait QueryBuilder
 
         $this->useHashForEncryptedColumnComparisonQueries($query_arr);
         $fields = count($select) ? $select
-            : ($is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable);
+            : ($this->readableFields());
 
         // fetch_cursor()'s arg order is (…, $joins, $lock) — the reverse of fetch().
         $statement = DatabaseConnection::fetch_cursor($this->table, $query_arr, $fields, $this->operators, $or_ands, $this->joins, $this->for_update);
@@ -1024,7 +1048,7 @@ trait QueryBuilder
             $query_arr['deleted_at'] = array_key_exists('deleted_at', $values) && $values['deleted_at'] === null ? "IS NOT NULL" : "IS NULL";
             is_string($this->or_ands) ? $this->or_ands = ["AND"] : array_push($this->or_ands, "AND");
         }
-        $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
+        $fields = $this->readableFields();
 
         $this->useHashForEncryptedColumnComparisonQueries($query_arr);
         $this->createHashDuplicatesForCreateAndUpdateQueries($values);
@@ -1192,7 +1216,7 @@ trait QueryBuilder
         if (count($select)) {
             $fields = $select;
         } else {
-            $fields = $is_protected ? \array_diff($this::fillable, $this::guarded) : $this::fillable;
+            $fields = $this->readableFields();
         }
 
         if (!$model = DatabaseConnection::fetch($this->table, ['id' => $id], $fields)) {
