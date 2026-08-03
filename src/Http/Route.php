@@ -530,10 +530,43 @@ class Route
             $controllerInstance = new $controller;
             return call_user_func_array([$controllerInstance, $method], array_merge([$request], array_values($parameters)));
         } elseif (is_string($callback)) {
-            return include_once __DIR__ . "/$callback";
+            return static::includeRouteTarget($callback);
         } else {
             throw new NotFoundHttpException('Route not found');
         }
+    }
+
+    /**
+     * Render a string route target — a plain PHP file rather than a closure or controller.
+     *
+     * Three things were wrong with `include_once __DIR__ . "/$callback"`:
+     *
+     *  - `__DIR__` is the FRAMEWORK's own src/Http directory, so the file was looked up inside
+     *    vendor/ where an application's file can never live (BUG-15). It now resolves against
+     *    the application base.
+     *  - `include_once` returns true instead of re-rendering when the same file is hit twice in
+     *    one process — harmless per-request under FPM, but under a persistent worker every
+     *    request after the first rendered nothing.
+     *  - the path was interpolated unchecked (SEC-29). It is now resolved with realpath() and
+     *    required to stay inside the application directory, so `../` cannot escape it.
+     *
+     * String targets are registered by the developer, not supplied by users, so this is
+     * defence in depth rather than a live hole — but it costs one realpath() per render.
+     */
+    protected static function includeRouteTarget(string $callback): mixed
+    {
+        $base = realpath(base_path());
+        $path = realpath(base_path(ltrim($callback, '/\\')));
+
+        if ($base === false || $path === false || !is_file($path)) {
+            throw new NotFoundHttpException('Route not found');
+        }
+
+        if ($path !== $base && !str_starts_with($path, $base . DIRECTORY_SEPARATOR)) {
+            throw new NotFoundHttpException('Route not found');
+        }
+
+        return include $path;
     }
 
     // Handle 404 Not Found
