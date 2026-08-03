@@ -122,6 +122,12 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Foundation — facades are now bound lazily.** `Server` and `ConsoleKernel` constructed *every*
+  registered facade on each boot, so an app paid for facades it never used, and any constructor
+  that legitimately refuses to build failed the whole boot. With the `Encrypter` now failing closed
+  on an unset `APP_KEY`, a freshly created project printed *"The application key must be 32
+  bytes…"* on **every** artisan command — including `key:generate`, the command that fixes it.
+  Facades are now constructed on first resolution and still shared per application. (`4e3c95e`)
 - **Routing — string route targets never worked.** A route registered with a plain file path
   (rather than a closure or controller) was rendered with `include_once __DIR__ . "/$callback"`,
   where `__DIR__` is the **framework's own** `src/Http` directory — so the file was looked up
