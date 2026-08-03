@@ -31,6 +31,24 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   <https://basttyydev.serv00.net/docs/beta/advanced/key-rotation>
 
 ### Added
+- **Hashing** — a first-party password hasher. The framework verified passwords but shipped no way
+  to produce a hash, so each app called `password_hash()` itself and chose its own algorithm and
+  cost. `Support\Hashing\Hasher` wraps PHP's password API behind `config('hashing')` — bcrypt
+  (default), argon2i, argon2id — with a `Hash` facade and `hasher()` / `bcrypt()` helpers:
+
+  ```php
+  $user->password = Hash::make($plain);
+
+  if (Hash::check($plain, $user->password) && Hash::needsRehash($user->password)) {
+      $user->update(['password' => Hash::make($plain)]);   // cost raised since signup
+  }
+  ```
+
+  Options you don't configure are left to PHP's defaults rather than pinned by the framework.
+  `make()` fails closed instead of returning `false` (which would be stored as an empty password),
+  and `check()` rejects an empty or null hash, so a row with no password can't be satisfied by
+  empty input. Hashing is one-way and independent of `APP_KEY` — rotating the key never
+  invalidates stored passwords. (`3b5330c`)
 - **Route model binding** — `Model::getRouteKeyName()` selects the column a URL segment binds
   against. It defaults to the model's `primaryKey`, so `/users/{user}` still binds by id; override
   it to bind by a human-readable column instead:
