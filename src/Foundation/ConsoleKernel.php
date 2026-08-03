@@ -36,6 +36,7 @@ class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
         'file' => File::class,
         'storage' => Storage::class,
         'encrypter' => Encrypter::class,
+        'hash' => \Eyika\Atom\Framework\Support\Hashing\Hasher::class,
         'request' => Request::class,
         'scheduler' => Scheduler::class,
     ];

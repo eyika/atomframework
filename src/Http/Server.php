@@ -20,6 +20,7 @@ class Server
     protected const facadables = [
         // 'cache' => Cache::class,  // Already registered in Service Provider`
         'encrypter' => Encrypter::class,
+        'hash' => \Eyika\Atom\Framework\Support\Hashing\Hasher::class,
         'file' => File::class,
         'request' => Request::class,
         'scheduler' => Scheduler::class,
