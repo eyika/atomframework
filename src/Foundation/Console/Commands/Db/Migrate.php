@@ -15,6 +15,7 @@ use Eyika\Atom\Framework\Support\Storage\Filesystem;
 class Migrate extends Command
 {
     use RunsOnConsole;
+    use \Eyika\Atom\Framework\Foundation\Console\Concerns\ResolvesMigrationPaths;
 
     private Filesystem $filesystem;
 
@@ -110,20 +111,14 @@ class Migrate extends Command
     }
 
     /**
-     * Collect migration files from the app's directory plus every package directory
-     * registered via ServiceProvider::loadMigrationsFrom() (PKG-01). Each directory
-     * is sorted by filename; the app's run first, then packages in registration order.
+     * Collect migration files from the app's directory plus every package directory registered
+     * via ServiceProvider::loadMigrationsFrom() (PKG-01). Shared with rollback/status through
+     * ResolvesMigrationPaths so all the migrate commands agree on where migrations live.
      *
      * @return string[]
      */
     private function gatherMigrations(string $basePath): array
     {
-        $files = glob($basePath . '/*.php') ?: [];
-
-        foreach (ServiceProvider::migrationPaths() as $packagePath) {
-            $files = array_merge($files, glob(rtrim($packagePath, '/\\') . '/*.php') ?: []);
-        }
-
-        return $files;
+        return $this->gatherMigrationFiles($basePath);
     }
 }
