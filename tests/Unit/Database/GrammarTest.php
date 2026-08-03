@@ -49,12 +49,18 @@ class GrammarTest extends TestCase
     public function test_sqlite_create_table_is_valid_sqlite(): void
     {
         $sql = (new SqliteGrammar())->compileCreate($this->usersBlueprint());
-        $this->assertCount(1, $sql);
+
+        // Two statements now: the table, then the column's unique constraint as a NAMED index.
+        // Inline UNIQUE on SQLite produces an implicit `sqlite_autoindex_*` that the engine
+        // refuses to drop, so dropUnique(['email']) could never work against it.
+        $this->assertCount(2, $sql);
         $ddl = $sql[0];
 
         $this->assertStringContainsString('"id" INTEGER PRIMARY KEY AUTOINCREMENT', $ddl);
         $this->assertStringContainsString('"name" VARCHAR(255)', $ddl);
-        $this->assertStringContainsString('"email" VARCHAR(120) UNIQUE', $ddl);
+        $this->assertStringContainsString('"email" VARCHAR(120)', $ddl);
+        $this->assertStringNotContainsString('UNIQUE', $ddl, 'the constraint moves to its own index');
+        $this->assertStringContainsString('CREATE UNIQUE INDEX "unique_email" ON "users" ("email")', $sql[1]);
         $this->assertStringContainsString('"active" INTEGER DEFAULT 1', $ddl);
         $this->assertStringContainsString('"age" INTEGER NULL', $ddl);
         $this->assertStringContainsString('"role" TEXT', $ddl);                 // no native ENUM
