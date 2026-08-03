@@ -172,17 +172,14 @@ class ConsoleKernel implements ContractsConsoleKernel, ShouldLogMessages
      */
     public function loadFacades()
     {
-        try {
-            $app = Facade::getFacadeApplication();
+        $app = Facade::getFacadeApplication();
 
-            foreach (self::facadables as $tag => $class_name) {
-                $facade_obj = new $class_name;
-                $app->instance($tag, $facade_obj);
-            }
-        } catch (Exception $e) {
-            $this->error($e->getMessage(), $e->getTrace());
-            $this->error($e->getMessage(), $e->getTrace(), true);
-            ///TODO handle exception
+        // Bound lazily — see Server::loadFacades(). Constructing every facade up front made a
+        // constructor that legitimately refuses to build fail the WHOLE boot: with APP_KEY
+        // unset, the Encrypter's fail-closed check printed an error on every artisan command,
+        // including `key:generate`, the one command that fixes it.
+        foreach (self::facadables as $tag => $class_name) {
+            $app->singleton($tag, fn () => new $class_name);
         }
     }
 
