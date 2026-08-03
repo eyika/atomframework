@@ -122,6 +122,24 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Models — builder methods were not all callable statically.** `Model::orderBy('name')->get()`
+  raised a raw PHP *"Non-static method … cannot be called statically"* rather than the framework's
+  own message. Two causes: `DYNAMIC_STATIC_METHODS` had drifted from the builder's public API, and
+  `orderBy`/`with`/`raw` were declared as plain public methods — PHP resolves those directly and
+  refuses the static call *before* `__callStatic` runs, so listing them could not have helped.
+  They are now `_orderBy`/`_with`/`_raw` (unchanged for instance callers, which go through
+  `__call`), and `ModelInterface` declares them accordingly. Also added the missing `firstOrNew`,
+  `whereGreaterThan`, `orWhereIn`, `orWhereNotIn` and `orWhereLessThanOrEqual`, removed two
+  duplicated entries, and declared four builder methods the contract had omitted (`_orWhereIn`,
+  `_orWhereNotIn`, `_firstOr`, `_lockForUpdate`). Tests now enforce that the whitelist and the
+  contract both match the builder, so the lists cannot drift again. (`587709c`)
+- **Helpers — `encrypt()`/`decrypt()` fataled when no application was bound.** Their documented
+  `new Encrypter()` fallback was unreachable: `app()` is nullable by design, so `app()->make(...)`
+  died on null before the fallback could run. Because `ModelHelpers` uses these helpers, a model
+  declaring `const encrypted` was unusable without a booted container. They now resolve through the
+  `Encrypter` facade — swapped instance, then container binding, then a fresh `Encrypter` — which
+  also means `Encrypter::swap()` reaches model-level encryption in a test with no container.
+  (`587709c`)
 - **Foundation — facades are now bound lazily.** `Server` and `ConsoleKernel` constructed *every*
   registered facade on each boot, so an app paid for facades it never used, and any constructor
   that legitimately refuses to build failed the whole boot. With the `Encrypter` now failing closed
