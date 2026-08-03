@@ -22,6 +22,19 @@ trait ModelProperties
     public $primaryKey = 'id';
 
     /**
+     * Column that route-model binding resolves a URL segment against.
+     *
+     * Defaults to the primary key, so `/users/{user}` binds by id. Override to bind by a
+     * human-readable column instead — `/posts/{post}` matching a slug:
+     *
+     *     public function getRouteKeyName(): string { return 'slug'; }
+     */
+    public function getRouteKeyName(): string
+    {
+        return $this->primaryKey;
+    }
+
+    /**
      * Wether the model can be soft deleted
      * 
      * @var string

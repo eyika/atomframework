@@ -42,18 +42,21 @@ class SubstituteBindings implements MiddlewareInterface
             if (Arr::exists($ignoreKeys, $key))
                 continue;
 
-            if (is_numeric($value)) {
-                // Route params are already sanitized at dispatch (Route::dispatch),
-                // so there is no second sanitize_data() pass here (PERF-19).
-                $model = $this->resolveModel($key, $value);
-                if ($model === null) {
-                    continue;
-                }
-                if ($model) {
-                    $routeParams[$key] = $model;
-                } else {
-                    throw new ModelNotFoundException("unable to retrieve $key with id $value");
-                }
+            // Every value is a binding candidate, not just numeric ones (BUG-18): a UUID
+            // primary key and a slug route key are both non-numeric, and the old is_numeric()
+            // gate let them through as raw strings — so a controller typed against the model
+            // silently received the URL segment instead.
+            $model = $this->resolveModel($key, $value);
+
+            // null = this parameter names no model at all (e.g. {format}); leave it as a scalar.
+            if ($model === null) {
+                continue;
+            }
+
+            if ($model) {
+                $routeParams[$key] = $model;
+            } else {
+                throw new ModelNotFoundException("unable to retrieve $key with " . $this->routeKeyFor($key) . " $value");
             }
         }
         $request->route_params = $routeParams;
@@ -62,7 +65,18 @@ class SubstituteBindings implements MiddlewareInterface
     }
 
     /**
-     * Resolve a model instance based on the parameter key and value.
+     * Resolve a model instance for a route parameter.
+     *
+     * The three outcomes are deliberately distinct (BUG-19) — the caller cannot behave
+     * correctly if "no such row" and "not a model parameter" look the same:
+     *
+     *   null   the parameter names no model at all ({format}, {page}) — leave it a scalar
+     *   false  it names a model, but no row matched — the caller raises ModelNotFoundException
+     *   model  bound
+     *
+     * The false case matters because find()/first() return NULL on a miss since BUG-23. Passing
+     * that straight through made a missing row indistinguishable from a non-model parameter, so
+     * the not-found path silently stopped firing and controllers received the raw URL segment.
      *
      * @param string $key
      * @param mixed $value
@@ -75,11 +89,42 @@ class SubstituteBindings implements MiddlewareInterface
             return null;
         }
 
-        if ($modelClass && class_exists($modelClass)) {
-            return $modelClass::getBuilder()->find($value, false);
+        if (!class_exists($modelClass)) {
+            return false;
         }
 
-        return false;
+        $builder  = $modelClass::getBuilder();
+        $routeKey = $this->routeKeyFor($key, $builder);
+
+        // Binding by the primary key keeps the original find() path; a model that overrides
+        // getRouteKeyName() (slug, uuid, …) is looked up on that column instead.
+        $model = $routeKey === $builder->primaryKey
+            ? $builder->find($value, false)
+            : $builder->where($routeKey, $value)->first(false);
+
+        // Normalise a miss (null or false, depending on the finder) to false.
+        return $model ?: false;
+    }
+
+    /**
+     * The column a route parameter binds against — the model's route key, or the primary key
+     * when the parameter names no model (used only for the not-found message).
+     */
+    protected function routeKeyFor(string $key, $builder = null): string
+    {
+        if ($builder === null) {
+            $modelClass = $this->modelClassForKey($key);
+
+            if (!$modelClass || !class_exists($modelClass)) {
+                return 'id';
+            }
+
+            $builder = $modelClass::getBuilder();
+        }
+
+        return method_exists($builder, 'getRouteKeyName')
+            ? $builder->getRouteKeyName()
+            : $builder->primaryKey;
     }
 
     /**
@@ -109,6 +154,13 @@ class SubstituteBindings implements MiddlewareInterface
         $map = [];
         $fullPath = base_path('app/Models');
         $namespace = project_namespace();
+
+        // An app with no app/Models directory is legitimate (an API with no route-model
+        // binding, a fresh skeleton). Scanning it anyway threw UnexpectedValueException out
+        // of RecursiveDirectoryIterator, so any route WITH a parameter 500'd.
+        if (!is_dir($fullPath)) {
+            return self::$modelMap = [];
+        }
 
         NamespaceHelper::loadAndPerformActionOnClasses($namespace, $fullPath, function (string $class_name, string $model) use (&$map) {
             // Keyed by the lowercased short class name (matches the previous
