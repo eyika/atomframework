@@ -104,6 +104,15 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Migrations — package migration directories were only half-honoured.** `migrate` ran migrations
+  from directories registered with `ServiceProvider::loadMigrationsFrom()`, but its siblings did
+  not: `migrate:rollback` resolved each migration as
+  `base_path("database/migrations/{$class}.php")`, so a package migration that `migrate` had itself
+  applied could never be rolled back — it failed with *"Migration file not found"* — and
+  `migrate:status` globbed only the app directory, so package migrations never appeared at all.
+  Discovery now lives in one place (`Console\Concerns\ResolvesMigrationPaths`) shared by `migrate`,
+  `rollback` and `migrate:status`; `migrate:reset`/`migrate:refresh` inherit it via `rollback`. The
+  app's directory is still searched first, so ordering is unchanged. (`93ff152`)
 - **Query builder / `orderBy()`** — two silent ordering defects, in both the model builder and the
   static `DB` builder. Successive calls **replaced** each other rather than accumulating, so
   `orderBy('is_default', 'DESC')->orderBy('currency')` sorted by `currency` alone; and a comma list
