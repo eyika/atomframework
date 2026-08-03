@@ -88,15 +88,25 @@ abstract class Model implements ModelInterface
 {
     use QueryBuilder, InitsModelEvents, DeepClonesSelf, HasRelationships;
 
+    /**
+     * Builder methods reachable as `Model::foo(...)` via __callStatic(), which instantiates the
+     * model and forwards to `_foo(...)`.
+     *
+     * The invariant, enforced by DynamicMethodResolutionTest in both directions: this list is
+     * exactly the set of `_`-prefixed public methods on the builder. A method declared plainly
+     * (`public function foo()`) can NOT be added here and made to work — PHP resolves a real
+     * public method directly and raises "Non-static method … cannot be called statically" before
+     * __callStatic is ever consulted. To expose such a method, rename it to `_foo` first.
+     */
     protected const DYNAMIC_STATIC_METHODS = [
-        'create', 'find', 'findByEmail', 'findByUsername', 'findOr', 'first', 'firstOr', 'firstWhere', 'firstOrCreate', 'findBy',
+        'create', 'find', 'findByEmail', 'findByUsername', 'findOr', 'first', 'firstOr', 'firstWhere', 'firstOrCreate', 'firstOrNew', 'findBy',
         'findByArray', 'all', 'get', 'cursor', 'lazy', 'paginate', 'random', 'count', 'avg', 'max', 'min', 'increment', 'decrement',
         'sum', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor', 'group_concat', 'update',
-        'updateOrCreate', 'delete', 'restore', 'limit', 'offset', 'where', 'whereIn',
-        'whereNotIn', 'whereNotIn', 'whereLike', 'whereNotLike', 'whereBetween', 'whereNotBetween', 'whereLessThan',
-        'whereLessThanOrEqual', 'whereGreaterThanOrEqual', 'whereNull', 'whereNotNull',
-        'whereEqual', 'whereNotEqual', 'orWhere', 'orWhereLike', 'orWhereNotLike',
-        'orWhereLessThan', 'orWhereGreaterThan', 'orWhereGreaterThan', 'orWhereGreaterThanOrEqual',
+        'updateOrCreate', 'delete', 'restore', 'limit', 'offset', 'orderBy', 'with', 'raw', 'where', 'whereIn',
+        'whereNotIn', 'whereLike', 'whereNotLike', 'whereBetween', 'whereNotBetween', 'whereLessThan',
+        'whereLessThanOrEqual', 'whereGreaterThan', 'whereGreaterThanOrEqual', 'whereNull', 'whereNotNull',
+        'whereEqual', 'whereNotEqual', 'orWhere', 'orWhereIn', 'orWhereNotIn', 'orWhereLike', 'orWhereNotLike',
+        'orWhereLessThan', 'orWhereLessThanOrEqual', 'orWhereGreaterThan', 'orWhereGreaterThanOrEqual',
         'orWhereEqual', 'orWhereNotEqual', 'orWhereNull', 'orWhereNotNull', 'beginTransaction',
         'commit', 'rollback', 'distinct', 'join', 'leftJoin', 'rightJoin', 'fullOuterJoin', 'lockForUpdate'
     ];

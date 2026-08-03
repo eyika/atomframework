@@ -89,7 +89,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return Model
      */
-    public function orderBy($column = "id", $direction = "ASC");
+    public function _orderBy($column = "id", $direction = "ASC");
 
     // public function addSelect()
 
@@ -119,7 +119,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return \PDOStatement|false $statement
      */
-    public function raw($sql, $bind);
+    public function _raw($sql, $bind);
     
     /**
      * create a model from array values and save to db
@@ -191,6 +191,15 @@ interface ModelInterface extends ModelEventsInterface
     public function _firstOrCreate($search, $keyvalues, $is_protected = true, $select = []);
 
     /**
+     * First matching row, or the result of $callable when nothing matches.
+     *
+     * @param callable|null $callable
+     * @param bool          $is_protected
+     * @return self|mixed
+     */
+    public function _firstOr($callable = null, $is_protected = true);
+
+    /**
      * Retrieve model its current values or instantiate it if it doesn't exist from array values
      * The model still needs to be save to the DB by calling save()
      * 
@@ -241,7 +250,7 @@ interface ModelInterface extends ModelEventsInterface
      * @return Model|User
      */
 
-    public function with($models);
+    public function _with($models);
 
     
     /**
@@ -679,6 +688,24 @@ interface ModelInterface extends ModelEventsInterface
     public function _orWhereLessThanOrEqual($column, $value);
 
     /**
+     * OR variant of whereIn().
+     *
+     * @param string $column
+     * @param array  $values
+     * @return self
+     */
+    public function _orWhereIn($column, $values);
+
+    /**
+     * OR variant of whereNotIn().
+     *
+     * @param string $column
+     * @param array  $values
+     * @return self
+     */
+    public function _orWhereNotIn($column, $values);
+
+    /**
      * Add a where clause to the query instance
      * 
      * @param string $column
@@ -800,4 +827,11 @@ interface ModelInterface extends ModelEventsInterface
      * @return Model
      */
     public function _distinct(string $column);
+
+    /**
+     * Add FOR UPDATE to the next read, locking the matched rows for the transaction.
+     *
+     * @return self
+     */
+    public function _lockForUpdate();
 }
