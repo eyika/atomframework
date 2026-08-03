@@ -122,6 +122,18 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Routing — string route targets never worked.** A route registered with a plain file path
+  (rather than a closure or controller) was rendered with `include_once __DIR__ . "/$callback"`,
+  where `__DIR__` is the **framework's own** `src/Http` directory — so the file was looked up
+  inside `vendor/`, where an application's file can never live. It now resolves against the
+  application base. `include_once` also meant that hitting the same target twice in one process
+  returned `true` instead of re-rendering: invisible under PHP-FPM, but under a persistent worker
+  the page rendered once and then silently stopped. It is now `include`, and the resolved path is
+  confined to the application directory with `realpath()`, so `../` cannot escape it. (`185a377`)
+- **Routing** — removed an always-true guard in `Server::handle()`
+  (`preg_match('/^.*$/i', $request->requestUri())`, which matches every string) and the unreachable
+  `else` branch behind it. It implied some requests fell through to PHP's built-in server; none
+  ever did. (`185a377`)
 - **Migrations — package migration directories were only half-honoured.** `migrate` ran migrations
   from directories registered with `ServiceProvider::loadMigrationsFrom()`, but its siblings did
   not: `migrate:rollback` resolved each migration as
