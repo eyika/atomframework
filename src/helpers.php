@@ -19,6 +19,7 @@ use Eyika\Atom\Framework\Support\Database\Model;
 use Eyika\Atom\Framework\Support\Database\PaginatedData;
 use Eyika\Atom\Framework\Support\Encrypter;
 use Eyika\Atom\Framework\Support\Facade\Broadcast;
+use Eyika\Atom\Framework\Support\Facade\Encrypter as EncrypterFacade;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use Eyika\Atom\Framework\Support\Facade\JsonResponse;
 use Eyika\Atom\Framework\Support\Facade\Request;
@@ -171,21 +172,39 @@ if (! function_exists('db')) {
     }
 }
 
+if (!function_exists('encrypter')) {
+    /**
+     * The container's encrypter, or a fresh one when no application is bound.
+     *
+     * `app()` is `Facade::getFacadeApplication()`, which is nullable BY DESIGN —
+     * `setFacadeApplication()` accepts null so a harness can restore a "none set" state. The
+     * previous `if (!$encrypter = app()->make('encrypter'))` therefore dereferenced null and
+     * fataled with "Call to a member function make() on null" before the `if` could evaluate:
+     * the fallback was unreachable in exactly the situation it existed for.
+     *
+     * This matters beyond tidiness because ModelHelpers::encryptValues()/decryptValues() call
+     * the global helpers, so a model declaring `const encrypted` was unusable without a booted
+     * container.
+     */
+    function encrypter(): Encrypter {
+        // Resolved through the facade rather than app()->make() so the order is:
+        // a swapped instance, then the container binding, then a fresh Encrypter. Going via
+        // the container directly ignored `Encrypter::swap()` whenever no application was bound,
+        // which meant a test could not substitute a fixed-key encrypter for model-level
+        // encryption (ModelHelpers calls these helpers, not the facade).
+        return EncrypterFacade::getFacadeRoot() ?: new Encrypter();
+    }
+}
+
 if (!function_exists('encrypt')) {
     function encrypt($value, $serialize = false) {
-        if (!$encrypter = app()->make('encrypter')) {
-            $encrypter = new Encrypter();
-        }
-        return $encrypter->encrypt($value, $serialize);
+        return encrypter()->encrypt($value, $serialize);
     }
 }
 
 if (!function_exists('decrypt')) {
     function decrypt($value, $serialize = false) {
-        if (!$encrypter = app()->make('encrypter')) {
-            $encrypter = new Encrypter();
-        }
-        return $encrypter->decrypt($value, $serialize);
+        return encrypter()->decrypt($value, $serialize);
     }
 }
 

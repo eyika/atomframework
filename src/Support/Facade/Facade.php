@@ -284,9 +284,14 @@ class Facade
     }
 
     /**
-     * Get the root object behind the facade.
+     * Get the root object behind the facade — a swapped instance if one is set, otherwise the
+     * container binding, or **null** when neither exists.
      *
-     * @return mixed
+     * The null case is what makes this usable by callers that must degrade gracefully: the
+     * encrypt()/decrypt() helpers resolve through here so a `Encrypter::swap(...)` is honoured
+     * even with no application bound, which reaching for `app()->make('encrypter')` could not do.
+     *
+     * @return mixed|null
      */
     public static function getFacadeRoot()
     {
