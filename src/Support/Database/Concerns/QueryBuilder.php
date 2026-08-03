@@ -63,11 +63,22 @@ trait QueryBuilder
         // SECURITY: escape each column identifier and whitelist the direction so a
         // user-supplied sort column/direction (e.g. from a query string) can't inject.
         $dir = strtoupper(trim((string) $direction)) === 'DESC' ? 'DESC' : 'ASC';
-        $cols = array_map(
-            fn($c) => \Eyika\Atom\Framework\Support\Database\Connection::quoteQualified(trim($c)),
+
+        // Every column carries its OWN direction, and successive calls ACCUMULATE. Previously
+        // the clause was assigned wholesale, so orderBy('a','DESC')->orderBy('b') silently
+        // dropped the first key entirely; and the direction was appended once after the comma
+        // list, so orderBy('a,b','DESC') emitted `ORDER BY a, b DESC` — i.e. a ascending.
+        $terms = array_map(
+            fn($c) => \Eyika\Atom\Framework\Support\Database\Connection::quoteQualified(trim($c)) . " $dir",
             explode(',', (string) $column)
         );
-        $this->bind_or_filter['ORDER BY'] = implode(', ', $cols) . " $dir";
+
+        $existing = $this->bind_or_filter['ORDER BY'] ?? '';
+
+        $this->bind_or_filter['ORDER BY'] = $existing === ''
+            ? implode(', ', $terms)
+            : $existing . ', ' . implode(', ', $terms);
+
         return $this;
     }
 
