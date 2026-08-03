@@ -90,6 +90,13 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Query builder / `orderBy()`** — two silent ordering defects, in both the model builder and the
+  static `DB` builder. Successive calls **replaced** each other rather than accumulating, so
+  `orderBy('is_default', 'DESC')->orderBy('currency')` sorted by `currency` alone; and a comma list
+  appended one direction after the whole list, so `orderBy('a,b', 'DESC')` emitted
+  `ORDER BY a, b DESC` — i.e. `a` ascending. Terms now accumulate and each column carries its own
+  direction. Neither case errored, so a multi-key sort just came back in the wrong order.
+  (`aaae9d6`)
 - **Schema / indexes** — `dropUnique(['col'])` and `dropIndex(['col'])` could not work on any
   driver but MySQL, for two independent reasons:
   - Index-name resolution ran a hard-coded `INFORMATION_SCHEMA.STATISTICS` query. It is now
