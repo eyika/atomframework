@@ -189,6 +189,26 @@ if (!function_exists('decrypt')) {
     }
 }
 
+if (!function_exists('hasher')) {
+    /**
+     * The password hasher (SEC-27). Distinct from getHash() below, which is a keyed HMAC used for
+     * lookup replicas of encrypted columns — this one is a one-way password hash and is not
+     * affected by APP_KEY, so rotating the key never invalidates stored passwords.
+     */
+    function hasher(): \Eyika\Atom\Framework\Support\Hashing\Hasher {
+        if (!$hasher = app()->make('hash')) {
+            $hasher = new \Eyika\Atom\Framework\Support\Hashing\Hasher();
+        }
+        return $hasher;
+    }
+}
+
+if (!function_exists('bcrypt')) {
+    function bcrypt(string $value, array $options = []): string {
+        return hasher()->make($value, $options);
+    }
+}
+
 if (!function_exists('getHash')) {
     function getHash(string $data, string $algo = 'sha256', ?string $key = null, bool $binary = false) {
         if (!$key)
