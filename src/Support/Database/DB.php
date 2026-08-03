@@ -128,11 +128,19 @@ class DB
         // SECURITY: escape column identifier(s) + whitelist direction (mirrors
         // QueryBuilder::orderBy) — a user-supplied sort must not inject.
         $dir = strtoupper(trim((string) $direction)) === 'DESC' ? 'DESC' : 'ASC';
-        $cols = array_map(
-            fn($c) => Connection::quoteQualified(trim($c)),
+
+        // Per-term direction + accumulation across calls, mirroring QueryBuilder::orderBy.
+        $terms = array_map(
+            fn($c) => Connection::quoteQualified(trim($c)) . " $dir",
             explode(',', (string) $column)
         );
-        $this->bind_or_filter['ORDER BY'] = implode(', ', $cols) . " $dir";
+
+        $existing = $this->bind_or_filter['ORDER BY'] ?? '';
+
+        $this->bind_or_filter['ORDER BY'] = $existing === ''
+            ? implode(', ', $terms)
+            : $existing . ', ' . implode(', ', $terms);
+
         return $this;
     }
 
