@@ -102,15 +102,13 @@ class Server
 
     private static function loadFacades()
     {
-        try {
-            foreach (self::facadables as $tag => $class_name) {
-                $facade_obj = new $class_name;
-
-                static::$app->instance($tag, $facade_obj);
-            }
-        } catch (Exception $e) {
-            logger()->info("INTERNAL: ".$e->getMessage(), $e->getTrace());
-            ///TODO handle exception
+        // Bound lazily: each facade is constructed on first resolution, not on every boot.
+        // Eagerly `new`-ing them meant an app paid for every facade whether or not it used
+        // one, and — worse — a constructor that legitimately refuses to build (the Encrypter
+        // rejecting an unset APP_KEY) surfaced as a boot-time error on unrelated requests.
+        // singleton() still shares one instance per application, as instance() did.
+        foreach (self::facadables as $tag => $class_name) {
+            static::$app->singleton($tag, fn () => new $class_name);
         }
     }
 }
