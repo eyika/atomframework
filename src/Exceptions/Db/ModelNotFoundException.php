@@ -8,7 +8,12 @@ final class ModelNotFoundException extends BaseException
 {
     protected array $errors;
 
-    public function __construct($message = 'model not found', array $errors)
+    /**
+     * $errors previously had no default while $message did — a required parameter after an
+     * optional one, which PHP deprecates and which made the one-argument call in
+     * SubstituteBindings fatal with ArgumentCountError instead of raising this exception.
+     */
+    public function __construct($message = 'model not found', array $errors = [])
     {
        parent::__construct($message);
        $this->errors = $errors;
