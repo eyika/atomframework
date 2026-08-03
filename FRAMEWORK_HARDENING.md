@@ -134,7 +134,7 @@ CRITICAL / HIGH / MED / LOW — framework-level exploitability or breakage. Some
 | ID | Sev | Location | Issue | Fix |
 |----|-----|----------|-------|-----|
 | SEC-28 | MED | `Http/Response.php:80` → `BaseResponse.php:146` | `download($path)` `readfile` with no allowlist → arbitrary file read if path user-influenced. | Confine to base dir via `realpath`. |
-| SEC-29 | MED | `Http/Route.php:360` | String route target `include_once __DIR__."/$callback"` → LFI if influenced. | Whitelist/realpath base. |
+| SEC-29 | MED | `Http/Route.php:360` | ✅ DONE (2026-08-03, with BUG-15) — the string route target is now resolved with `realpath()` and required to stay inside the application directory, so `../` cannot escape it; a missing target, a directory, or an out-of-base path all raise `NotFoundHttpException`. Still defence in depth rather than a live hole (string targets are dev-registered, not user input), at the cost of one `realpath()` per render. `StringRouteTargetTest`. |
 | SEC-30 | MED | `Http/Request.php:145,179`, `Support/Storage/File.php:1020-1084` | Client `filename=` stored verbatim; native path ops raw. | `basename()` on intake. |
 | SEC-31 | LOW | `Http/Request.php:102` | Multipart reads full body, no size cap; `ValidatePostSize` not registered → memory DoS. | Register post-size limit. |
 | SEC-32 | LOW | `Exceptions/ExceptionHandler.php:53,130,183` | Inconsistent `app.debug` default; ensure trace not leaked in prod. | Standardize `false` default. |
@@ -169,8 +169,8 @@ CRITICAL / HIGH / MED / LOW — framework-level exploitability or breakage. Some
 | BUG-12 | HIGH | `Http/Route.php:139,165` | `any()` filed under `ANY` but dispatch scans `$routes[$method]` → ANY never matches. | Expand ANY across methods or check in dispatch. |
 | BUG-13 | MED | `Http/Route.php:320` | `matchesRoute` indexes `$routeParts[$i]` OOB when URI longer than route. | Bound loop; validate leftovers. |
 | BUG-14 | MED | `Http/Server.php:51` | API detection via `str_contains('/api')` not prefix → `/therapist-notes` misrouted. | `str_starts_with($uri,'/api')`. |
-| BUG-15 | MED | `Http/Route.php:360` | String callbacks `include_once` relative to `Http/`; `_once` blocks re-render. | (see SEC-29) resolve against app base. |
-| BUG-16 | LOW | `Http/Server.php:49` | `preg_match('/^.*$/i', ...)` matches all → dead `else` branch. | Remove dead branch. |
+| BUG-15 | MED | `Http/Route.php:360` | ✅ DONE (2026-08-03) — `include_once __DIR__ . "/$callback"` resolved against the **framework's own** `src/Http` directory, i.e. inside `vendor/`, where an application's file can never be — so a string route target could not work at all. It now resolves against the application base. `include_once` also returned `true` instead of re-rendering on a second hit: harmless per-request under FPM, but under a persistent worker the page rendered once and then silently stopped, so it is now `include`. `StringRouteTargetTest` (6 tests incl. repeat-render and traversal refusal). |
+| BUG-16 | LOW | `Http/Server.php:49` | ✅ DONE (2026-08-03) — `preg_match('/^.*$/i', $request->requestUri())` matches every string (including empty), so the condition was always true and its `return false; // Let php builtin server serve` else-branch was unreachable. Both removed — leaving it implied that some requests fall through to the built-in server, which never happened. |
 
 ### 1.3 Route model binding
 | ID | Sev | Location | Issue | Fix |

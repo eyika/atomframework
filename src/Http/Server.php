@@ -48,33 +48,35 @@ class Server
             static::$app->instance('request', $request);
             static::$app->registerProviders();
             // ErrorHandler::register();
-            if (preg_match('/^.*$/i', $request->requestUri())) {
-                // Route wiring is owned by the app's RouteServiceProvider: each
-                // Route::map() declares a matcher + middleware group + route file, and
-                // the first map whose matcher accepts the request handles it (a
-                // matcher-less map is the fallback). No matching map → no routes are
-                // loaded and dispatch returns a not-found response.
-                $map = Route::resolveMapFor($request);
-                if ($map !== null && $map->getFile() !== null) {
-                    Route::isApiRequest($map->isStateless());
-                    if ($middleware = $map->getMiddleware()) {
-                        static::loadMiddlewares($middleware);
-                    }
-                    Route::loadRoutesFile($map->getName(), $map->getFile());
-                }
+            // The guard here used to be preg_match('/^.*$/i', $request->requestUri()), which
+            // matches every string (including the empty one) — so the condition was always
+            // true and its `return false; // Let php builtin server serve` else-branch was
+            // unreachable. Removed rather than left as a misleading suggestion that some
+            // requests fall through to the built-in server (BUG-16).
 
-                $status = Route::dispatch($request);
+            // Route wiring is owned by the app's RouteServiceProvider: each
+            // Route::map() declares a matcher + middleware group + route file, and
+            // the first map whose matcher accepts the request handles it (a
+            // matcher-less map is the fallback). No matching map → no routes are
+            // loaded and dispatch returns a not-found response.
+            $map = Route::resolveMapFor($request);
+            if ($map !== null && $map->getFile() !== null) {
+                Route::isApiRequest($map->isStateless());
+                if ($middleware = $map->getMiddleware()) {
+                    static::loadMiddlewares($middleware);
+                }
+                Route::loadRoutesFile($map->getName(), $map->getFile());
+            }
+
+            $status = Route::dispatch($request);
                 // Only remember the "previous URL" for web GET navigation. Storing it
                 // for API, AJAX/JSON, or non-GET requests forced a needless session
                 // write — a DB write under the MySQL session handler — on every
                 // request, and overwriting it on POST is wrong anyway (PERF-18).
-                if (!$request->isAssetRequest() && $request->isMethod('GET') && !Route::isApiRequest())
-                    Route::storeCurrent();
+            if (!$request->isAssetRequest() && $request->isMethod('GET') && !Route::isApiRequest())
+                Route::storeCurrent();
 
-                return $status;
-            } else {
-                return false; // Let php bultin server serve
-            }
+            return $status;
         } catch (Throwable $e) {
             /** @var ExceptionHandler $handler */
             $handler = static::$app->make(ExceptionHandler::class);
