@@ -1,6 +1,8 @@
 <?php
 namespace Eyika\Atom\Framework\Support\Mail\Drivers;
 
+use Eyika\Atom\Framework\Support\Mail\Concerns\CollectsCustomHeaders;
+
 use Exception;
 use Eyika\Atom\Framework\Support\Mail\Contracts\MailerInterface;
 use Eyika\Atom\Framework\Support\Mail\Contracts\MailerResponse;
@@ -11,6 +13,7 @@ use Mailgun\Mailgun;
 
 class MailgunDriver implements MailerInterface
 {
+    use CollectsCustomHeaders;
     protected $client;
     protected $config;
     protected array $tos;
@@ -62,11 +65,20 @@ class MailgunDriver implements MailerInterface
             if (!empty($this->replyTos)) {
                 $payload['h:Reply-To'] = implode(', ', $this->replyTos);
             }
+
+            // Mailgun carries arbitrary headers as `h:` prefixed payload keys — the same
+            // mechanism the Reply-To above already uses.
+            foreach ($this->customHeaders as $name => $value) {
+                $payload['h:' . $name] = $value;
+            }
+
             $response = $this->client->messages()->send($this->config['mailgun']['domain'], $payload);
 
             return new MailerResponse(true, $response->getId());
         } catch (Exception $e) {
             return new MailerResponse(false, null, $e->getMessage(), $e);
+        } finally {
+            $this->clearCustomHeaders();
         }
     }
 }

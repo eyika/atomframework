@@ -1,12 +1,15 @@
 <?php
 namespace Eyika\Atom\Framework\Support\Mail\Drivers;
 
+use Eyika\Atom\Framework\Support\Mail\Concerns\CollectsCustomHeaders;
+
 use Exception;
 use Eyika\Atom\Framework\Support\Mail\Contracts\MailerInterface;
 use Eyika\Atom\Framework\Support\Mail\Contracts\MailerResponse;
 
 class FailoverDriver implements MailerInterface
 {
+    use CollectsCustomHeaders;
     /**
      * @var array<string>
      */
@@ -52,6 +55,12 @@ class FailoverDriver implements MailerInterface
                 /**
                  * @var MailerInterface $mailer
                  */
+                // Forward collected headers to whichever transport actually sends, or a
+                // List-Unsubscribe would silently vanish the moment the primary failed over.
+                if ($this->customHeaders) {
+                    $mailer->headers($this->customHeaders);
+                }
+
                 $response = $mailer->send($this->tos[0] ?? '', $subject, $body);
                 
                 if ($response['success']) {
@@ -61,6 +70,8 @@ class FailoverDriver implements MailerInterface
                 // Continue to the next mailer in case of failure
             }
         }
+
+        $this->clearCustomHeaders();
 
         return new MailerResponse(false, null, 'All failover mailers failed');
     }

@@ -1,6 +1,8 @@
 <?php
 namespace Eyika\Atom\Framework\Support\Mail\Drivers;
 
+use Eyika\Atom\Framework\Support\Mail\Concerns\CollectsCustomHeaders;
+
 use Exception;
 use Eyika\Atom\Framework\Support\Mail\Contracts\MailerInterface;
 use Eyika\Atom\Framework\Support\Mail\Contracts\MailerResponse;
@@ -9,6 +11,7 @@ use PHPMailer\PHPMailer\SMTP;
 
 class SmtpDriver implements MailerInterface
 {
+    use CollectsCustomHeaders;
     protected PHPMailer $mailer;
     /**
      * BaseMailer constructor.
@@ -63,6 +66,10 @@ class SmtpDriver implements MailerInterface
     {
         $r = false;
         try {
+            foreach ($this->customHeaders as $name => $value) {
+                $this->mailer->addCustomHeader($name, $value);
+            }
+
             $this->mailer->Subject = $subject;
             // Set HTML body. No basedir: image src attributes are hosted
             // on an HTTP(S) endpoint, so PHPMailer shouldn't try to resolve
@@ -83,6 +90,10 @@ class SmtpDriver implements MailerInterface
             $this->mailer->clearAllRecipients();
             $this->mailer->clearReplyTos();
             $this->mailer->clearAttachments();
+            // Same reasoning as the recipients above: one static PHPMailer for the whole process
+            // means an uncleared List-Unsubscribe would ride along on the next message sent.
+            $this->mailer->clearCustomHeaders();
+            $this->clearCustomHeaders();
         }
     }
 }

@@ -110,6 +110,44 @@ class Mailer
         return new static(static::$config, static::$driver);
     }
 
+    /**
+     * Set a custom message header.
+     *
+     * The case this exists for is bulk-mail compliance — Gmail and Yahoo have required
+     * `List-Unsubscribe` plus `List-Unsubscribe-Post` on bulk sends since February 2024, and a
+     * sender without them is throttled. That matters even for a mostly-transactional domain,
+     * because the throttling lands on the domain, not on the campaign:
+     *
+     *     Mailer::to($subscriber)
+     *         ->header('List-Unsubscribe', "<{$oneClickUrl}>, <mailto:unsub@example.com>")
+     *         ->header('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click')
+     *         ->send('Our July newsletter');
+     *
+     * Headers are cleared after each send, so one message's cannot leak into the next.
+     */
+    public static function header(string $name, string $value): self
+    {
+        if (!self::$instantiated) {
+            new static;
+        }
+        self::$driver->header($name, $value);
+        return new static(self::$config, self::$driver);
+    }
+
+    /**
+     * Set several headers at once.
+     *
+     * @param array<string, string> $headers
+     */
+    public static function headers(array $headers): self
+    {
+        if (!self::$instantiated) {
+            new static;
+        }
+        self::$driver->headers($headers);
+        return new static(self::$config, self::$driver);
+    }
+
     public static function buildHtml(string $templateName, array $data = [], string|null $resourcePath = null): self
     {
         if (!self::$instantiated) {
