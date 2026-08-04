@@ -8,6 +8,27 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
 
 ### Security
 
+- **BREAKING — request attributes now outrank client-supplied input.** `$request->foo = $obj`
+  writes to the attribute bag, but `__get` resolved that bag **last** — after input, route params
+  and query — so anything trusted server-side code bound could be shadowed by a request parameter
+  of the same name.
+
+  The visible symptom was a route-param collision: a `{business}` route param shadowed a
+  middleware-bound `$request->business`, so a handler received the raw URL segment where an object
+  was expected. **The security consequence is that client input could shadow bound context too** —
+  on an unauthenticated route, `$request->current_customer` returned whatever the caller posted
+  under that key. Server-established context must not be overridable by the caller.
+
+  Resolution order is now **attributes → route params → input → query**. Note that reorders a
+  second pair as well: input used to beat route params, so a body field could shadow the matched
+  path segment (`/users/{id}` with `id` in the body). Declared properties (`auth_user` etc.) never
+  reached `__get` and are unaffected.
+
+  **If any code depended on input overriding a bound attribute or a route param, it changes
+  behaviour.** That dependency was the bug. Middleware that binds context should move to the
+  explicit `setAttribute()`/`attribute()` API (see Added), which no parameter can shadow.
+  (`2bafa5c`)
+
 - **BREAKING — `Encrypter` application key.** `key:generate` writes `APP_KEY=base64:…`, but the
   `Encrypter` passed that string to `openssl_encrypt()` verbatim, which truncates it to the cipher's
   key length — so the effective AES-256 key literally began with the constant bytes `base64:`, and
@@ -31,6 +52,10 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   <https://basttyydev.serv00.net/docs/beta/advanced/key-rotation>
 
 ### Added
+- **HTTP** — an explicit request-attribute API: `setAttribute()`, `attribute()`, `hasAttribute()`
+  and `attributes()`. These read and write only the attribute bag, so server-bound context cannot
+  be shadowed by a request parameter regardless of how `__get` resolves. Prefer them in middleware
+  over `$request->foo = $obj` when the value must be the one you set. (`2bafa5c`)
 - **Hashing** — a first-party password hasher. The framework verified passwords but shipped no way
   to produce a hash, so each app called `password_hash()` itself and chose its own algorithm and
   cost. `Support\Hashing\Hasher` wraps PHP's password API behind `config('hashing')` — bcrypt
