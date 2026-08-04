@@ -258,7 +258,10 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
             }
             $in = implode(', ', $in);
             $where[] = "{$_k} {$_operator} ($in){$or_and}";
-            $incr_operator = false;
+            // Consumes an operator slot: QueryBuilder::__where() pushes 'IN'/'NOT IN' like any
+            // other. Reporting false left filter()'s index parked, so the NEXT condition re-read
+            // this IN and emitted `col IN :param` — a syntax error pointing at the placeholder.
+            $incr_operator = true;
         }
 
     } else if ($v !== null && is_string($v) && in_array(strtoupper(trim($v)), ['NULL', 'IS NULL', 'IS NOT NULL', 'NOT NULL'], true)) {
@@ -279,7 +282,10 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
         $param = ":{$__k}";
         $where[] = "LOWER({$_k}) $_operator LOWER($param){$or_and}";
         $bind[$param] = "%$v%";
-        $incr_operator = false;
+        // Also consumes a slot ('LIKE'/'NOT LIKE' is pushed by __where()). This one failed
+        // SILENTLY rather than loudly: a leaked LIKE produces valid SQL, so the following
+        // clause quietly became a substring match instead of the equality that was asked for.
+        $incr_operator = true;
 
     } else {
         // default (=, >, <, etc.)
