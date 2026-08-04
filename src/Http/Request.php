@@ -244,18 +244,37 @@ class Request
         }
     }
 
+    /**
+     * Resolve a dynamic property.
+     *
+     * ATTRIBUTES ARE CHECKED FIRST, and deliberately so. They are what trusted server-side code
+     * binds — middleware attaching the resolved tenant, the authenticated customer, and so on —
+     * via `$request->foo = $obj`. `input` and `query` are supplied by the CLIENT.
+     *
+     * Attributes used to be checked LAST, which meant anything a middleware bound could be
+     * shadowed by a request parameter of the same name. Two consequences, the second serious:
+     *
+     *  - a route with a `{business}` param shadowed a middleware-bound `$request->business`,
+     *    handing back the raw URL segment where an object was expected;
+     *  - on an unauthenticated route, a client could shadow bound context simply by naming it in
+     *    the request body — `$request->current_customer` returned whatever the caller posted
+     *    under that key. Server-set context must not be overridable by the caller.
+     *
+     * Route params still outrank input, since they are matched from the path rather than sent as
+     * a payload. Declared properties (auth_user etc.) never reach __get at all.
+     */
     public function __get($name) {
-        if (array_key_exists($name, $this->input)) {
-            return $this->input[$name];
+        if (array_key_exists($name, $this->attributes)) {
+            return $this->attributes[$name];
         }
         if (array_key_exists($name, $this->route_params)) {
             return $this->route_params[$name];
         }
+        if (array_key_exists($name, $this->input)) {
+            return $this->input[$name];
+        }
         if (array_key_exists($name, $this->query)) {
             return $this->query[$name];
-        }
-        if (array_key_exists($name, $this->attributes)) {
-            return $this->attributes[$name];
         }
         return null;
     }
@@ -309,6 +328,44 @@ class Request
     public function merge(array $data)
     {
         $this->attributes = array_merge($this->attributes, $data);
+    }
+
+    /**
+     * Bind server-side context onto the request — the explicit form of `$request->foo = $obj`.
+     *
+     * Prefer this and attribute() over the magic accessors when the value MUST be the one your
+     * middleware set: they read and write only the attribute bag, so no request parameter can
+     * shadow them regardless of how __get's precedence evolves.
+     */
+    public function setAttribute(string $key, mixed $value): static
+    {
+        $this->attributes[$key] = $value;
+
+        return $this;
+    }
+
+    /**
+     * Read bound context, ignoring input, query and route params entirely.
+     */
+    public function attribute(string $key, mixed $default = null): mixed
+    {
+        return array_key_exists($key, $this->attributes) ? $this->attributes[$key] : $default;
+    }
+
+    /** Whether $key was bound as an attribute (a bound null still counts). */
+    public function hasAttribute(string $key): bool
+    {
+        return array_key_exists($key, $this->attributes);
+    }
+
+    /**
+     * Every bound attribute.
+     *
+     * @return array<string, mixed>
+     */
+    public function attributes(): array
+    {
+        return $this->attributes;
     }
 
     public function only(array $keys)
