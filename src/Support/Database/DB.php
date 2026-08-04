@@ -123,6 +123,58 @@ class DB
         return $this;
     }
 
+    /**
+     * GROUP BY one or more columns — mirrors QueryBuilder::_groupBy().
+     *
+     * Note there is no chainable `select()` here: DB::select() is already a static raw-SELECT
+     * executor. Projection on this builder goes through the argument, `get(['a', 'b'])`.
+     */
+    public function groupBy($columns)
+    {
+        $columns = is_array($columns) ? $columns : explode(',', (string) $columns);
+
+        $terms = array_map(
+            fn ($c) => Connection::quoteQualified(trim((string) $c)),
+            array_filter($columns, fn ($c) => trim((string) $c) !== '')
+        );
+
+        if (!$terms) {
+            return $this;
+        }
+
+        $existing = $this->bind_or_filter['GROUP BY'] ?? '';
+        $this->bind_or_filter['GROUP BY'] = $existing === ''
+            ? implode(', ', $terms)
+            : $existing . ', ' . implode(', ', $terms);
+
+        return $this;
+    }
+
+    /** Filter on an aggregate — mirrors QueryBuilder::_having(). The value is always bound. */
+    public function having($column, $operatorOrValue = null, $value = null)
+    {
+        if ($value === null) {
+            $value = $operatorOrValue;
+            $operator = '=';
+        } else {
+            $operator = $operatorOrValue;
+        }
+
+        $left = Connection::compileAggregateExpression((string) $column);
+        $operator = Connection::safeComparator($operator);
+
+        $existing = $this->bind_or_filter['HAVING'] ?? ['sql' => '', 'bind' => []];
+        $param = ':having_' . count($existing['bind']);
+
+        $existing['sql'] = ($existing['sql'] === '' ? '' : $existing['sql'] . ' AND ')
+            . "$left $operator $param";
+        $existing['bind'][$param] = is_bool($value) ? (int) $value : $value;
+
+        $this->bind_or_filter['HAVING'] = $existing;
+
+        return $this;
+    }
+
     public function orderBy($column = "id", $direction = "ASC")
     {
         // SECURITY: escape column identifier(s) + whitelist direction (mirrors
