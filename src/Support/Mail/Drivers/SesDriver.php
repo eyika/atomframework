@@ -1,6 +1,8 @@
 <?php
 namespace Eyika\Atom\Framework\Support\Mail\Drivers;
 
+use Eyika\Atom\Framework\Support\Mail\Concerns\CollectsCustomHeaders;
+
 use Aws\Ses\SesClient;
 use Aws\Exception\AwsException;
 use Exception;
@@ -9,6 +11,7 @@ use Eyika\Atom\Framework\Support\Mail\Contracts\MailerResponse;
 
 class SesDriver implements MailerInterface
 {
+    use CollectsCustomHeaders;
     protected $client;
     protected $config;
     protected array $tos;
@@ -56,6 +59,19 @@ class SesDriver implements MailerInterface
     public function send($subject, $body): MailerResponse
     {
         try {
+            // The SES v1 SendEmail action has no field for arbitrary headers — only SendRawEmail,
+            // which takes a pre-built MIME message, can carry them. Fail loudly rather than
+            // sending without: a silently dropped List-Unsubscribe is precisely the outcome
+            // header support exists to prevent, and it would only surface later as throttling.
+            if ($this->customHeaders) {
+                throw new Exception(
+                    'The SES driver cannot send custom headers ('
+                    . implode(', ', array_keys($this->customHeaders))
+                    . ') — the SendEmail API has no field for them. Use the SMTP, Mailgun or '
+                    . 'Postmark driver for mail that requires List-Unsubscribe.'
+                );
+            }
+
             $params = [
                 'Source' => $this->from ?? $this->config['from'],
                 'Destination' => [
@@ -85,6 +101,10 @@ class SesDriver implements MailerInterface
         } catch (AwsException $e) {
             // Return a failure response with the error message
             return new MailerResponse(false, null, $e->getAwsErrorMessage());
+        } catch (Exception $e) {
+            return new MailerResponse(false, null, $e->getMessage(), $e);
+        } finally {
+            $this->clearCustomHeaders();
         }
     }
 }

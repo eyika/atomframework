@@ -1,6 +1,8 @@
 <?php
 namespace Eyika\Atom\Framework\Support\Mail\Drivers;
 
+use Eyika\Atom\Framework\Support\Mail\Concerns\CollectsCustomHeaders;
+
 use Exception;
 use PHPMailer\PHPMailer\PHPMailer;
 use Eyika\Atom\Framework\Support\Mail\Contracts\MailerInterface;
@@ -8,6 +10,7 @@ use Eyika\Atom\Framework\Support\Mail\Contracts\MailerResponse;
 
 class SendmailDriver implements MailerInterface
 {
+    use CollectsCustomHeaders;
     protected $mailer;
 
     public function __construct(array $config)
@@ -41,6 +44,10 @@ class SendmailDriver implements MailerInterface
     public function send($subject, $body): MailerResponse
     {
         try {
+            foreach ($this->customHeaders as $name => $value) {
+                $this->mailer->addCustomHeader($name, $value);
+            }
+
             $this->mailer->Subject = $subject;
             $this->mailer->Body = $body;
             $result = $this->mailer->send();
@@ -49,10 +56,12 @@ class SendmailDriver implements MailerInterface
         } catch (Exception $e) {
             return new MailerResponse(false, null, $e->getMessage(), $e);
         } finally {
-            // See SmtpDriver::send() for why we must reset recipients here.
+            // See SmtpDriver::send() for why we must reset recipients (and headers) here.
             $this->mailer->clearAllRecipients();
             $this->mailer->clearReplyTos();
             $this->mailer->clearAttachments();
+            $this->mailer->clearCustomHeaders();
+            $this->clearCustomHeaders();
         }
     }
 }
