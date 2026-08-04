@@ -91,6 +91,41 @@ interface ModelInterface extends ModelEventsInterface
      */
     public function _orderBy($column = "id", $direction = "ASC");
 
+    /**
+     * GROUP BY one or more columns.
+     *
+     * @param string|array $columns
+     * @return self
+     */
+    public function _groupBy($columns);
+
+    /**
+     * Filter on an aggregate — `having('SUM(total)', '>', 500)`. The value is bound; the left
+     * side accepts a column or an aggregate over one.
+     *
+     * @param string $column
+     * @param mixed  $operatorOrValue
+     * @param mixed  $value
+     * @return self
+     */
+    public function _having($column, $operatorOrValue = null, $value = null);
+
+    /**
+     * Project a column subset rather than hydrating every column.
+     *
+     * @param string|array $columns
+     * @return self
+     */
+    public function _select($columns);
+
+    /**
+     * Add a raw SELECT expression, e.g. `SUM(total) AS lifetime`. Never pass user input.
+     *
+     * @param string $expression
+     * @return self
+     */
+    public function _selectRaw(string $expression);
+
     // public function addSelect()
 
     /**
