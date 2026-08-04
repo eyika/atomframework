@@ -122,6 +122,20 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Query builder — a clause following `whereIn()` or `whereLike()` used the wrong operator.**
+  The operator index stopped advancing after those two conditions, so the next clause re-read
+  their operator.
+  - After `whereIn()`/`whereNotIn()` this produced **invalid SQL** —
+    `whereIn('sku', […])->where('locale', 'en')` emitted `` `locale` IN :locale `` and failed with
+    a syntax error pointing at the placeholder. Reversing the order appeared to work only because
+    the misalignment then fell off the end of the operator list.
+  - After `whereLike()`/`whereNotLike()` it was **worse, because it failed silently**: a leaked
+    `LIKE` is still valid SQL, so the following clause quietly became a substring match instead of
+    the equality requested — `where('locale', 'en')` also matched `'en-GB'`. **If you have queries
+    that chain a clause after a `whereLike()`, their results were wrong, not merely broken.**
+
+  `whereNull()` is unaffected and deliberately unchanged — it consumes no operator slot.
+  (`d66a2cf`)
 - **Models — builder methods were not all callable statically.** `Model::orderBy('name')->get()`
   raised a raw PHP *"Non-static method … cannot be called statically"* rather than the framework's
   own message. Two causes: `DYNAMIC_STATIC_METHODS` had drifted from the builder's public API, and
