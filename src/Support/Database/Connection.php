@@ -91,6 +91,47 @@ class Connection {
       return $cols ? implode(', ', $cols) : '*';
   }
 
+  /** Aggregates reachable through the dynamic `{function}_{column}` call form. */
+  public const AGGREGATE_FUNCTIONS = [
+    'group_concat', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor',
+    'min', 'max', 'avg', 'sum',
+  ];
+
+  /**
+   * Split a dynamic aggregate call — `sum_amount_paid` — into its function and column.
+   *
+   * Matched longest-first against the known functions, which is what makes both halves correct:
+   *
+   *   - the column keeps its underscores. Splitting on every `_` and taking the first two parts
+   *     truncated `sum_campaign_id` to SUM(campaign), so the helper failed on every snake_case
+   *     column — i.e. nearly all of them. It threw rather than returning a wrong number, but only
+   *     because the truncated name usually does not exist.
+   *   - multi-word FUNCTIONS resolve. Testing only the first segment meant `group_concat_x` read
+   *     as `group`, which is not an aggregate, so those never dispatched at all.
+   *
+   * count() takes no column and so never reaches here — which is exactly why probing count()
+   * suggested the aggregates were healthy.
+   *
+   * @return array{0:string,1:string}|null  [function, column], or null if this is not one
+   */
+  public static function parseAggregateCall(string $name): ?array
+  {
+    $functions = self::AGGREGATE_FUNCTIONS;
+    usort($functions, fn ($a, $b) => strlen($b) <=> strlen($a));
+
+    $lower = strtolower($name);
+
+    foreach ($functions as $fn) {
+      if (str_starts_with($lower, $fn . '_')) {
+        $column = substr($name, strlen($fn) + 1);
+
+        return $column === '' ? null : [$fn, $column];
+      }
+    }
+
+    return null;
+  }
+
   /**
    * Validate the left-hand side of a HAVING clause: a plain column, or one of the known
    * aggregates applied to a column (or to `*`). The identifier is quoted; anything that is
@@ -1135,20 +1176,20 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
     }
     
     # get aggregates by filters
-    else if ( $args[0] && (count($args) == 2 || count($args) == 3) && strpos($name, '_') !== false && in_array(strtolower(explode('_', $name)[0] ?? ''), ['min', 'max', 'avg', 'sum', 'group_concat', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor']) ) {
-      list($agr, $col) = explode('_', $name);
+    else if ( $args[0] && (count($args) == 2 || count($args) == 3) && self::parseAggregateCall($name) !== null ) {
+      [$agr, $col] = self::parseAggregateCall($name);
       $table = $args[0];
       list($where, $bind) = $instance->filter($args[1]);
       $distinct = isset($args[2]) ? 'DISTINCT ' : '';
-      $row = $instance->fetch('SELECT ' . $agr . "($distinct" . $col . ') FROM `' . $table . '` ' . $where, $bind)[0];
+      $row = $instance->fetch('SELECT ' . $agr . "($distinct" . self::quoteQualified($col) . ') FROM ' . self::quoteIdent($table) . ' ' . $where, $bind)[0];
       return array_shift($row);
     }
-    else if ( $args[0] && (count($args) > 1 || count($args) < 6) && strpos($name, '_') !== false && in_array(strtolower(explode('_', $name)[0] ?? ''), ['min', 'max', 'avg', 'sum', 'group_concat', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor']) ) {
-      list($agr, $col) = explode('_', $name);
+    else if ( $args[0] && (count($args) > 1 || count($args) < 6) && self::parseAggregateCall($name) !== null ) {
+      [$agr, $col] = self::parseAggregateCall($name);
       $table = $args[0];
       list($where, $bind) = $instance->filter($args[1], $args[3], $args[2]);
       $distinct = isset($args[4]) ? 'DISTINCT ' : '';
-      $row = $instance->fetch('SELECT ' . $agr . "($distinct" . $col . ') FROM `' . $table . '` ' . $where, $bind)[0];
+      $row = $instance->fetch('SELECT ' . $agr . "($distinct" . self::quoteQualified($col) . ') FROM ' . self::quoteIdent($table) . ' ' . $where, $bind)[0];
       return array_shift($row);
     }
     
