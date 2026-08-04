@@ -186,6 +186,15 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Query builder — aggregates were broken on `snake_case` columns.** `sum('campaign_id')` failed
+  with *"no such column: campaign"*. Aggregates dispatch as `{function}_{column}`, and that name
+  was split on **every** underscore with only the first two parts kept — so the column was
+  truncated at its first underscore, making `sum`/`avg`/`min`/`max` unusable on nearly every column
+  in a typical schema. **A second defect in the same expression** meant multi-word aggregates
+  (`group_concat`, `var_pop`, `bit_and`, `bit_or`, `bit_xor`) never dispatched at all, since only
+  the first segment was tested against the function list. Both replaced by a parser that matches
+  the known functions longest-first. `count()` was unaffected — it takes no column — which is why
+  it looked healthy. (`c2989b5`)
 - **Mail — the Postmark driver sent its reply-to address as `bcc`.** `sendEmail()` was called
   positionally and the reply-to landed in the **tenth** argument, which is `$bcc`, not `$replyTo`.
   So replies were not routed **and** that address silently received a blind copy of every message
