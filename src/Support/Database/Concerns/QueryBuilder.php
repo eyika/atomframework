@@ -46,6 +46,15 @@ trait QueryBuilder
             $this->fill($values);
     }
 
+    /**
+     * Columns/expressions set by select()/selectRaw(), used when a read is not given an explicit
+     * $select argument. Reset with the rest of the query state so it cannot leak into the next
+     * query built from the same instance.
+     *
+     * @var array<int, string>
+     */
+    protected array $selected = [];
+
     protected function resetInstance()
     {
         $this->bind_or_filter = null;
@@ -56,6 +65,7 @@ trait QueryBuilder
         $this->transaction_mode = false;
         $this->with_model_name = '';
         $this->joins = [];
+        $this->selected = [];
     }
 
     /**
@@ -73,6 +83,12 @@ trait QueryBuilder
      */
     protected function readableFields(): array
     {
+        // A chained select()/selectRaw() projection wins over the full fillable list; an explicit
+        // $select argument on the read method still takes precedence over both.
+        if ($this->selected) {
+            return $this->selected;
+        }
+
         $fields = $this::fillable;
 
         if (!$this->softdeletes) {
@@ -80,6 +96,95 @@ trait QueryBuilder
         }
 
         return $fields;
+    }
+
+    /**
+     * GROUP BY one or more columns. Identifiers are quoted, so a user-supplied grouping column
+     * cannot inject; use selectRaw() for the aggregate expressions that usually accompany it.
+     *
+     *     Order::select(['customer_id'])->selectRaw('SUM(total) AS lifetime')
+     *          ->groupBy('customer_id')->get()
+     */
+    public function _groupBy($columns)
+    {
+        $columns = is_array($columns) ? $columns : explode(',', (string) $columns);
+
+        $terms = array_map(
+            fn ($c) => \Eyika\Atom\Framework\Support\Database\Connection::quoteQualified(trim((string) $c)),
+            array_filter($columns, fn ($c) => trim((string) $c) !== '')
+        );
+
+        if (!$terms) {
+            return $this;
+        }
+
+        $existing = $this->bind_or_filter['GROUP BY'] ?? '';
+        $this->bind_or_filter['GROUP BY'] = $existing === ''
+            ? implode(', ', $terms)
+            : $existing . ', ' . implode(', ', $terms);
+
+        return $this;
+    }
+
+    /**
+     * HAVING filters on an aggregate, which WHERE cannot — `having('SUM(total)', '>', 500)`.
+     *
+     * The left-hand side accepts a plain column or an aggregate call over one; anything else is
+     * rejected rather than interpolated, since HAVING is the one clause whose left side is
+     * naturally an expression and so the easiest place to smuggle SQL in. The VALUE is always
+     * bound, never inlined.
+     */
+    public function _having($column, $operatorOrValue = null, $value = null)
+    {
+        if ($value === null) {
+            $value = $operatorOrValue;
+            $operator = '=';
+        } else {
+            $operator = $operatorOrValue;
+        }
+
+        $left = \Eyika\Atom\Framework\Support\Database\Connection::compileAggregateExpression((string) $column);
+        $operator = \Eyika\Atom\Framework\Support\Database\Connection::safeComparator($operator);
+
+        $existing = $this->bind_or_filter['HAVING'] ?? ['sql' => '', 'bind' => []];
+        $param = ':having_' . count($existing['bind']);
+
+        $existing['sql'] = ($existing['sql'] === '' ? '' : $existing['sql'] . ' AND ')
+            . "$left $operator $param";
+        $existing['bind'][$param] = is_bool($value) ? (int) $value : $value;
+
+        $this->bind_or_filter['HAVING'] = $existing;
+
+        return $this;
+    }
+
+    /**
+     * Project a column subset instead of hydrating every column.
+     *
+     * The read methods already accepted a $select argument; this is the chainable form, so a
+     * projection can be expressed where the rest of the query is built.
+     */
+    public function _select($columns)
+    {
+        $columns = is_array($columns) ? $columns : func_get_args();
+
+        $this->selected = array_merge($this->selected ?: [], array_values($columns));
+
+        return $this;
+    }
+
+    /**
+     * Add a raw SELECT expression — `selectRaw('SUM(total) AS lifetime')`.
+     *
+     * Deliberately a separate, explicitly-named method rather than letting select() accept
+     * expressions: this is the one place the builder emits caller-supplied SQL verbatim, and the
+     * name is what tells a reader (and a reviewer) that the argument must never be user input.
+     */
+    public function _selectRaw(string $expression)
+    {
+        $this->selected = array_merge($this->selected ?: [], [$expression]);
+
+        return $this;
     }
 
     /**

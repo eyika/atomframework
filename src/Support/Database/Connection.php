@@ -91,6 +91,43 @@ class Connection {
       return $cols ? implode(', ', $cols) : '*';
   }
 
+  /**
+   * Validate the left-hand side of a HAVING clause: a plain column, or one of the known
+   * aggregates applied to a column (or to `*`). The identifier is quoted; anything that is
+   * neither shape throws rather than being interpolated.
+   *
+   * HAVING is the one clause whose left side is naturally an expression, which makes it the
+   * easiest place to smuggle SQL in — so it is whitelisted rather than escaped.
+   */
+  public static function compileAggregateExpression(string $expression): string
+  {
+    $expression = trim($expression);
+
+    if (preg_match('/^(\w+)\s*\(\s*(DISTINCT\s+)?(\*|[A-Za-z_][\w.]*)\s*\)$/i', $expression, $m)) {
+      $fn = strtoupper($m[1]);
+
+      $allowed = ['COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'STDDEV', 'VAR_POP', 'GROUP_CONCAT',
+                  'BIT_AND', 'BIT_OR', 'BIT_XOR'];
+
+      if (!in_array($fn, $allowed, true)) {
+        throw new \InvalidArgumentException("Unsupported aggregate [{$m[1]}] in HAVING.");
+      }
+
+      $distinct = $m[2] ? 'DISTINCT ' : '';
+      $inner = $m[3] === '*' ? '*' : self::quoteQualified($m[3]);
+
+      return "{$fn}({$distinct}{$inner})";
+    }
+
+    if (preg_match('/^[A-Za-z_][\w.]*$/', $expression)) {
+      return self::quoteQualified($expression);
+    }
+
+    throw new \InvalidArgumentException(
+      "HAVING accepts a column or an aggregate over one, got [{$expression}]."
+    );
+  }
+
   /** Whitelist a JOIN type; anything unrecognised falls back to INNER. */
   public static function safeJoinType($type): string
   {
@@ -593,12 +630,20 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
         $sql .= " $joins";
       }
 
-      $order_limit_or_offset = '';
-      
+      // Trailing clauses are collected by keyword and emitted in FIXED SQL order below, not in
+      // the order the builder happened to record them. Appending them as they were encountered
+      // meant `limit(2)->orderBy('n')` emitted `LIMIT 2 ORDER BY n` — a syntax error — while the
+      // reverse call order worked. GROUP BY/HAVING would have inherited the same fragility.
+      $clauses = ['GROUP BY' => '', 'HAVING' => '', 'ORDER BY' => '', 'LIMIT' => '', 'OFFSET' => ''];
+
+      // Explicit, because HAVING may now contribute binds before condition() first writes to it.
+      $bind = [];
+      $where = [];
+
       if ( $bind_or_filter ) {
         if ( is_array($bind_or_filter) ) {
           $i = 0; $j = 0; $len = count($bind_or_filter);
-          foreach (["ORDER BY", 'LIMIT', 'OFFSET'] as $_val) {
+          foreach (array_keys($clauses) as $_val) {
             if (array_key_exists($_val, $bind_or_filter)) {
               $len--;
             }
@@ -610,16 +655,22 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
           }
 
           foreach ( $bind_or_filter as $k => $v ) {
-            if ( $k == 'ORDER BY' ) {
-              $order_limit_or_offset .= " ORDER BY $v";
-              // $j++;
-              continue;
-            }
-            if ( in_array($k, ['LIMIT', 'OFFSET']) ) {
-              // LIMIT/OFFSET are always integers — cast so a user-supplied value
-              // can never inject (they can't be bound parameters here).
-              $order_limit_or_offset .= " $k " . (int) $v;
-              // $j++;
+            if ( array_key_exists($k, $clauses) ) {
+              if ( in_array($k, ['LIMIT', 'OFFSET'], true) ) {
+                // LIMIT/OFFSET are always integers — cast so a user-supplied value
+                // can never inject (they can't be bound parameters here).
+                $clauses[$k] = (string) (int) $v;
+              } elseif ( is_array($v) ) {
+                // HAVING arrives pre-compiled as ['sql' => …, 'bind' => […]] so its values stay
+                // bound rather than interpolated — it filters on aggregates, which the WHERE
+                // machinery above cannot express.
+                $clauses[$k] = (string) ($v['sql'] ?? '');
+                foreach ( ($v['bind'] ?? []) as $param => $value ) {
+                  $bind[$param] = $value;
+                }
+              } else {
+                $clauses[$k] = (string) $v;
+              }
               continue;
             }
             if ($len - $j <= 1)
@@ -650,7 +701,12 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
         }
       }
 
-      $sql .= $order_limit_or_offset;
+      // Fixed SQL order regardless of the order the builder recorded them in.
+      foreach ( $clauses as $keyword => $value ) {
+        if ( $value !== '' ) {
+          $sql .= " $keyword $value";
+        }
+      }
 
       // Pessimistic row lock (SELECT ... FOR UPDATE) — serializes concurrent readers
       // within a transaction so read-modify-write flows (e.g. wallet balances) are safe.
