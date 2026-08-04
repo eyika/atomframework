@@ -52,6 +52,27 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   <https://basttyydev.serv00.net/docs/beta/advanced/key-rotation>
 
 ### Added
+- **Mail — custom message headers**, via `header(string $name, string $value)` and
+  `headers(array)` on the `Mailer` and every driver. This is a deliverability requirement rather
+  than a convenience: Gmail and Yahoo have required `List-Unsubscribe` plus
+  `List-Unsubscribe-Post: List-Unsubscribe=One-Click` on bulk mail since **February 2024**, and an
+  in-body unsubscribe link does not satisfy the automated check. The throttling that follows
+  applies to the sending **domain**, so a non-compliant campaign degrades transactional mail too.
+
+  ```php
+  Mailer::to($subscriber)
+      ->header('List-Unsubscribe', "<{$oneClickUrl}>, <mailto:unsub@example.com>")
+      ->header('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click')
+      ->send('Our July newsletter');
+  ```
+
+  Headers are cleared after each send, so one message's cannot leak onto the next in a
+  `queue:work` run. CR/LF is rejected rather than sanitised (header injection), and re-setting a
+  name replaces it, since a duplicate `List-Unsubscribe` is itself a compliance failure.
+
+  **The SES driver cannot carry custom headers** — its v1 `SendEmail` API has no field for them —
+  so it **fails the send** with an explanatory `MailerResponse` instead of delivering without.
+  Use SMTP, Mailgun or Postmark for bulk mail. (`a0b5e69`)
 - **Query builder — `groupBy()`, `having()`, and a chainable `select()`/`selectRaw()`.** Per-key
   aggregation previously had to be done in PHP over every matching row, or dropped to raw SQL:
 
@@ -165,6 +186,10 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Mail — the Postmark driver sent its reply-to address as `bcc`.** `sendEmail()` was called
+  positionally and the reply-to landed in the **tenth** argument, which is `$bcc`, not `$replyTo`.
+  So replies were not routed **and** that address silently received a blind copy of every message
+  sent through Postmark. Now passed with named arguments. (`a0b5e69`)
 - **Query builder — aggregates ran on a *different connection*.** `Connection::__callStatic()`
   opened a new connection from config on every call, and every aggregate except `count()`
   dispatches through it (`sum_total`, `avg_total`, …). So an aggregate **inside a transaction
