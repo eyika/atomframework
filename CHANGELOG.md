@@ -52,6 +52,24 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   <https://basttyydev.serv00.net/docs/beta/advanced/key-rotation>
 
 ### Added
+- **Query builder — `groupBy()`, `having()`, and a chainable `select()`/`selectRaw()`.** Per-key
+  aggregation previously had to be done in PHP over every matching row, or dropped to raw SQL:
+
+  ```php
+  Order::select(['customer_id'])
+       ->selectRaw('SUM(total) AS lifetime')
+       ->groupBy('customer_id')
+       ->having('SUM(total)', '>', 100)
+       ->get();
+  ```
+
+  `having()` whitelists its left-hand side — a plain column, or a known aggregate over one — and
+  **throws** on anything else, because it is the one clause whose left side is naturally an
+  expression; the compared value is always bound. `selectRaw()` is separate from `select()` on
+  purpose: it is the only place the builder emits caller-supplied SQL verbatim, so **never pass
+  user input to it**. The static `DB` builder gains `groupBy()`/`having()` too; it has no
+  chainable `select()` because `DB::select()` is already a raw-SELECT executor — projection there
+  stays on `get(['a', 'b'])`. (`ccf166d`)
 - **HTTP** — an explicit request-attribute API: `setAttribute()`, `attribute()`, `hasAttribute()`
   and `attributes()`. These read and write only the attribute bag, so server-bound context cannot
   be shadowed by a request parameter regardless of how `__get` resolves. Prefer them in middleware
@@ -147,6 +165,16 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Query builder — aggregates ran on a *different connection*.** `Connection::__callStatic()`
+  opened a new connection from config on every call, and every aggregate except `count()`
+  dispatches through it (`sum_total`, `avg_total`, …). So an aggregate **inside a transaction
+  could not see that transaction's own uncommitted writes** and silently returned a stale figure;
+  a swapped test connection was ignored, so aggregates in tests hit the real configured database;
+  and each call opened another connection. They now use the bound connection. (`6b494a8`)
+- **Query builder — trailing clauses were emitted in call order, not SQL order.**
+  `limit(2)->orderBy('n')` produced `LIMIT 2 ORDER BY n` — a syntax error — while the reverse call
+  order worked. `GROUP BY`, `HAVING`, `ORDER BY`, `LIMIT` and `OFFSET` are now emitted in fixed SQL
+  order however they were set. (`ccf166d`)
 - **Query builder — a clause following `whereIn()` or `whereLike()` used the wrong operator.**
   The operator index stopped advancing after those two conditions, so the next clause re-read
   their operator.
