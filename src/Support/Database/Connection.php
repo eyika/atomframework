@@ -1053,7 +1053,20 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
    **/
   
   public static function __callStatic($name, $args) {
-    $instance = new static(config('database')); // Create an instance of the class
+    // Use the BOUND connection (or a swapped one in tests) and only fall back to opening a new
+    // one when nothing is bound. Unconditionally doing `new static(config('database'))` meant
+    // every dynamic call — the aggregates sum/avg/min/max/stddev/… all route through here —
+    // ran on a SEPARATE connection from the rest of the request. Two consequences:
+    //
+    //   - inside a transaction the aggregate could not see the transaction's own uncommitted
+    //     writes, so it silently returned a stale figure;
+    //   - each call opened another connection, and a swapped test connection was ignored
+    //     entirely, so an aggregate in a test hit the real configured database.
+    $instance = \Eyika\Atom\Framework\Support\Facade\DatabaseConnection::getFacadeRoot();
+
+    if (!$instance instanceof static) {
+      $instance = new static(config('database'));
+    }
 
     # get row or column from table
     if ( $args[0] && (count($args) == 1) && strpos($name, '_') !== false ) {
