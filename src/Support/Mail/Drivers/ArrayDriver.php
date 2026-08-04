@@ -1,11 +1,14 @@
 <?php
 namespace Eyika\Atom\Framework\Support\Mail\Drivers;
 
+use Eyika\Atom\Framework\Support\Mail\Concerns\CollectsCustomHeaders;
+
 use Eyika\Atom\Framework\Support\Mail\Contracts\MailerInterface;
 use Eyika\Atom\Framework\Support\Mail\Contracts\MailerResponse;
 
 class ArrayDriver implements MailerInterface
 {
+    use CollectsCustomHeaders;
     protected static $sentEmails = [];
     protected array $tos = [];
     protected array $from = [];
@@ -21,11 +24,13 @@ class ArrayDriver implements MailerInterface
                 'reply_to' => $this->replyTos,
                 'subject' => $subject,
                 'body' => $body,
+                'headers' => $this->customHeaders,
             ];
 
             $this->tos = [];
             $this->from = [];
             $this->replyTos = [];
+            $this->clearCustomHeaders();
             return new MailerResponse(true, null, null);
         } catch (\Exception $e) {
             return new MailerResponse(false, null, $e->getMessage(), $e);

@@ -1,6 +1,8 @@
 <?php
 namespace Eyika\Atom\Framework\Support\Mail\Drivers;
 
+use Eyika\Atom\Framework\Support\Mail\Concerns\CollectsCustomHeaders;
+
 use Exception;
 use Postmark\PostmarkClient;
 use Eyika\Atom\Framework\Support\BaseMailer;
@@ -9,6 +11,7 @@ use Eyika\Atom\Framework\Support\Mail\Contracts\MailerResponse;
 
 class PostmarkDriver implements MailerInterface
 {
+    use CollectsCustomHeaders;
     protected $client;
     protected $config;
     protected array $tos;
@@ -48,14 +51,16 @@ class PostmarkDriver implements MailerInterface
     public function send($subject, $body): MailerResponse
     {
         try {
-            // Send the email using Postmark
+            // Named arguments, because these were previously positional and the reply-to landed
+            // in the TENTH slot — which is $bcc, not $replyTo. So replies were not routed AND
+            // the reply-to address silently received a blind copy of every message.
             $result = $this->client->sendEmail(
-                $this->from ?? $this->config['from'], // From email address
-                $this->tos[0] ?? '',                              // To email address
-                $subject,                          // Subject of the email
-                $body,                             // HTML body content
-                null, null, null, null, null,
-                !empty($this->replyTos) ? implode(', ', $this->replyTos) : null
+                from: $this->from ?? $this->config['from'],
+                to: $this->tos[0] ?? '',
+                subject: $subject,
+                htmlBody: $body,
+                replyTo: !empty($this->replyTos) ? implode(', ', $this->replyTos) : null,
+                headers: $this->customHeaders ?: null,
             );
 
             // Return a standardized response structure
@@ -63,6 +68,8 @@ class PostmarkDriver implements MailerInterface
         } catch (Exception $e) {
             // Return a failure response with the error message
             return new MailerResponse(false, null, $e->getMessage(), $e);
+        } finally {
+            $this->clearCustomHeaders();
         }
     }
 }
