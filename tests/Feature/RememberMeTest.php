@@ -39,6 +39,39 @@ class RememberMeTest extends IntegrationTestCase
         $this->assertNull($guard->recall());
     }
 
+    /**
+     * The success path, which nothing covered: the other cases return null whether or not the
+     * cookie was read correctly, and the round-trip test below exercises encrypt/decrypt directly
+     * without going through recall() at all.
+     *
+     * It matters because `recall()` used to unwrap a Cookie object by hand
+     * (`is_object($c) && method_exists($c, 'getValue') ? $c->getValue() : $c`) — a local
+     * workaround for `cookie()` returning the wrapper. That workaround is gone now that
+     * `cookie()` returns the value, and this pins the behaviour so a regression in either place
+     * fails loudly instead of silently logging everyone out.
+     */
+    public function test_recall_resolves_the_user_from_a_valid_cookie(): void
+    {
+        $this->bindRequestWithCookies([
+            'auth_remember' => encrypt(json_encode(['id' => 42, 'v' => 1])),
+        ]);
+
+        $guard = new class([], 'web') extends SessionGuard {
+            public mixed $resolvedId = null;
+
+            protected function getUserById($id): ?\Eyika\Atom\Framework\Support\Auth\Contracts\AuthenticatableInterface
+            {
+                $this->resolvedId = $id;
+
+                return null; // no DB in this suite; the id is what proves the cookie was read
+            }
+        };
+
+        $guard->recall();
+
+        $this->assertSame(42, $guard->resolvedId, 'recall() never reached the user lookup');
+    }
+
     public function test_encrypted_remember_token_is_not_plaintext_and_roundtrips(): void
     {
         $payload = json_encode(['id' => 42, 'v' => 1]);

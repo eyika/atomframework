@@ -74,8 +74,9 @@ class SessionGuard extends Authenticator
      */
     public function recall(): ?AuthenticatableInterface
     {
-        $cookie = Request::cookie('auth_remember');
-        $token = is_object($cookie) && method_exists($cookie, 'getValue') ? $cookie->getValue() : $cookie;
+        // `cookie()` returns the value; the is_object/getValue dance that used to be here was a
+        // local workaround for it handing back the Cookie wrapper instead.
+        $token = Request::cookie('auth_remember');
         if (empty($token)) {
             return null;
         }
