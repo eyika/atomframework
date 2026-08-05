@@ -63,4 +63,35 @@ class JsonResponse extends BaseResponse
     {
         return $this->create(['message' => $message], self::STATUS_UNAUTHORIZED);
     }
+
+    /**
+     * 429 — the caller has sent too many requests.
+     *
+     * `$retryAfter`, in seconds, is emitted as the `Retry-After` header. Send it whenever you
+     * know when the limit resets: without it a client has no way to back off correctly, and
+     * well-behaved ones fall back to guessing or retrying immediately.
+     */
+    public function tooManyRequests(string $message = "Too many requests", int|null $retryAfter = null, array $errors = []): self
+    {
+        if ($retryAfter !== null) {
+            $this->setHeader('Retry-After', (string) max(0, $retryAfter));
+        }
+
+        return $this->create(['message' => $message, 'errors' => $errors], self::STATUS_TOO_MANY_REQUESTS);
+    }
+
+    /**
+     * 503 — the service is unavailable, e.g. maintenance or a dependency being down.
+     *
+     * The status constant already existed; this is the missing helper for it. `Retry-After` is
+     * accepted here for the same reason as on 429.
+     */
+    public function serviceUnavailable(string $message = "Service unavailable", int|null $retryAfter = null, array $errors = []): self
+    {
+        if ($retryAfter !== null) {
+            $this->setHeader('Retry-After', (string) max(0, $retryAfter));
+        }
+
+        return $this->create(['message' => $message, 'errors' => $errors], self::STATUS_SERVICE_NOT_AVAILABLE);
+    }
 }

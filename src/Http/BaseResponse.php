@@ -32,22 +32,35 @@ class BaseResponse
     public const STATUS_NOT_FOUND = 404;
     public const STATUS_CONFLICT = 409;
     public const STATUS_UNPROCESSABLE_ENTITY = 422;
+    public const STATUS_TOO_MANY_REQUESTS = 429;
     public const STATUS_INTERNAL_SERVER_ERROR = 500;
     public const STATUS_BAD_GATEWAY = 502;
     public const STATUS_SERVICE_NOT_AVAILABLE = 503;
 
+    /**
+     * Index of status code → the named helper on {@see JsonResponse} that emits it.
+     *
+     * This is a convenience index only. It is deliberately NOT a whitelist of permitted status
+     * codes — `Response::json()` used to validate against it, which made perfectly valid codes
+     * throw simply because no shorthand had been written for them. Every entry here must name a
+     * method that actually exists; `STATUS_NOT_MODIFIED => 'notModified'` used to appear below
+     * with no such method behind it.
+     */
     protected const METHOD_TO_FUNC = [
         self::STATUS_OK => 'ok',
         self::STATUS_NO_CONTENT => 'noContent',
         self::STATUS_CREATED => 'created',
-        self::STATUS_NOT_MODIFIED => 'notModified',
         self::STATUS_BAD_REQUEST => 'badRequest',
         self::STATUS_UNAUTHORIZED => 'unauthorized',
         self::STATUS_PAYMENT_REQUIRED => 'paymentRequired',
         self::STATUS_FORBIDDEN => 'forbidden',
         self::STATUS_NOT_FOUND => 'notFound',
+        self::STATUS_CONFLICT => 'conflict',
         self::STATUS_UNPROCESSABLE_ENTITY => 'unprocessableEntity',
+        self::STATUS_TOO_MANY_REQUESTS => 'tooManyRequests',
         self::STATUS_INTERNAL_SERVER_ERROR => 'serverError',
+        self::STATUS_BAD_GATEWAY => 'badGateway',
+        self::STATUS_SERVICE_NOT_AVAILABLE => 'serviceUnavailable',
     ];
 
     protected $headers = [];
