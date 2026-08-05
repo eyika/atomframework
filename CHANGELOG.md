@@ -198,6 +198,28 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Schema — `Schema::hasTable()` reported `true` for every table once anything had been written,
+  so guarded migrations silently skipped their own `CREATE`.** It read
+
+  ```php
+  return $statement->rowCount() > 0 || $statement->fetch() !== false;
+  ```
+
+  `rowCount()` is only defined for `INSERT`/`UPDATE`/`DELETE`. For a `SELECT` it is
+  driver-dependent, and `pdo_sqlite` answers it from `sqlite3_changes()` — the affected-row count
+  of the last **write** on that connection. So after any `INSERT`, the left operand was already
+  true, PHP short-circuited, and the real lookup never ran.
+
+  The damage is quiet by construction: `if (!Schema::hasTable($t)) { … }` was told the table
+  already existed, so it skipped the create and **threw nothing**. The failure surfaced much later
+  as *"no such table"* on the first request that used it. Any migration written in that shape was
+  affected. The compiled SQL was always correct — only the truthiness test around it was wrong,
+  and `columnExists()` was never affected. Now decided by whether a row came back.
+
+  **If you ran migrations under an affected build, verify the tables actually exist** rather than
+  trusting that the run reported success — a skipped create left no trace in the migration log.
+  (`e8d7dab`)
+
 - **HTTP — `response()->json()` rejected valid status codes.** It validated the requested status
   against an internal index of the codes that happen to have a named shorthand, so
 
