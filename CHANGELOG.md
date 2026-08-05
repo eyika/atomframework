@@ -8,6 +8,54 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
 
 ### Security
 
+- **BREAKING — trusted-proxy header flags are now real, and nothing upstream is trusted by
+  default.** Four compounding defects in the same small API.
+
+  `HEADER_X_FORWARDED_*` held `$_SERVER` key **strings** while carrying the names of Symfony's
+  **bit flags**, so the usage those names advertise silently did the wrong thing:
+
+  ```php
+  Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_HOST   // "HTTP_X_FORWARDED_^__TO"
+  ```
+
+  a byte-wise OR over strings, and a `TypeError` the moment it reached
+  `setTrustedProxies(array $proxies, int|null $headers = null)`. That exact expression shipped
+  **pre-written in the skeleton's `TrustProxies`**, and stayed invisible only because the
+  middleware then passed a hardcoded `1` and never read the property it had just computed.
+
+  The `$headers` parameter was in fact dead end to end — stored and never read — so header
+  selection did not exist: once a peer was trusted, **every** forwarded header was believed.
+
+  Worse, the scaffold defaulted to `['127.0.0.1', 'localhost']`, and `Kernel` registers
+  `TrustProxies::class` with no constructor arguments, so that fallback always won. Behind
+  LiteSpeed and similar the PHP process commonly sees `REMOTE_ADDR=127.0.0.1` for ordinary
+  traffic, which makes **every request** a trusted proxy — and `host()`, `scheme()` and
+  `clientIp()` all gate on that. A client could pick the `Host` the app resolves tenants and
+  generated URLs from, and `X-Forwarded-Proto: https` made a plaintext request report as secure.
+
+  Finally `isFromTrustedProxy()` was a bare `in_array()`, so `TRUSTED_PROXIES=10.0.0.0/8` matched
+  nothing — safe by accident, and impossible to debug.
+
+  The flags are now real single-bit integers (Symfony's values, so knowledge carried from there
+  works), each gating its own header, plus `HEADER_X_FORWARDED_ALL`. `isFromTrustedProxy()`
+  understands CIDR for IPv4 and IPv6 and an explicit `'*'`. The skeleton defaults to **no trusted
+  proxies**, reading `TRUSTED_PROXIES` via the new `app.trusted_proxies` config key.
+
+  ```php
+  // Trust a load balancer for the client IP and scheme, but NOT the Host.
+  $request->setTrustedProxies(
+      ['10.0.0.0/8'],
+      Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PROTO
+  );
+  ```
+
+  **Upgrade:** if you copied the old scaffold it passes the literal `1`, which is no longer a
+  recognised flag, so that app now trusts **no** forwarded headers. That is the fail-safe
+  direction — `clientIp()` returns the proxy's address rather than a spoofable one — but if you
+  are genuinely behind a proxy you must now declare it: set `TRUSTED_PROXIES` and pass the flags
+  you actually want. Apps that were relying on the loopback default were trusting their callers.
+  (`1db731d`)
+
 - **BREAKING — request attributes now outrank client-supplied input.** `$request->foo = $obj`
   writes to the attribute bag, but `__get` resolved that bag **last** — after input, route params
   and query — so anything trusted server-side code bound could be shadowed by a request parameter
@@ -52,6 +100,12 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   <https://basttyydev.serv00.net/docs/beta/advanced/key-rotation>
 
 ### Added
+- **HTTP — `Request::port()`**, resolving a trusted `X-Forwarded-Port` first (behind a
+  terminating proxy `SERVER_PORT` is the internal one), then the port in `Host`, then
+  `SERVER_PORT`, then the scheme default. There was previously no `port()` at all, which is why
+  `HEADER_X_FORWARDED_PORT` had nothing to govern. Also `Request::trustedHeaderSet()`, returning
+  the forwarded-header bitmask in effect. (`1db731d`)
+
 - **HTTP — `429 Too Many Requests` and `503 Service Unavailable` responses.** There was no way to
   return a 429 at all: no status constant, no helper. Both now exist, and both take an optional
   `Retry-After` in seconds — a rate-limit response without it gives a client nothing to back off
