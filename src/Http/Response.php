@@ -29,7 +29,12 @@ class Response extends BaseResponse
 
     public function json(array $data, int $statusCode = self::STATUS_OK): self
     {
-        if (!isset(self::METHOD_TO_FUNC[$statusCode])) {
+        // Validated as an HTTP status code, NOT against METHOD_TO_FUNC. That map lists the codes
+        // with a named helper, which is a much smaller set — so `json($data, 409)` threw
+        // "Invalid HTTP status code" despite 409 being a framework constant WITH a helper, as did
+        // every redirect code and 502/503. Whether a convenience method happens to exist says
+        // nothing about whether a status is legitimate.
+        if ($statusCode < 100 || $statusCode > 599) {
             throw new Exception("Invalid HTTP status code: $statusCode");
         }
 
