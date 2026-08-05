@@ -6,11 +6,14 @@ use Eyika\Atom\Framework\Http\Session;
 use Eyika\Atom\Framework\Support\Arrayable;
 
 /**
- * @property string HEADER_X_FORWARDED_FOR
- * @property string HEADER_X_FORWARDED_HOST
- * @property string HEADER_X_FORWARDED_PORT
- * @property string HEADER_X_FORWARDED_PROTO
- * 
+ * Forwarded-header bit flags, combined with `|` and passed to `setTrustedProxies()`.
+ *
+ * @property int HEADER_X_FORWARDED_FOR
+ * @property int HEADER_X_FORWARDED_HOST
+ * @property int HEADER_X_FORWARDED_PORT
+ * @property int HEADER_X_FORWARDED_PROTO
+ * @property int HEADER_X_FORWARDED_ALL
+ *
  * @method static void __set($name, $value)
  * @method static void __get($name)
  * @method static bool isAssetRequest(bool|null $value = null)
@@ -56,6 +59,7 @@ use Eyika\Atom\Framework\Support\Arrayable;
  * @method static string uri()
  * @method static string scheme()
  * @method static string host()
+ * @method static int port()
  * @method static string address()
  * @method static string clientIp()
  * @method static string ip()
@@ -63,6 +67,7 @@ use Eyika\Atom\Framework\Support\Arrayable;
  * @method static string schemeAndHttpHost()
  * @method static void setTrustedProxies(array $proxies, int|null $headers = null)
  * @method static bool isFromTrustedProxy()
+ * @method static int trustedHeaderSet()
  * @method static bool hasValidSignature()
  * @method static bool hasValidSignatureWhileIgnoring()
  * @method static bool validateSignature()
