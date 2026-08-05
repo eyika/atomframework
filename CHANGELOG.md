@@ -56,6 +56,40 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   you actually want. Apps that were relying on the loopback default were trusting their callers.
   (`1db731d`)
 
+- **BREAKING — `Request::cookie()` returns the cookie's VALUE, not the `Cookie` object.** It used
+  to hand back the wrapper while `query()` and `input()` return values, so the obvious line
+
+  ```php
+  $token = $request->cookie('cart_token') ?? $request->query('cart_token');
+  ```
+
+  was string-or-object depending on which branch hit, with nothing signalling it. Anything
+  defensive then silently discarded the cookie path — a real app guarded this with
+  `is_string($token)`, which is always false for an object, so the cookie never worked and only
+  the query string did. Nothing threw and nothing logged.
+
+  The framework was working around its own defect: `SessionGuard::recall()` carried an
+  `is_object(…) ? ->getValue() : …` unwrap, now removed.
+
+  Reading and writing are different jobs. A `Cookie` describes a `Set-Cookie` header — path,
+  domain, `SameSite`, expiry — and none of those exist on an inbound cookie, where the browser
+  sends only `name=value`. This now matches Laravel, where reading yields a string and the cookie
+  object is write-side only.
+
+  - `cookie('x')` → the value
+  - `cookie()` → `name => value` (previously an array of `Cookie` objects, which made `$default`'s
+    type incoherent)
+  - `cookieObject('x')` → the wrapper, or `null`
+  - `cookies()` → unchanged; it is the object collection and is honestly named
+
+  A `__toString()` on `Cookie` was considered and rejected: it fixes interpolation while leaving
+  `is_string()` false, `===` failing and `json_encode()` emitting `{}`. The type was the bug, not
+  the formatting.
+
+  **Upgrade:** `->cookie('x')->getValue()` now raises *call to a member function on string* — drop
+  the `->getValue()`, or switch to `cookieObject('x')` if you genuinely want the wrapper. That
+  failure is loud, unlike the one it replaces. (`81257b2`)
+
 - **BREAKING — request attributes now outrank client-supplied input.** `$request->foo = $obj`
   writes to the attribute bag, but `__get` resolved that bag **last** — after input, route params
   and query — so anything trusted server-side code bound could be shadowed by a request parameter
