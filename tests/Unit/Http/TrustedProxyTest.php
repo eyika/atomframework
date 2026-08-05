@@ -223,6 +223,10 @@ class TrustedProxyTest extends TestCase
 
     // ---------------------------------------------------------------- comma lists & port
 
+    /**
+     * Host and proto take the left-most entry. XFF does NOT — it walks the chain (see below), so
+     * the whole proxy range is trusted here to let the walk reach the client.
+     */
     public function test_left_most_entry_wins_in_comma_lists(): void
     {
         $request = $this->request('10.0.0.1', [
@@ -230,11 +234,62 @@ class TrustedProxyTest extends TestCase
             'HTTP_X_FORWARDED_HOST'  => 'tenant.example.com, internal.local',
             'HTTP_X_FORWARDED_PROTO' => 'https,http',
         ]);
-        $request->setTrustedProxies(['10.0.0.1']);
+        $request->setTrustedProxies(['10.0.0.0/8']);
 
         $this->assertSame('1.2.3.4', $request->clientIp());
         $this->assertSame('tenant.example.com', $request->host());
         $this->assertSame('https', $request->scheme());
+    }
+
+    // ---------------------------------------------------------------- XFF chain walking
+
+    /**
+     * Taking the left-most XFF entry is only correct when every proxy OVERWRITES the header.
+     * Proxies that append — the common case — leave the left-most entry as whatever the caller
+     * sent, so a client could simply state its own address. The chain is walked from the right,
+     * discarding hops that are themselves trusted proxies.
+     */
+    public function test_a_spoofed_entry_prepended_by_the_client_is_not_believed(): void
+    {
+        // Client sent "X-Forwarded-For: 9.9.9.9"; the proxy appended the real client 1.2.3.4.
+        $request = $this->request('10.0.0.1', ['HTTP_X_FORWARDED_FOR' => '9.9.9.9, 1.2.3.4']);
+        $request->setTrustedProxies(['10.0.0.0/8']);
+
+        $this->assertSame('1.2.3.4', $request->clientIp());
+    }
+
+    public function test_chained_trusted_proxies_are_walked_through(): void
+    {
+        $request = $this->request('10.0.0.1', ['HTTP_X_FORWARDED_FOR' => '1.2.3.4, 10.0.0.7, 10.0.0.8']);
+        $request->setTrustedProxies(['10.0.0.0/8']);
+
+        $this->assertSame('1.2.3.4', $request->clientIp());
+    }
+
+    public function test_a_single_hop_still_resolves_to_the_client(): void
+    {
+        $request = $this->request('10.0.0.1', ['HTTP_X_FORWARDED_FOR' => '1.2.3.4']);
+        $request->setTrustedProxies(['10.0.0.0/8']);
+
+        $this->assertSame('1.2.3.4', $request->clientIp());
+    }
+
+    /** Garbage means everything to its left is unusable; stop rather than walk into it. */
+    public function test_a_malformed_entry_stops_the_walk(): void
+    {
+        $request = $this->request('10.0.0.1', ['HTTP_X_FORWARDED_FOR' => '9.9.9.9, not-an-ip, 10.0.0.7']);
+        $request->setTrustedProxies(['10.0.0.0/8']);
+
+        $this->assertSame('10.0.0.1', $request->clientIp());
+    }
+
+    /** With everything trusted there is no untrusted hop to find; the left-most claim is all there is. */
+    public function test_wildcard_trust_falls_back_to_the_leftmost_entry(): void
+    {
+        $request = $this->request('10.0.0.1', ['HTTP_X_FORWARDED_FOR' => '1.2.3.4, 10.0.0.7']);
+        $request->setTrustedProxies(['*']);
+
+        $this->assertSame('1.2.3.4', $request->clientIp());
     }
 
     public function test_port_falls_back_through_host_then_server_port(): void

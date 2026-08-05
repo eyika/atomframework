@@ -130,6 +130,18 @@ class BaseResponse
         return $this;
     }
 
+    /**
+     * The status code currently set on this response.
+     *
+     * `status()` is a setter and `$statusCode` is protected, so there was previously no way for
+     * middleware wrapping a handler to ask whether that handler succeeded — the information was
+     * only observable after `send()`, via `sentStatus()`.
+     */
+    public function getStatusCode(): int
+    {
+        return $this->statusCode;
+    }
+
     public function terminate()
     {
         $this->_responseSent = true;
