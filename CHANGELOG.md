@@ -100,6 +100,10 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   <https://basttyydev.serv00.net/docs/beta/advanced/key-rotation>
 
 ### Added
+- **HTTP — `BaseResponse::getStatusCode()`.** `status()` is a setter and `$statusCode` is
+  protected, so middleware wrapping a handler had no way to ask whether that handler succeeded —
+  the status was only observable after `send()`, via `sentStatus()`. (`969d4cc`)
+
 - **HTTP — `Request::port()`**, resolving a trusted `X-Forwarded-Port` first (behind a
   terminating proxy `SERVER_PORT` is the internal one), then the port in `Host`, then
   `SERVER_PORT`, then the scheme default. There was previously no `port()` at all, which is why
@@ -252,6 +256,32 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Routing — middleware aliases were never resolved, so every `->middleware('auth')` route was a
+  500.** `Pipeline::resolveMiddleware()` returned the pipe's first segment as the class name, so
+  the pipeline reached `new 'auth'` and threw `Class "auth" not found` — reported from inside the
+  `SubstituteBindings` frame, which points away from the cause. `Route::$middlewareAliases` was
+  assigned in two places and read in none.
+
+  This was total rather than an edge case: `auth`, `throttle:…` and every app-defined alias, which
+  in a typical app is the entire authenticated API plus every rate-limited route. Parameter
+  splitting was never affected — a fully-qualified class name with `:args` resolved and received
+  its arguments correctly; only the lookup was missing.
+
+  An unknown alias now also fails loudly with `Unknown middleware alias [auth]` rather than a
+  missing-class error, since the latter sends you looking for a file that was never meant to
+  exist. (`969d4cc`)
+
+- **HTTP — `clientIp()` could be set by the client.** It took the left-most `X-Forwarded-For`
+  entry unconditionally, which is correct only when every proxy **overwrites** the header. Proxies
+  that append — the common case — leave the left-most entry as whatever the caller sent, so a
+  client could simply state its own address. The chain is now walked from the right, discarding
+  hops that are themselves trusted proxies, returning the first that is not.
+
+  **Behaviour change:** with only your edge proxy declared, an undeclared internal hop is now
+  returned instead of the address beyond it. That is the conservative answer — nothing to the left
+  of an undeclared hop can be vouched for — so declare every hop in `TRUSTED_PROXIES` if you want
+  the walk to reach the originating client. (`969d4cc`)
+
 - **Schema — `Schema::hasTable()` reported `true` for every table once anything had been written,
   so guarded migrations silently skipped their own `CREATE`.** It read
 
