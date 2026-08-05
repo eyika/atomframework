@@ -711,15 +711,39 @@ class Request
         // Only trust X-Forwarded-For when the request actually came through a
         // configured trusted proxy; otherwise it is client-spoofable. (The previous
         // regex used a literal `d` instead of `\d`, so it never matched anyway.)
-        if ($forwarded = $this->forwardedHeader(self::HEADER_X_FORWARDED_FOR)) {
-            // XFF is a comma list; the left-most entry is the original client.
-            $ip = trim(explode(',', $forwarded)[0]);
-            if (filter_var($ip, FILTER_VALIDATE_IP)) {
+        $forwarded = $this->forwardedHeader(self::HEADER_X_FORWARDED_FOR);
+        if ($forwarded === null) {
+            return $this->address();
+        }
+
+        // Walk the chain from the RIGHT, discarding hops that are themselves trusted proxies;
+        // the first address that isn't one is the client. Taking the left-most entry instead is
+        // only correct when every proxy OVERWRITES the header — proxies that append (the common
+        // case, and what the spec describes) leave the left-most entry as whatever the original
+        // caller sent, so a client could simply state its own address.
+        $chain = array_map('trim', explode(',', $forwarded));
+        $chain[] = (string) $this->address(); // the peer is the right-most hop, and it is real
+
+        for ($i = count($chain) - 1; $i >= 0; $i--) {
+            $ip = $chain[$i];
+
+            // Garbage anywhere in the chain means everything to its left is unusable. Fall back
+            // to the peer rather than the left-most entry — that entry is exactly what an
+            // attacker prepends, so trusting it here would reward injecting a malformed hop.
+            if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+                return $this->address();
+            }
+
+            if (!$this->isTrustedAddress($ip)) {
                 return $ip;
             }
         }
 
-        return $this->address();
+        // Every hop, including the peer, was a trusted proxy — so there is no untrusted address
+        // to find and the left-most entry is the best claim available. This is the '*' case.
+        $leftmost = $chain[0] ?? '';
+
+        return filter_var($leftmost, FILTER_VALIDATE_IP) ? $leftmost : $this->address();
     }
 
     public function ip()
@@ -767,12 +791,15 @@ class Request
         }
 
         $clientIp = $this->server('REMOTE_ADDR', '');
-        if ($clientIp === '') {
-            return false;
-        }
 
+        return $clientIp !== '' && $this->isTrustedAddress($clientIp);
+    }
+
+    /** Whether an arbitrary address (not just the peer) is one of the configured proxies. */
+    protected function isTrustedAddress(string $ip): bool
+    {
         foreach ($this->trustedProxies as $proxy) {
-            if ($this->ipMatches($clientIp, (string) $proxy)) {
+            if ($this->ipMatches($ip, (string) $proxy)) {
                 return true;
             }
         }

@@ -34,9 +34,29 @@ class RequestClientTest extends TestCase
         $_SERVER['HTTP_X_FORWARDED_FOR'] = '198.51.100.7, 10.1.2.3';
 
         $request = new Request();
+        // Both hops declared, so the walk passes through them to the originating client.
+        $request->setTrustedProxies(['203.0.113.9', '10.1.2.3']);
+
+        $this->assertSame('198.51.100.7', $request->clientIp());
+    }
+
+    /**
+     * With only the edge proxy declared, 10.1.2.3 is an undeclared hop — so nothing to its left
+     * can be vouched for and it is itself the furthest provable address.
+     *
+     * This previously returned the left-most entry unconditionally, which is only correct when
+     * every proxy OVERWRITES X-Forwarded-For. Proxies that append leave the left-most entry as
+     * whatever the caller sent, so that behaviour let a client state its own IP.
+     */
+    public function test_client_ip_stops_at_the_first_undeclared_hop(): void
+    {
+        $_SERVER['REMOTE_ADDR'] = '203.0.113.9';
+        $_SERVER['HTTP_X_FORWARDED_FOR'] = '198.51.100.7, 10.1.2.3';
+
+        $request = new Request();
         $request->setTrustedProxies(['203.0.113.9']);
 
-        $this->assertSame('198.51.100.7', $request->clientIp()); // left-most real client
+        $this->assertSame('10.1.2.3', $request->clientIp());
     }
 
     public function test_host_returns_http_host_by_default(): void
