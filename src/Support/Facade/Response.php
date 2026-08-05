@@ -8,6 +8,7 @@ use Eyika\Atom\Framework\Http\Proxy;
 
 /**
  * @method static HttpResponse getInstance()
+ * @method static int getStatusCode()
  * @method static BaseResponse terminate()
  * @method static HttpResponse plain(string $message, int $statusCode = self::STATUS_OK)
  * @method static HttpResponse image(string $data, int $statusCode = self::STATUS_OK, string $type = "jpeg")

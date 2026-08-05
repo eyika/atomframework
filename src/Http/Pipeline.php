@@ -93,14 +93,38 @@ class Pipeline
     }
 
     /**
-     * Resolve middleware from a string definition.
+     * Resolve middleware from a string definition to a class name and its arguments.
+     *
+     * `'throttle:auth-login,10,300'` → `[ThrottleRequests::class, ['auth-login', '10', '300']]`.
+     *
+     * The first segment is looked up in `Route::$middlewareAliases` (populated from the app
+     * Kernel) before being treated as a class name. That lookup was previously absent entirely:
+     * the raw segment was returned, so `carry()` reached `new 'auth'` and every route declaring
+     * `->middleware('auth')` died with `Class "auth" not found`. The alias map was assigned by
+     * `Server` and by the testing `TestCase` and read by nobody.
      */
     protected function resolveMiddleware(string|array $pipe)
     {
         // Split the pipe string to extract class and parameters
         $parts = is_array($pipe) ? $pipe : explode(':', $pipe, 2);
-        $pipeClass = $parts[0];
+        $name = $parts[0];
         $parameters = isset($parts[1]) ? explode(',', $parts[1]) : [];
+
+        $pipeClass = Route::$middlewareAliases[$name] ?? $name;
+
+        if (is_string($pipeClass) && !class_exists($pipeClass) && !is_callable($pipeClass)) {
+            // Name the actual mistake. A bare token that resolved to nothing is a missing Kernel
+            // alias, and reporting it as `Class "auth" not found` sends you hunting for a file
+            // that was never supposed to exist.
+            if ($pipeClass === $name && !str_contains($name, '\\')) {
+                throw new BaseException(
+                    "Unknown middleware alias [$name] — add it to the \$middlewareAliases map in your Kernel, or reference the middleware by its class name."
+                );
+            }
+
+            throw new BaseException("Middleware class \"$pipeClass\" not found.");
+        }
+
         return [$pipeClass, $parameters];
     }
 

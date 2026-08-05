@@ -119,6 +119,31 @@ class ResponseStatusHelpersTest extends IntegrationTestCase
         ];
     }
 
+    /**
+     * Middleware wrapping a handler must be able to ask whether it succeeded. `status()` is a
+     * setter and `$statusCode` is protected, so before `getStatusCode()` that was only observable
+     * after `send()`.
+     */
+    public function test_status_code_is_readable_before_the_response_is_sent(): void
+    {
+        $response = (new JsonResponse())->tooManyRequests('slow down');
+
+        $this->assertSame(429, $response->getStatusCode());
+        $this->assertNull($response->sentStatus(), 'nothing sent yet');
+    }
+
+    public function test_status_code_reflects_an_explicit_status_call(): void
+    {
+        $response = (new Response())->status(418);
+
+        $this->assertSame(418, $response->getStatusCode());
+    }
+
+    public function test_status_code_defaults_to_200(): void
+    {
+        $this->assertSame(200, (new Response())->getStatusCode());
+    }
+
     /** Every code in the index must name a method that really exists (STATUS_NOT_MODIFIED did not). */
     public function test_status_to_helper_index_only_names_real_methods(): void
     {
