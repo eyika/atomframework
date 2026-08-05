@@ -35,6 +35,7 @@ use Eyika\Atom\Framework\Support\Arrayable;
  * @method static bool hasFile(string $key)
  * @method static Arrayable cookies()
  * @method static mixed cookie($key = null, $default = null)
+ * @method static \Eyika\Atom\Framework\Http\Cookie|null cookieObject(string $key)
  * @method static mixed headers($key = null, $default = null)
  * @method static mixed header($key, $default = null)
  * @method static mixed server($key = null, $default = null)

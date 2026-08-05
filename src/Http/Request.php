@@ -490,13 +490,38 @@ class Request
     }
 
     /**
-     * @return Cookie[]|Cookie
+     * A cookie's VALUE, or `name => value` for all of them — the same shape `query()` and
+     * `input()` return, so `$request->cookie('x') ?? $request->query('x')` has one type.
+     *
+     * This used to hand back the `Cookie` wrapper, which made that line string-or-object
+     * depending on which branch hit. Anything defensive — `is_string()`, `===`, `json_encode()` —
+     * then quietly rejected the cookie path, so the cookie appeared not to work while nothing
+     * threw or logged. Reading and writing are different jobs: a `Cookie` describes a Set-Cookie
+     * header (path, domain, SameSite, expiry) and none of those exist on an inbound cookie, where
+     * the browser sends only `name=value`.
+     *
+     * Use {@see cookieObject()} for the wrapper.
      */
-    public function cookie($key = null, $default = null)
+    public function cookie($key = null, $default = null): mixed
     {
-        if ($key == null)
-            return $this->cookies->toArray();
-        return $this->retrieveItem($this->cookies->toArray(), $key, $default);
+        if ($key === null) {
+            return array_map(
+                fn (Cookie $cookie) => $cookie->getValue(),
+                $this->cookies->toArray()
+            );
+        }
+
+        $cookie = $this->retrieveItem($this->cookies->toArray(), $key);
+
+        return $cookie instanceof Cookie ? $cookie->getValue() : $default;
+    }
+
+    /** The `Cookie` wrapper for a request cookie, or null when it isn't set. */
+    public function cookieObject(string $key): ?Cookie
+    {
+        $cookie = $this->retrieveItem($this->cookies->toArray(), $key);
+
+        return $cookie instanceof Cookie ? $cookie : null;
     }
 
     public function headers($key = null, $default = null)
