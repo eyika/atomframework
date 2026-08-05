@@ -52,6 +52,18 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   <https://basttyydev.serv00.net/docs/beta/advanced/key-rotation>
 
 ### Added
+- **HTTP — `429 Too Many Requests` and `503 Service Unavailable` responses.** There was no way to
+  return a 429 at all: no status constant, no helper. Both now exist, and both take an optional
+  `Retry-After` in seconds — a rate-limit response without it gives a client nothing to back off
+  against.
+
+  ```php
+  return json_response()->tooManyRequests('Rate limit exceeded', retryAfter: 60);
+  return json_response()->serviceUnavailable('Under maintenance', retryAfter: 300);
+  ```
+
+  The 503 constant had existed all along with no helper behind it. (`cf30cfa`)
+
 - **Mail — custom message headers**, via `header(string $name, string $value)` and
   `headers(array)` on the `Mailer` and every driver. This is a deliverability requirement rather
   than a convenience: Gmail and Yahoo have required `List-Unsubscribe` plus
@@ -186,6 +198,27 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **HTTP — `response()->json()` rejected valid status codes.** It validated the requested status
+  against an internal index of the codes that happen to have a named shorthand, so
+
+  ```php
+  response()->json($data, 409);   // threw "Invalid HTTP status code: 409"
+  ```
+
+  even though `409` is a framework constant **with a working `conflict()` helper**. The same
+  applied to `502` (which has `badGateway()`), `503`, and every redirect code. Since `create()` is
+  protected, an app needing any status without a shorthand had no public path to it. The check is
+  now a plain `100..599` range test — strictly more permissive, so nothing that previously worked
+  changes. The index itself was stale too, mapping `304` to a `notModified()` that exists only on
+  the HTTP *client* response; it is now documented as an index rather than a whitelist, and a test
+  asserts every entry names a real method. (`cf30cfa`)
+
+- **HTTP — `JsonResponse` facade docblock had drifted** from the class, omitting `conflict()` and
+  `badGateway()` (so IDEs flagged both as undefined) and declaring `unprocessableEntity()` as
+  accepting `string|array $errors` when the parameter is `string`-only — passing an array raised a
+  `TypeError` the signature said was fine. A test now fails if any `JsonResponse` helper is missing
+  from the facade. (`cf30cfa`)
+
 - **Query builder — aggregates were broken on `snake_case` columns.** `sum('campaign_id')` failed
   with *"no such column: campaign"*. Aggregates dispatch as `{function}_{column}`, and that name
   was split on **every** underscore with only the first two parts kept — so the column was
