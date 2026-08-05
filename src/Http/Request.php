@@ -17,10 +17,36 @@ use Eyika\Atom\Framework\Support\Validator;
 
 class Request
 {
-    public const HEADER_X_FORWARDED_FOR = 'HTTP_X_FORWARDED_FOR';
-    public const HEADER_X_FORWARDED_HOST = 'HTTP_X_FORWARDED_HOST';
-    public const HEADER_X_FORWARDED_PORT = 'HTTP_X_FORWARDED_PORT';
-    public const HEADER_X_FORWARDED_PROTO = 'HTTP_X_FORWARDED_PROTO';
+    /**
+     * Which forwarded headers a trusted proxy is believed for — real bit flags, combined with `|`.
+     *
+     * The values match Symfony's, so knowledge carried from there (or from Laravel's TrustProxies)
+     * works as expected. They previously held the `$_SERVER` key strings while keeping these
+     * names, which meant the documented `A | B` usage silently produced a byte-wise-OR'd binary
+     * string instead of an int.
+     *
+     * Trusting a proxy is not all-or-nothing: a proxy that sets `X-Forwarded-For` but never
+     * `X-Forwarded-Host` should be believed for the former only, or a client can choose the host
+     * your app resolves tenants and generated URLs from.
+     */
+    public const HEADER_X_FORWARDED_FOR   = 0b000010;
+    public const HEADER_X_FORWARDED_HOST  = 0b000100;
+    public const HEADER_X_FORWARDED_PROTO = 0b001000;
+    public const HEADER_X_FORWARDED_PORT  = 0b010000;
+
+    /** Every forwarded header this framework understands. */
+    public const HEADER_X_FORWARDED_ALL = self::HEADER_X_FORWARDED_FOR
+        | self::HEADER_X_FORWARDED_HOST
+        | self::HEADER_X_FORWARDED_PROTO
+        | self::HEADER_X_FORWARDED_PORT;
+
+    /** Flag → the `$_SERVER` key it governs. */
+    private const FORWARDED_HEADER_KEYS = [
+        self::HEADER_X_FORWARDED_FOR   => 'HTTP_X_FORWARDED_FOR',
+        self::HEADER_X_FORWARDED_HOST  => 'HTTP_X_FORWARDED_HOST',
+        self::HEADER_X_FORWARDED_PROTO => 'HTTP_X_FORWARDED_PROTO',
+        self::HEADER_X_FORWARDED_PORT  => 'HTTP_X_FORWARDED_PORT',
+    ];
 
     protected $query;
     public array $route_params;
@@ -39,7 +65,8 @@ class Request
     protected ?string $rawBody = null;
     protected $server;
     protected array $headers;
-    protected $proxyheader;
+    /** Bitmask of HEADER_X_FORWARDED_* a trusted proxy is believed for. Only consulted once a proxy is trusted. */
+    protected int $proxyheader = self::HEADER_X_FORWARDED_ALL;
     protected $trustedProxies = [];
     protected Session $session;
     protected bool $isAssetRequest;
@@ -87,7 +114,6 @@ class Request
         $this->input = [...$this->body, ...$this->files];
         $this->attributes = [];
         $this->route_params = [];
-        $this->proxyheader = 0;
     }
 
     /**
@@ -605,8 +631,9 @@ class Request
 
     public function scheme()
     {
-        if ($this->isFromTrustedProxy() && $this->server('HTTP_X_FORWARDED_PROTO')) {
-            return $this->server('HTTP_X_FORWARDED_PROTO');
+        if ($proto = $this->forwardedHeader(self::HEADER_X_FORWARDED_PROTO)) {
+            // XFP may be a comma list when chained proxies each append; the left-most is the client's.
+            return strtolower(trim(explode(',', $proto)[0]));
         }
 
         if (
@@ -622,8 +649,9 @@ class Request
 
     public function host()
     {
-        if ($this->isFromTrustedProxy() && $this->headers('X-Forwarded-Host')) {
-            $host = $this->headers('X-Forwarded-Host');
+        if ($forwardedHost = $this->forwardedHeader(self::HEADER_X_FORWARDED_HOST)) {
+            // Same comma-list rule as XFP.
+            $host = trim(explode(',', $forwardedHost)[0]);
         } else {
             $host = $this->server('HTTP_HOST');
         }
@@ -643,6 +671,36 @@ class Request
         return $host;
     }
 
+    /**
+     * The port the client reached the app on.
+     *
+     * Behind a terminating proxy `SERVER_PORT` is the internal one (often 80), so a trusted
+     * `X-Forwarded-Port` wins when present. Falls back to the port in `Host`, then `SERVER_PORT`,
+     * then the scheme default.
+     */
+    public function port(): int
+    {
+        if ($forwardedPort = $this->forwardedHeader(self::HEADER_X_FORWARDED_PORT)) {
+            $port = trim(explode(',', $forwardedPort)[0]);
+            if (ctype_digit($port)) {
+                return (int) $port;
+            }
+        }
+
+        $host = (string) $this->server('HTTP_HOST', '');
+        // Bracketed IPv6 literals put colons in the host, so only a trailing :digits is a port.
+        if (preg_match('/:(\d+)$/', $host, $m)) {
+            return (int) $m[1];
+        }
+
+        $serverPort = $this->server('SERVER_PORT', '');
+        if (is_numeric($serverPort)) {
+            return (int) $serverPort;
+        }
+
+        return $this->scheme() === 'https' ? 443 : 80;
+    }
+
     public function address()
     {
         return $this->server('REMOTE_ADDR', '');
@@ -653,14 +711,11 @@ class Request
         // Only trust X-Forwarded-For when the request actually came through a
         // configured trusted proxy; otherwise it is client-spoofable. (The previous
         // regex used a literal `d` instead of `\d`, so it never matched anyway.)
-        if ($this->isFromTrustedProxy()) {
-            $forwarded = $this->server('HTTP_X_FORWARDED_FOR', '');
-            if ($forwarded !== '') {
-                // XFF is a comma list; the left-most entry is the original client.
-                $ip = trim(explode(',', $forwarded)[0]);
-                if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                    return $ip;
-                }
+        if ($forwarded = $this->forwardedHeader(self::HEADER_X_FORWARDED_FOR)) {
+            // XFF is a comma list; the left-most entry is the original client.
+            $ip = trim(explode(',', $forwarded)[0]);
+            if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                return $ip;
             }
         }
 
@@ -682,14 +737,27 @@ class Request
         return $this->scheme() . '://' . $this->host();
     }
 
+    /**
+     * Declare which upstream addresses are proxies, and which forwarded headers to believe them for.
+     *
+     * `$proxies` entries may be a literal IP, a CIDR block (`10.0.0.0/8`, `2001:db8::/32`), or the
+     * single-element `['*']` to trust whatever peer connects. `'*'` is a deliberate act with real
+     * consequences — it lets any direct client set its own IP, host and scheme — so it is honoured
+     * rather than silently ignored, but nothing enables it for you.
+     *
+     * `$headers` is a bitmask of HEADER_X_FORWARDED_*; `null` means all of them. Pass `0` to trust
+     * a proxy's identity for nothing, which is a valid (if unusual) thing to want.
+     */
     public function setTrustedProxies(array $proxies, int|null $headers = null)
     {
         $this->trustedProxies = $proxies;
+        $this->proxyheader = $headers ?? self::HEADER_X_FORWARDED_ALL;
+    }
 
-        // If headers are provided, merge them with the existing headers
-        if (!empty($headers)) {
-            $this->proxyheader = $headers;
-        }
+    /** The forwarded-header bitmask currently in effect. */
+    public function trustedHeaderSet(): int
+    {
+        return $this->proxyheader;
     }
 
     public function isFromTrustedProxy()
@@ -699,8 +767,86 @@ class Request
         }
 
         $clientIp = $this->server('REMOTE_ADDR', '');
+        if ($clientIp === '') {
+            return false;
+        }
 
-        return in_array($clientIp, $this->trustedProxies);
+        foreach ($this->trustedProxies as $proxy) {
+            if ($this->ipMatches($clientIp, (string) $proxy)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether `$ip` is covered by a trusted-proxy entry.
+     *
+     * This used to be a bare `in_array()`, so a CIDR entry could never match anything: an operator
+     * writing `TRUSTED_PROXIES=10.0.0.0/8` got silent no-trust — safe by accident, and invisible
+     * to debug because the config looked right.
+     */
+    protected function ipMatches(string $ip, string $entry): bool
+    {
+        $entry = trim($entry);
+
+        if ($entry === '*') {
+            return true;
+        }
+
+        if (!str_contains($entry, '/')) {
+            return $ip === $entry;
+        }
+
+        [$subnet, $bits] = explode('/', $entry, 2);
+        if (!ctype_digit($bits)) {
+            return false;
+        }
+
+        $ipBin     = @inet_pton($ip);
+        $subnetBin = @inet_pton($subnet);
+        // A v4 address is never inside a v6 block (and vice versa) — differing packed lengths.
+        if ($ipBin === false || $subnetBin === false || strlen($ipBin) !== strlen($subnetBin)) {
+            return false;
+        }
+
+        $bits = (int) $bits;
+        if ($bits < 0 || $bits > strlen($ipBin) * 8) {
+            return false;
+        }
+
+        $wholeBytes = intdiv($bits, 8);
+        if ($wholeBytes > 0 && substr($ipBin, 0, $wholeBytes) !== substr($subnetBin, 0, $wholeBytes)) {
+            return false;
+        }
+
+        $remainingBits = $bits % 8;
+        if ($remainingBits === 0) {
+            return true;
+        }
+
+        $mask = ~((1 << (8 - $remainingBits)) - 1) & 0xFF;
+
+        return (ord($ipBin[$wholeBytes]) & $mask) === (ord($subnetBin[$wholeBytes]) & $mask);
+    }
+
+    /** Whether a trusted proxy is believed for a specific forwarded header. */
+    protected function trustsForwardedHeader(int $flag): bool
+    {
+        return $this->isFromTrustedProxy() && ($this->proxyheader & $flag) === $flag;
+    }
+
+    /** The value of a forwarded header, but only if a trusted proxy is believed for it. */
+    protected function forwardedHeader(int $flag): ?string
+    {
+        if (!$this->trustsForwardedHeader($flag)) {
+            return null;
+        }
+
+        $value = $this->server(self::FORWARDED_HEADER_KEYS[$flag] ?? '', '');
+
+        return $value === '' ? null : (string) $value;
     }
 
     public function hasValidSignature(): bool
