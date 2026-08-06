@@ -56,6 +56,34 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   you actually want. Apps that were relying on the loopback default were trusting their callers.
   (`1db731d`)
 
+- **`guarded` is now enforced on the JSON encode path.** It promises a column never leaves the
+  application and `toArray()` honoured it — but nothing on the **encode** path called `toArray()`,
+  so a model reaching `json_encode()` was serialized from its declared public properties with the
+  guard bypassed. Two independent defects, either alone leaving the hole:
+
+  1. `Model` implemented no serialization contract — not `JsonSerializable`, not
+     `Contracts\Arrayable`.
+  2. `Collection` dispatched on `Support\Arrayable` / `Support\Jsonable`, which are concrete
+     **classes**, not the same-named **interfaces** under `Support\Contracts`. No model could ever
+     be an instance of a class, so every model fell through and was encoded raw.
+
+  `Model` now implements `JsonSerializable` and `Contracts\Arrayable`, serializing through the
+  guarded `toArray()`. `JsonSerializable` is what makes this hold for **every** shape — a bare
+  model, a plain array of models, a `Traversable`, a `Collection` — since `json_encode()` honours
+  it natively.
+
+  **Scope, for anyone auditing their own exposure:** the direct response path was already safe —
+  `response()->json(['w' => $model])` goes through `convertObjectsToArray()`, which calls
+  `toArray()`. The gap was every other route to `json_encode()`, above all a **Collection**, whose
+  own `toArray()` returned its models untouched. And a column assigned through `__set` lives in
+  `dynamicProperties`, which is not public, so it could not leak this way; what escaped from a
+  plain model was internal plumbing (`table`, `primaryKey`, `softdeletes`). **A data column could
+  only leak if your model declares it as a public property** — check that first when assessing
+  whether anything actually left your application.
+
+  `toArray(false)` still returns guarded columns for server-side callers that need them.
+  (`d226e04`)
+
 - **BREAKING — `Request::cookie()` returns the cookie's VALUE, not the `Cookie` object.** It used
   to hand back the wrapper while `query()` and `input()` return values, so the obvious line
 
