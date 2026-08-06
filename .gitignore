@@ -3,3 +3,6 @@
 composer.lock
 /.phpunit.cache/
 .phpunit.result.cache
+
+# Test residue: the fixture app is a real base_path, so logging during tests lands here.
+tests/Fixtures/app/storage/
