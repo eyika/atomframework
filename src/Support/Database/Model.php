@@ -9,7 +9,9 @@ use Eyika\Atom\Framework\Support\Concerns\DeepClonesSelf;
 use Eyika\Atom\Framework\Support\Database\Concerns\HasRelationships;
 use Eyika\Atom\Framework\Support\Database\Concerns\InitsModelEvents;
 use Eyika\Atom\Framework\Support\Database\Concerns\QueryBuilder;
+use Eyika\Atom\Framework\Support\Contracts\Arrayable as ArrayableContract;
 use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
+use JsonSerializable;
 
 /**
  * @method static self|bool create(array $values, bool $is_protected = true, array $select = [])
@@ -84,9 +86,28 @@ use Eyika\Atom\Framework\Support\Database\Contracts\ModelInterface;
  * @method static self fullOuterJoin($table, $first, $operator, $second)
  */
 
-abstract class Model implements ModelInterface
+abstract class Model implements ModelInterface, JsonSerializable, ArrayableContract
 {
     use QueryBuilder, InitsModelEvents, DeepClonesSelf, HasRelationships;
+
+    /**
+     * Serialize through `toArray()`, so `guarded` is honoured on the JSON encode path.
+     *
+     * `guarded` promises that a column never leaves the application, and `toArray()` enforces it —
+     * but nothing on the encode path used to call `toArray()`. A model reaching `json_encode()`
+     * was therefore serialized from its **declared public properties** instead, which both
+     * bypasses the guard and exposes internal plumbing (`table`, `primaryKey`, `softdeletes`).
+     *
+     * Implementing JsonSerializable is what makes this hold for EVERY shape — a bare model, a
+     * plain array of models, a Traversable, a Collection — because `json_encode()` honours it
+     * natively rather than only where a Collection happens to intervene.
+     *
+     * Server-side callers that legitimately need guarded columns still call `toArray(false)`.
+     */
+    public function jsonSerialize(): array
+    {
+        return $this->toArray();
+    }
 
     /**
      * Builder methods reachable as `Model::foo(...)` via __callStatic(), which instantiates the

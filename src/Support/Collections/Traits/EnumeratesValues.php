@@ -6,9 +6,14 @@ use CachingIterator;
 use Closure;
 use Exception;
 use Eyika\Atom\Framework\Support\Arr;
-use Eyika\Atom\Framework\Support\Arrayable;
+// The CONTRACTS, not Support\Arrayable / Support\Jsonable, which are concrete CLASSES. The
+// instanceof checks below used to name those classes, so nothing that merely implements the
+// interfaces — a Model, most notably — could ever match, and every such value fell through to be
+// encoded raw with its guard bypassed. Both concrete classes implement these interfaces, so the
+// checks still match everything they matched before.
+use Eyika\Atom\Framework\Support\Contracts\Arrayable;
 use Eyika\Atom\Framework\Support\Concerns\Conditionable;
-use Eyika\Atom\Framework\Support\Jsonable;
+use Eyika\Atom\Framework\Support\Contracts\Jsonable;
 use Eyika\Atom\Framework\Support\Collections\Collection;
 use Eyika\Atom\Framework\Support\Collections\Enumerable;
 use Eyika\Atom\Framework\Support\Collections\HigherOrderCollectionProxy;
