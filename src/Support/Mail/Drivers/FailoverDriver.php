@@ -63,11 +63,22 @@ class FailoverDriver implements MailerInterface
 
                 $response = $mailer->send($this->tos[0] ?? '', $subject, $body);
                 
-                if ($response['success']) {
+                // `MailerResponse` is a plain object — it implements no ArrayAccess, and its
+                // `__toArray()` is an ordinary method PHP never calls implicitly. This read used
+                // to be `$response['success']`, which raises "Cannot use object of type
+                // MailerResponse as array" on EVERY send, including successful ones: an Error,
+                // so it escaped the Exception-only catch below and took the whole send down.
+                // This driver could therefore never return a success.
+                if ($response->success) {
                     return $response; // Return on successful send
                 }
-            } catch (Exception $e) {
-                // Continue to the next mailer in case of failure
+            } catch (\Throwable $e) {
+                // Continue to the next mailer in case of failure.
+                //
+                // Throwable, not Exception: a driver blowing up with an Error — a TypeError from
+                // a malformed config value, a missing SDK class — is exactly the case failover
+                // exists for. Catching Exception alone let those escape and kill the send
+                // outright instead of trying the next mailer, which defeats this driver.
             }
         }
 

@@ -15,9 +15,23 @@ class ErrorHandlerTest extends TestCase
 {
     public function test_handle_exception_returns_instead_of_exiting(): void
     {
-        ob_start();
-        ErrorHandler::handleException(new \RuntimeException('boom'));
-        $output = ob_get_clean();
+        // handleException() now writes to the application log, and the default base_path is the
+        // fixture app — so point it at a throwaway directory rather than leaving log residue in
+        // the repo. (Logging itself is covered by UncaughtExceptionLoggingTest.)
+        $origBasePath = $GLOBALS['base_path'] ?? null;
+        $GLOBALS['base_path'] = sys_get_temp_dir() . '/atom_errorhandler_exit_' . uniqid();
+
+        try {
+            ob_start();
+            ErrorHandler::handleException(new \RuntimeException('boom'));
+            $output = ob_get_clean();
+        } finally {
+            if ($origBasePath !== null) {
+                $GLOBALS['base_path'] = $origBasePath;
+            } else {
+                unset($GLOBALS['base_path']);
+            }
+        }
 
         $this->assertStringContainsString('unexpected error', $output);
         $this->assertTrue(true, 'reached here → handleException did not exit()');

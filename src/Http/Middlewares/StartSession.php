@@ -63,10 +63,15 @@ class StartSession  implements MiddlewareInterface
     {
         try {
             return Facade::getFacadeApplication()->make('session');
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
+            // Throwable: container resolution failures surface as Error as often as Exception
+            // (an uninstantiable class, a missing constructor dependency), and this fallback is
+            // the whole reason the try exists.
             if ($e->getMessage() == "Class session is not instantiable.") {
                 return Facade::getFacadeApplication()->make(Session::class);
             }
+
+            throw $e; // any other failure is not ours to swallow
         }
     }
 }
