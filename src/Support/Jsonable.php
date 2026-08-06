@@ -5,7 +5,13 @@ namespace Eyika\Atom\Framework\Support;
 use ArrayAccess;
 use Eyika\Atom\Framework\Exceptions\NotImplementedException;
 
-Class Jsonable
+use Eyika\Atom\Framework\Support\Contracts\Jsonable as JsonableContract;
+
+/**
+ * Declares the contract it already satisfied in shape but not in type. Collection dispatch tests
+ * `instanceof`, so a class that merely *has* toJson() is invisible to it.
+ */
+Class Jsonable implements JsonableContract
 {
     
     /**
@@ -28,12 +34,13 @@ Class Jsonable
 
     /**
      * Convert the data to a json string
-     * 
+     *
+     * @param  int  $options
      * @return string
      */
-    public function toJson()
+    public function toJson($options = 0)
     {
-        return json_encode($this->data);
+        return json_encode($this->data, $options);
     }
 
     /**
