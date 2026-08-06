@@ -912,7 +912,7 @@ class PendingRequest
                     if (! $response->successful()) {
                         try {
                             $shouldRetry = $this->retryWhenCallback ? call_user_func($this->retryWhenCallback, $response->toException(), $this, $this->request->toPsrRequest()->getMethod()) : true;
-                        } catch (Exception $exception) {
+                        } catch (\Throwable $exception) {
                             $shouldRetry = false;
 
                             throw $exception;
@@ -1076,7 +1076,7 @@ class PendingRequest
                 $response instanceof Response ? $response->toException() : $response,
                 $this
             ) : true;
-        } catch (Exception $exception) {
+        } catch (\Throwable $exception) {
             return $exception;
         }
 
@@ -1095,7 +1095,7 @@ class PendingRequest
             ($this->throwIfCallback === null || call_user_func($this->throwIfCallback, $response))) {
             try {
                 $response->throw($this->throwCallback);
-            } catch (Exception $exception) {
+            } catch (\Throwable $exception) {
                 return $exception;
             }
         }
