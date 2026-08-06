@@ -290,6 +290,36 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Exceptions — uncaught throwables never reached the application log.** `handleException()`
+  recorded them with `error_log($exception)`, which writes to **PHP's** error log — stderr under
+  the dev server, wherever `php.ini` points under FPM — so `storage/logs` stayed empty for every
+  500. That is a dead end exactly when you can least afford one.
+
+  Uncaught throwables now go to the application logger first, always defensively: `logger()`
+  resolves `config()`, and an error raised before config is loadable would otherwise fatal *inside*
+  the error handler, so any failure there falls back to PHP's log with full detail. A one-line
+  summary still goes to PHP's log so `php -S` and `docker logs` stay useful.
+
+  Traces are capped at 20 frames and carry **no arguments** — arguments are what make a trace
+  enormous (one entry of the old shape measured 185 KB) and can leak credentials passed to a
+  `connect()` call straight into the log. The wrapped-cause chain is named too, since the
+  interesting throwable is often the inner one. (`737d627`)
+
+- **Mail — `FailoverDriver` could never report a successful send.** It read `$response['success']`,
+  but `MailerResponse` is a plain object implementing no `ArrayAccess` (its `__toArray()` is an
+  ordinary method PHP never calls implicitly), so **every** send — successful ones included —
+  raised *Cannot use object of type MailerResponse as array*. Being an `Error`, it escaped the
+  driver's `catch (Exception)` and killed the send outright instead of failing over. Fixed, and the
+  catch widened to `Throwable` so a driver blowing up with an `Error` — a `TypeError` from bad
+  config, a missing SDK class — now fails over as intended, which is the case failover exists for.
+  (`737d627`)
+
+- **HTTP — `StartSession` and the `Http\Client` retry callbacks caught `Exception` where an `Error`
+  was possible.** Container resolution failures surface as `Error` as often as `Exception`;
+  `createSession()` also now rethrows anything that isn't the known uninstantiable-class case
+  rather than silently returning null. A retry/throw callback with a bad signature no longer leaves
+  retry state inconsistent. (`737d627`)
+
 - **Routing — middleware aliases were never resolved, so every `->middleware('auth')` route was a
   500.** `Pipeline::resolveMiddleware()` returned the pipe's first segment as the class name, so
   the pipeline reached `new 'auth'` and threw `Class "auth" not found` — reported from inside the
