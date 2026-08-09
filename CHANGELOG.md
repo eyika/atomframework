@@ -318,6 +318,28 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **HTTP — a `204 No Content` wrote two bytes of body.** `noContent()` produced:
+
+  ```http
+  HTTP/1.1 204 No Content
+  Content-Type: application/json
+                      ← headers end here; nothing may follow
+  []                  ← but 2 bytes did
+  ```
+
+  `noContent()` passes no data, but `Arr::wrap(null)` yields `[]` and `json_encode([])` is the
+  string `"[]"`. 204, 304 and 1xx promise that **nothing** follows the headers (RFC 9110 §15), so a
+  client stops reading there and treats trailing bytes as the beginning of the next message.
+
+  `curl` shrugs and reports a healthy 204. **Node's HTTP parser rejects the exchange** with
+  *Parse Error: Data after 'Connection: close'* — so a Node proxy in front of the API turned a
+  clean 204 into a 500, with the two tools disagreeing about the same response.
+
+  Now enforced at the emission boundary rather than in the helper: `status(204)->body(…)` and a 304
+  from conditional-request handling drop their body too, and `Content-Type`/`Content-Length` are
+  omitted for those statuses — a `Content-Length` on a 204 tells the client to expect bytes that
+  never arrive, which stalls or desyncs a keep-alive connection. (`7902bf1`)
+
 - **Exceptions — uncaught throwables never reached the application log.** `handleException()`
   recorded them with `error_log($exception)`, which writes to **PHP's** error log — stderr under
   the dev server, wherever `php.ini` points under FPM — so `storage/logs` stayed empty for every
