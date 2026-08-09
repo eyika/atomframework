@@ -174,6 +174,15 @@ class BaseResponse
             $this->_responseSent = true;
         }
 
+        // A bodyless status ends at the headers, whatever the response was built to carry.
+        // Enforced here rather than only in the helper that produced it, because `noContent()`,
+        // `status(204)`, and a 304 from a conditional-request check all have to obey it.
+        if (self::isBodyless($this->statusCode)) {
+            $this->emitStatus($this->statusCode);
+            $this->sendHeaders();
+            return $terminate;
+        }
+
         // File download and redirects take precedence over content-negotiation —
         // otherwise an API/XHR request (isNotHtml) swallowed them by echoing body.
         if ($this->isFileResponse) {
@@ -237,6 +246,22 @@ class BaseResponse
         return $this;
     }
 
+    /**
+     * Whether this status promises that NOTHING follows the headers.
+     *
+     * 1xx, 204 and 304 carry no content (RFC 9110 §15). This is not a stylistic rule: a client
+     * reading a 204 stops at the end of the headers, so any bytes after them are the start of
+     * what it believes is the next message. `curl` shrugs; Node's HTTP parser rejects the whole
+     * exchange with "Parse Error: Data after 'Connection: close'", which turns a clean 204 into a
+     * 500 the moment a Node proxy sits in front of the API.
+     */
+    protected static function isBodyless(int $statusCode): bool
+    {
+        return $statusCode === self::STATUS_NO_CONTENT
+            || $statusCode === self::STATUS_NOT_MODIFIED
+            || ($statusCode >= 100 && $statusCode < 200);
+    }
+
     protected function sendHeaders()
     {
         $this->cookies->each(function (Cookie $cookie) {
@@ -245,8 +270,17 @@ class BaseResponse
             // each get their own Set-Cookie line.
             $this->emitHeader('Set-Cookie: ' . $cookie->toString(), false);
         });
+        $bodyless = self::isBodyless($this->statusCode);
+
         foreach ($this->headers as $header) {
             foreach ($header as $key => $value) {
+                // Content headers describe content that, by definition, is not coming. A
+                // Content-Length on a 204 in particular tells the client to expect bytes that
+                // never arrive, which stalls or desyncs a keep-alive connection.
+                if ($bodyless && in_array(strtolower($key), ['content-type', 'content-length'], true)) {
+                    continue;
+                }
+
                 $val = str_contains($key, 'Set-Cookie') ? (string) $value[0] : $value[0];
                 $this->emitHeader("{$key}: {$val}", (bool) $value[1], $value[2] ?? null);
             }
@@ -367,6 +401,13 @@ class BaseResponse
 
     protected function create(mixed $data = null, int $statusCode = 200): self
     {
+        // Don't manufacture a body for a status that must not have one. `noContent()` passes no
+        // data at all, but `Arr::wrap(null)` yields `[]` and json_encode makes that the two bytes
+        // "[]" — which is exactly what a strict client trips over.
+        if (self::isBodyless($statusCode)) {
+            return $this->body('')->status($statusCode);
+        }
+
         $data = $this->convertObjectsToArray($data);
 
         $jsonData = json_encode($data);
