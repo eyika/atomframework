@@ -187,6 +187,18 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   <https://basttyydev.serv00.net/docs/beta/advanced/key-rotation>
 
 ### Added
+- **Config — `Config::snapshot()` / `Config::restore()`, and the testing base classes now use
+  them.** `Config::$config` is process-wide static state, so a `Config::set()` in one test
+  persisted for the rest of the run and was visible to every test after it — apps were restoring by
+  hand. `clearCache()` was never the answer: it wipes the whole array *and* deletes the compiled
+  cache artifact, which is a much bigger hammer than undoing one override.
+
+  `Support\Testing\TestCase` and `Support\Testing\DatabaseTestCase` now snapshot in `setUp()` and
+  restore in `tearDown()`, so a test can override a feature flag without cleaning up. The
+  Configuration page also now documents `Config::set()`/`get()`/`clearCache()` — they existed and
+  were simply unmentioned, so the page read as though there were no runtime override at all.
+  (`<pending>`)
+
 - **Schema — narrow integer columns.** `tinyInteger()`, `unsignedTinyInteger()`, `smallInteger()`,
   `unsignedSmallInteger()`, `mediumInteger()` and `unsignedMediumInteger()`. Previously the
   integer family stopped at `integer`/`bigInteger` while `tinyText`/`mediumText`/`longText` and the
