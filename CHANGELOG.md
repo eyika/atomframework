@@ -56,6 +56,31 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   you actually want. Apps that were relying on the loopback default were trusting their callers.
   (`1db731d`)
 
+- **Database connections now honour their configured PDO `options`.** `Connection::getOptions()`
+  built its option list from scratch and never merged
+  `config('database.connections.<driver>.options')`. The scaffolded config ships that key already
+  populated with `PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA')`, so **a deployment that set
+  that variable believed it was reaching its database over TLS and was not.** The same gap made
+  `PDO::MYSQL_ATTR_INIT_COMMAND` — the one-line way to pin a session timezone — unreachable.
+
+  `null` values are dropped rather than passed through, because that scaffolded SSL key is null
+  whenever its env var is unset and handing PDO a null `SSL_CA` would break every deployment that
+  has simply never configured TLS. (`7ebd587`)
+
+- **BREAKING — an unknown validation rule now throws instead of silently passing.** Any
+  unrecognised rule name without a `:` returned "valid", so `'nullable|string'` looked like it
+  worked while doing nothing, and a typo (`strng`, `requried`) disabled that rule with no signal.
+  A rule that silently stops running is a hole no test will catch.
+
+  Softened so this doesn't turn quiet holes into hard upgrade failures: `nullable` is now
+  recognised as an explicit no-op (a null value already skips every rule but
+  `required`/`sometimes`/`forbidden`, so nullability is the default), and **`alpha`, `alpha_num`
+  and `date` are now implemented** rather than rejected — they were silent no-ops, so `date`
+  validated nothing at all.
+
+  **Upgrade:** check your rule strings. A typo, or a Laravel rule this framework doesn't
+  implement, now fails loudly at that call site. (`7ebd587`)
+
 - **`guarded` is now enforced on the JSON encode path.** It promises a column never leaves the
   application and `toArray()` honoured it — but nothing on the **encode** path called `toArray()`,
   so a model reaching `json_encode()` was serialized from its declared public properties with the
@@ -162,6 +187,25 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   <https://basttyydev.serv00.net/docs/beta/advanced/key-rotation>
 
 ### Added
+- **Schema — narrow integer columns.** `tinyInteger()`, `unsignedTinyInteger()`, `smallInteger()`,
+  `unsignedSmallInteger()`, `mediumInteger()` and `unsignedMediumInteger()`. Previously the
+  integer family stopped at `integer`/`bigInteger` while `tinyText`/`mediumText`/`longText` and the
+  whole blob family existed, so the omission read as an oversight — and it only surfaced when a
+  migration actually ran. Widths are per-grammar: MySQL gets `TINYINT`/`SMALLINT`/`MEDIUMINT`,
+  Postgres has neither `TINYINT` nor `MEDIUMINT` so it takes `SMALLINT`/`INTEGER`, and SQLite has
+  type affinity rather than widths. (`7ebd587`)
+
+- **Query builder — `selectRaw()` on `DB::table()`.** It existed only on the model builder while
+  `groupBy()`/`having()` existed on both, so a grouped aggregate over `DB::table()` was a fatal
+  *undefined method* — an asymmetry that is easy to trip over precisely because its neighbours are
+  symmetric. (`7ebd587`)
+
+- **Validation — `Validator::passes()` / `Validator::fails()`.** `validate()` returns `array|false`,
+  so the obvious guard `if (!$input = Validator::validate(…))` is wrong against an all-optional rule
+  set: an empty body validates **successfully** and returns `[]`, which is falsy, so a request that
+  passed is reported as a failure with an empty error bag. Use these when you only need the verdict,
+  or compare `=== false` when you also need the validated data. (`7ebd587`)
+
 - **HTTP — `BaseResponse::getStatusCode()`.** `status()` is a setter and `$statusCode` is
   protected, so middleware wrapping a handler had no way to ask whether that handler succeeded —
   the status was only observable after `send()`, via `sentStatus()`. (`969d4cc`)
@@ -318,6 +362,22 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Query builder — `DB::select()` ignored its bindings.**
+  `DB::select('… WHERE business_id = ?', [1])` returned an **empty result** against a table with
+  matching rows: the method took a single parameter, so PHP discarded the bindings silently. It
+  looked parameterised and returned a plausible answer, which left string interpolation as the only
+  thing that appeared to work — so the method actively pushed callers toward an injection hole.
+
+  The cause was deeper than the signature: `Connection::exec()` turned an integer key into the
+  *named* placeholder `":0"`, which matches nothing in a `?` query. Positional bindings now work on
+  every raw path, named ones as before. (`7ebd587`)
+
+- **Cache — the `array` store was unusable.** `save()` stores a plain array, but `hasItem()` called
+  `getExpiration()` on it, so **every stored key** raised *Call to a member function getExpiration()
+  on array* — while `getItem()` directly below read `expires_at` correctly, which is why the two
+  disagreed. `getItem()` was separately broken on a miss: its `$value = null` assignments were dead
+  code, so it indexed a key that wasn't there. (`7ebd587`)
+
 - **HTTP — a `204 No Content` wrote two bytes of body.** `noContent()` produced:
 
   ```http
