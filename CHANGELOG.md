@@ -197,7 +197,7 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   restore in `tearDown()`, so a test can override a feature flag without cleaning up. The
   Configuration page also now documents `Config::set()`/`get()`/`clearCache()` — they existed and
   were simply unmentioned, so the page read as though there were no runtime override at all.
-  (`<pending>`)
+  (`52bb9aa`)
 
 - **Schema — narrow integer columns.** `tinyInteger()`, `unsignedTinyInteger()`, `smallInteger()`,
   `unsignedSmallInteger()`, `mediumInteger()` and `unsignedMediumInteger()`. Previously the
