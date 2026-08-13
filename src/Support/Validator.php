@@ -2,6 +2,7 @@
 
 namespace Eyika\Atom\Framework\Support;
 
+use InvalidArgumentException;
 use Eyika\Atom\Framework\Exceptions\ValidationException;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Support\Facade\DatabaseConnection;
@@ -24,6 +25,26 @@ class Validator {
         self::$errors = [];
         self::$validated = [];
         self::$confirms = [];
+    }
+
+    /**
+     * Whether the payload satisfies the rules.
+     *
+     * Exists because `validate()` returns `array|false`, and the obvious guard
+     * `if (!$input = Validator::validate(...))` is WRONG against an all-optional rule set: an
+     * empty body validates successfully and returns `[]`, which is falsy, so a request that
+     * PASSED is reported as a failure with an empty error bag. Use this when you only need the
+     * verdict, or compare `=== false` when you need the validated data too.
+     */
+    public static function passes(Request|array $req_obj, array $params, string $separator = '|'): bool
+    {
+        return static::validate($req_obj, $params, $separator) !== false;
+    }
+
+    /** Inverse of {@see passes()}. */
+    public static function fails(Request|array $req_obj, array $params, string $separator = '|'): bool
+    {
+        return !static::passes($req_obj, $params, $separator);
     }
 
     public static function validate(Request|array $req_obj, array $params, string $separator = '|', $throw = false): bool|array
@@ -247,6 +268,26 @@ class Validator {
                 static::$confirms[$param] = $paramval;
                 $resp = '';
                 break;
+            /*
+             * These three exist because making an unknown rule throw would otherwise turn three
+             * of the most commonly reached-for Laravel rule names into hard upgrade failures.
+             * They were previously silent no-ops — i.e. `date` validated nothing at all.
+             */
+            case 'alpha':
+                $stat = is_string($paramval) && $paramval !== '' && ctype_alpha($paramval);
+                $resp = !$stat ? "$param should contain only letters" : '';
+                break;
+            case 'alpha_num':
+                $stat = is_string($paramval) && $paramval !== '' && ctype_alnum($paramval);
+                $resp = !$stat ? "$param should contain only letters and numbers" : '';
+                break;
+            case 'date':
+                // strtotime is deliberately permissive — it accepts the formats a form or an API
+                // client actually sends — but it rejects a string that denotes no time at all.
+                $stat = ($paramval instanceof \DateTimeInterface)
+                    || (is_string($paramval) && $paramval !== '' && strtotime($paramval) !== false);
+                $resp = !$stat ? "$param should be a valid date" : '';
+                break;
             case 'image':
                 $image_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
                 $is_image = $paramval instanceof File && Arr::exists($image_types, $paramval->uploadProperties()->type());
@@ -363,7 +404,21 @@ class Validator {
                 default:
                     $resp = '';
             }
-        } else { $resp = ''; }
+        } elseif ($type === 'nullable') {
+            // Recognised and deliberately a no-op: a key whose value is explicitly null already
+            // skips every rule but required/sometimes/forbidden, so nullability is the default.
+            // It is accepted by name because it is the first thing a Laravel-trained developer
+            // reaches for, and silently ignoring it is what this method used to do to EVERYTHING.
+            $resp = '';
+        } else {
+            // An unrecognised rule used to return '' — i.e. "valid". So `nullable|string` looked
+            // like it worked while doing nothing, and a typo (`strng`, `requried`) disabled that
+            // rule silently. A validation rule that no longer runs is a hole no test will catch,
+            // so an unknown name is now a programming error and says so.
+            throw new InvalidArgumentException(
+                "Unknown validation rule [$type] applied to [$param]. Check the spelling, or use a rule this framework supports."
+            );
+        }
 
         return $resp;
     }

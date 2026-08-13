@@ -270,6 +270,25 @@ class Connection {
           $options[PDO::ATTR_PERSISTENT] = true;
       }
 
+      // Merge the connection's own `options` map. This used to be ignored entirely, and the
+      // scaffolded config ships it already populated with
+      // `PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA')` — so a deployment that set that
+      // variable believed it was reaching its database over TLS and was not. The functional half
+      // is that PDO::MYSQL_ATTR_INIT_COMMAND, the one-line way to pin a session timezone, was
+      // equally unreachable.
+      //
+      // NULL values are dropped rather than passed through: that same scaffolded key is null
+      // whenever the env var is unset, and handing PDO a null SSL_CA would fail the connection
+      // for every deployment that has simply never configured TLS.
+      $configured = $this->config['connections'][$this->driver]['options'] ?? [];
+      if (is_array($configured)) {
+          foreach ($configured as $option => $value) {
+              if ($value !== null) {
+                  $options[$option] = $value; // an explicitly configured option wins over the default
+              }
+          }
+      }
+
       return $options;
   }
 
@@ -486,6 +505,15 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
     
     $params = [];
     if ( $bind ) foreach ( $bind as $k => $v ) {
+      // Positional bindings for `?` placeholders. An integer key was previously turned into the
+      // NAMED placeholder ":0", which matches nothing in a `?` query — so the binding was
+      // accepted, ignored, and the query ran with an unbound parameter. PDO numbers `?`
+      // placeholders from 1, hence the offset.
+      if ( is_int($k) && !is_array($v) ) {
+        $params[$k + 1] = $v;
+        continue;
+      }
+
       if ( is_array($v) ) {
         $in = [];
         foreach ( $v as $i => $sub_v ) {
