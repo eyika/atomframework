@@ -8,6 +8,7 @@ use Eyika\Atom\Framework\Foundation\Contracts\Kernel;
 use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\JsonResponse;
 use Eyika\Atom\Framework\Http\Request;
+use Eyika\Atom\Framework\Support\Config;
 use Eyika\Atom\Framework\Http\Response;
 use Eyika\Atom\Framework\Http\Route;
 use Eyika\Atom\Framework\Http\Server;
@@ -55,6 +56,9 @@ abstract class TestCase extends PHPUnitTestCase
      */
     private ?Application $previousFacadeApp = null;
 
+    /** Config is process-wide static state, so a set() in one test would leak into the next. */
+    private array $previousConfig = [];
+
     /** Booted once for the whole run; the route table is snapshotted alongside it. */
     protected static ?Application $bootedApp = null;
     /**
@@ -72,6 +76,7 @@ abstract class TestCase extends PHPUnitTestCase
         parent::setUp();
         $this->previousFacadeApp = Facade::getFacadeApplication();
         $this->app = $this->bootApplication();
+        $this->previousConfig = Config::snapshot();
     }
 
     protected function tearDown(): void
@@ -82,6 +87,7 @@ abstract class TestCase extends PHPUnitTestCase
         BaseResponse::resetCapture();
         // Put the facade application back the way we found it (see $previousFacadeApp).
         Facade::setFacadeApplication($this->previousFacadeApp);
+        Config::restore($this->previousConfig);
         parent::tearDown();
     }
 

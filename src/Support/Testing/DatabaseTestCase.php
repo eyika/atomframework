@@ -3,6 +3,7 @@
 namespace Eyika\Atom\Framework\Support\Testing;
 
 use Eyika\Atom\Framework\Foundation\Application;
+use Eyika\Atom\Framework\Support\Config;
 use Eyika\Atom\Framework\Support\Database\Connection;
 use Eyika\Atom\Framework\Support\Facade\Facade;
 use PHPUnit\Framework\TestCase as PHPUnitTestCase;
@@ -42,9 +43,15 @@ abstract class DatabaseTestCase extends PHPUnitTestCase
     protected Application $app;
     protected Connection $connection;
 
+    /** @var array<string, mixed> */
+    private array $previousConfig = [];
+
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Config is process-wide static state; snapshot it so a set() here cannot leak forward.
+        $this->previousConfig = Config::snapshot();
 
         $this->app = new Application(base_path(), true);
         Facade::setFacadeApplication($this->app);
@@ -70,6 +77,7 @@ abstract class DatabaseTestCase extends PHPUnitTestCase
             // ignore teardown failures
         }
         Facade::clearResolvedInstances();
+        Config::restore($this->previousConfig);
         parent::tearDown();
     }
 
