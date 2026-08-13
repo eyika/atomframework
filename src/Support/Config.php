@@ -169,6 +169,36 @@ class Config
     }
 
     /**
+     * Capture the loaded configuration so it can be put back later.
+     *
+     * `$config` is process-wide static state, so a `set()` in one test leaks into every test that
+     * follows it in the same run. `clearCache()` is not the answer — it wipes everything and
+     * deletes the compiled cache artifact, which is a much bigger hammer than "undo my override".
+     *
+     * The testing base classes snapshot in `setUp()` and restore in `tearDown()`, so a test that
+     * exercises a config-driven branch (a kill switch, a driver choice) no longer has to remember
+     * to restore by hand.
+     *
+     * @return array<string, mixed>
+     */
+    public static function snapshot(): array
+    {
+        self::instance(); // make sure the files are loaded before we copy them
+
+        return self::$config;
+    }
+
+    /**
+     * Put back a {@see snapshot()}.
+     *
+     * @param array<string, mixed> $snapshot
+     */
+    public static function restore(array $snapshot): void
+    {
+        self::$config = $snapshot;
+    }
+
+    /**
      * Clear the cache.
      */
     public static function clearCache()
