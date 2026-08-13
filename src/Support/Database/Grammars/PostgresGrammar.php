@@ -42,6 +42,8 @@ class PostgresGrammar extends Grammar
     {
         return [
             'bigInteger' => 'BIGINT', 'integer' => 'INTEGER', 'string' => 'VARCHAR', 'char' => 'CHAR',
+            // Postgres has no TINYINT or MEDIUMINT; SMALLINT and INTEGER are the honest widths.
+            'tinyInteger' => 'SMALLINT', 'smallInteger' => 'SMALLINT', 'mediumInteger' => 'INTEGER',
             'text' => 'TEXT', 'tinyText' => 'TEXT', 'mediumText' => 'TEXT', 'longText' => 'TEXT',
             'json' => 'JSONB', 'decimal' => 'NUMERIC', 'timestamp' => 'TIMESTAMP', 'dateTime' => 'TIMESTAMP',
             'geometry' => 'GEOMETRY', 'blob' => 'BYTEA', 'tinyBlob' => 'BYTEA', 'mediumBlob' => 'BYTEA',

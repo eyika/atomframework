@@ -87,6 +87,49 @@ class Blueprint
         return $this->addColumn('bigInteger', $column)->unsigned();
     }
 
+    /*
+     * The narrow integer family. Previously absent while tinyText/mediumText/longText and
+     * tinyBlob/mediumBlob/longBlob all existed, so the omission read as an oversight rather than
+     * a decision — and `unsignedTinyInteger('attempts')`, the obvious reach for a small bounded
+     * counter, fataled with "Call to undefined method" only once the migration actually ran.
+     *
+     * Widths are per-grammar: MySQL gets TINYINT/SMALLINT/MEDIUMINT, Postgres has no TINYINT or
+     * MEDIUMINT so it takes SMALLINT/INTEGER, and SQLite has affinity rather than widths.
+     */
+
+    public function tinyInteger(string $column, bool $unsigned = false): ColumnDefinition
+    {
+        $col = $this->addColumn('tinyInteger', $column);
+        return $unsigned ? $col->unsigned() : $col;
+    }
+
+    public function unsignedTinyInteger(string $column): ColumnDefinition
+    {
+        return $this->tinyInteger($column, true);
+    }
+
+    public function smallInteger(string $column, bool $unsigned = false): ColumnDefinition
+    {
+        $col = $this->addColumn('smallInteger', $column);
+        return $unsigned ? $col->unsigned() : $col;
+    }
+
+    public function unsignedSmallInteger(string $column): ColumnDefinition
+    {
+        return $this->smallInteger($column, true);
+    }
+
+    public function mediumInteger(string $column, bool $unsigned = false): ColumnDefinition
+    {
+        $col = $this->addColumn('mediumInteger', $column);
+        return $unsigned ? $col->unsigned() : $col;
+    }
+
+    public function unsignedMediumInteger(string $column): ColumnDefinition
+    {
+        return $this->mediumInteger($column, true);
+    }
+
     public function text(string $column): ColumnDefinition
     {
         return $this->addColumn('text', $column);

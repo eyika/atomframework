@@ -49,6 +49,7 @@ class MySqlGrammar extends Grammar
     {
         return [
             'bigInteger' => 'BIGINT', 'integer' => 'INT', 'string' => 'VARCHAR', 'char' => 'CHAR',
+            'tinyInteger' => 'TINYINT', 'smallInteger' => 'SMALLINT', 'mediumInteger' => 'MEDIUMINT',
             'text' => 'TEXT', 'tinyText' => 'TINYTEXT', 'mediumText' => 'MEDIUMTEXT', 'longText' => 'LONGTEXT',
             'json' => 'JSON', 'decimal' => 'DECIMAL', 'timestamp' => 'TIMESTAMP', 'dateTime' => 'DATETIME',
             'geometry' => 'GEOMETRY', 'blob' => 'BLOB', 'tinyBlob' => 'TINYBLOB', 'mediumBlob' => 'MEDIUMBLOB',

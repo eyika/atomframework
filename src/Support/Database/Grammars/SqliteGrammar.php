@@ -59,6 +59,8 @@ class SqliteGrammar extends Grammar
         // SQLite uses type affinity, so exact names barely matter — these keep affinities sane.
         return [
             'bigInteger' => 'INTEGER', 'integer' => 'INTEGER', 'string' => 'VARCHAR', 'char' => 'CHAR',
+            // SQLite has type AFFINITY, not widths — every integer family maps to INTEGER.
+            'tinyInteger' => 'INTEGER', 'smallInteger' => 'INTEGER', 'mediumInteger' => 'INTEGER',
             'text' => 'TEXT', 'tinyText' => 'TEXT', 'mediumText' => 'TEXT', 'longText' => 'TEXT',
             'json' => 'TEXT', 'decimal' => 'NUMERIC', 'timestamp' => 'DATETIME', 'dateTime' => 'DATETIME',
             'geometry' => 'TEXT', 'blob' => 'BLOB', 'tinyBlob' => 'BLOB', 'mediumBlob' => 'BLOB',

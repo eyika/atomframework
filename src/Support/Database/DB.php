@@ -21,6 +21,9 @@ class DB
     protected $order;
     protected bool $for_update = false;
 
+    /** Raw projection expressions added by selectRaw(), merged into the select list at fetch time. */
+    protected array $selectedRaw = [];
+
     private static $instantiated = false;
 
     protected $recordsPerPage;
@@ -78,9 +81,24 @@ class DB
         return $stat !== false;
     }
 
-    public static function select(string $select_stmt)
+    /**
+     * Run a raw SELECT and return all rows.
+     *
+     * `$bind` may be positional (`?` + a list) or named (`:key` + a map). It used to be absent
+     * from the signature entirely, so a caller passing bindings had them silently discarded by
+     * PHP and got a plausible EMPTY result rather than an error — which made string
+     * interpolation look like the only thing that worked, i.e. the method actively pushed
+     * callers toward an injection hole.
+     *
+     * @param  array<int|string, mixed>  $bind
+     */
+    public static function select(string $select_stmt, array $bind = [])
     {
-        $statement = DatabaseConnection::exec($select_stmt);
+        $statement = DatabaseConnection::exec($select_stmt, $bind);
+
+        if ($statement === false) {
+            return [];
+        }
 
         return $statement->fetchAll();
     }
@@ -109,6 +127,7 @@ class DB
         $this->operators = '=';
         $this->order = '';
         $this->for_update = false;
+        $this->selectedRaw = [];
         self::$transaction_mode = false;
     }
 
@@ -120,6 +139,26 @@ class DB
     public function lockForUpdate()
     {
         $this->for_update = true;
+        return $this;
+    }
+
+    /**
+     * Add a raw projection — `selectRaw('SUM(amount) AS total')` — mirroring
+     * QueryBuilder::_selectRaw() on the model builder.
+     *
+     * This existed only on the model builder, while `groupBy()`/`having()` existed on both, so a
+     * grouped aggregate over `DB::table()` fataled with "undefined method" — an asymmetry that is
+     * easy to trip over precisely because its neighbours are symmetric.
+     *
+     * The expression is emitted verbatim, so never build it from user input.
+     *
+     * Note there is still no chainable `select()` here: `DB::select()` is already a static
+     * raw-SELECT executor, and plain projection goes through the argument, `get(['a', 'b'])`.
+     */
+    public function selectRaw(string $expression)
+    {
+        $this->selectedRaw[] = $expression;
+
         return $this;
     }
 
@@ -358,6 +397,14 @@ class DB
         $query_arr = [];
         if ($this->bind_or_filter)
             $query_arr = $this->bind_or_filter;
+
+        // Raw projections (SUM(...) AS total, …) join whatever columns were asked for.
+        if ($this->selectedRaw) {
+            $base = is_array($select)
+                ? $select
+                : (in_array((string) $select, ['', '*'], true) ? [] : [$select]);
+            $select = array_merge($base, $this->selectedRaw);
+        }
 
         // The raw builder has no fillable list — an empty select means "all columns".
         // Left as [] it produced `SELECT  FROM` (invalid SQL).
