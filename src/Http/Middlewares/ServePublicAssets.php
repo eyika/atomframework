@@ -27,8 +27,25 @@ class ServePublicAssets implements MiddlewareInterface
             $uri = explode('?', $request->server('REQUEST_URI') ?? '')[0];
             if (preg_match('/\.(?:js|css|svg|ico|woff|woff2|ttf|webp|pdf|png|jpg|json|jpeg|gif|md)$/', $uri)) {
                 $request->isAssetRequest(true);
-                $path = public_path().$uri;
-                if (file_exists($path)) {
+
+                // Resolve the request target and CONFINE it to the public directory. `$uri` is
+                // the raw REQUEST_URI, so `/../../secrets.json` used to be concatenated straight
+                // onto public_path() and read with file_get_contents — the extension allowlist
+                // does not stop it, because the traversal target only has to END in an allowed
+                // extension. Browsers normalise `..` before sending, but a raw client does not,
+                // and `.json`/`.pdf`/`.md` outside the webroot is exactly where service-account
+                // keys and uploaded documents live. (Same realpath-confinement as
+                // Response::download().)
+                $real = realpath(public_path() . $uri);
+                $publicRoot = realpath(public_path());
+
+                $confined = $real !== false
+                    && $publicRoot !== false
+                    && is_file($real)
+                    && str_starts_with($real, $publicRoot . DIRECTORY_SEPARATOR);
+
+                if ($confined) {
+                    $path = $real;
                     $mime = mime_content_type($path);
                     $ext = pathinfo($path, PATHINFO_EXTENSION);
                     if (array_key_exists($ext, $customMappings)) {
@@ -38,6 +55,18 @@ class ServePublicAssets implements MiddlewareInterface
                     $origin = $request->headers('Origin');
 
                     $response = Response::setHeader("Content-Type", $mime, BaseResponse::STATUS_OK);
+
+                    // Never let a browser second-guess the declared type. A public asset is the
+                    // one place where sniffing has no upside and a real downside: an app serving
+                    // user-uploaded files from its own origin turns a polyglot — a byte sequence
+                    // that is a valid image AND parses as HTML, e.g. `GIF89a<script>…` — into
+                    // same-origin stored XSS. Refusing to store such files is not a workable
+                    // defence (a real photograph can carry "<script>" in its EXIF), so declaring
+                    // the type authoritatively is.
+                    //
+                    // NOTE this does not make SVG safe: `image/svg+xml` is honoured, not sniffed,
+                    // and SVG is scriptable. Don't serve untrusted SVG from an origin that matters.
+                    $response->setHeader("X-Content-Type-Options", "nosniff");
 
                     if ($allowedOrigins[0] === '*' || in_array($origin, $allowedOrigins)) {
                         $response->setHeader("Access-Control-Allow-Origin", '*');

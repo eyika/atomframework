@@ -1,0 +1,186 @@
+<?php
+
+namespace Eyika\Atom\Framework\Tests\Feature;
+
+use Eyika\Atom\Framework\Http\BaseResponse;
+use Eyika\Atom\Framework\Http\Middlewares\ServePublicAssets;
+use Eyika\Atom\Framework\Http\Request;
+use Eyika\Atom\Framework\Support\Config;
+
+/**
+ * Reported by Claude C (vendra): assets served by this middleware carried no
+ * `X-Content-Type-Options: nosniff`.
+ *
+ * It matters because a multi-tenant app serves merchant-uploaded images from each shop's OWN
+ * origin, so a file a browser decides to treat as HTML is same-origin stored XSS against a live
+ * shop. Refusing to store such files is not a workable defence — `GIF89a<script>…` is a genuinely
+ * valid GIF header, and rejecting every upload whose bytes contain "<script>" would reject real
+ * photographs carrying that string in their EXIF. Declaring the type authoritatively is.
+ *
+ * Reviewing it turned up something they had not reported and which is worse: the middleware
+ * concatenated the raw REQUEST_URI onto public_path() with no normalisation, so `..` escaped the
+ * webroot entirely. The extension allowlist does not prevent that — the traversal target only has
+ * to END in an allowed extension, and `.json`/`.pdf`/`.md` outside the webroot is exactly where
+ * service-account keys and uploaded documents live.
+ */
+class ServePublicAssetsTest extends IntegrationTestCase
+{
+    private string $publicDir;
+    private string $outsideFile;
+    private array $configSnapshot;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->configSnapshot = Config::snapshot();
+        Config::set('app.serve_public_assets', true);
+
+        $this->publicDir = public_path();
+        if (!is_dir($this->publicDir)) {
+            @mkdir($this->publicDir, 0777, true);
+        }
+
+        file_put_contents($this->publicDir . '/probe.json', '{"ok":true}');
+        file_put_contents($this->publicDir . '/probe.gif', "GIF89a<script>alert(1)</script>");
+
+        // A file the request must NOT be able to reach: a sibling of public/, with an extension
+        // the allowlist accepts.
+        $this->outsideFile = dirname($this->publicDir) . '/service-account.json';
+        file_put_contents($this->outsideFile, '{"private_key":"leaked"}');
+    }
+
+    protected function tearDown(): void
+    {
+        @unlink($this->publicDir . '/probe.json');
+        @unlink($this->publicDir . '/probe.gif');
+        @unlink($this->outsideFile);
+
+        Config::restore($this->configSnapshot);
+        parent::tearDown();
+    }
+
+    private function serve(string $uri): BaseResponse
+    {
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_URI'] = $uri;
+        $_SERVER['HTTP_HOST'] = 'localhost';
+
+        $request = new Request();
+
+        return (new ServePublicAssets())->handle(
+            $request,
+            fn ($req) => (new \Eyika\Atom\Framework\Http\Response())->body('passed through')
+        );
+    }
+
+    /** @return array<string, string> header name (lower) => value */
+    private function headersOf(BaseResponse $response): array
+    {
+        $reflection = new \ReflectionClass(BaseResponse::class);
+        $prop = $reflection->getProperty('headers');
+        $prop->setAccessible(true);
+
+        $flat = [];
+        foreach ($prop->getValue($response) as $header) {
+            foreach ($header as $name => $value) {
+                $flat[strtolower($name)] = is_array($value) ? (string) $value[0] : (string) $value;
+            }
+        }
+
+        return $flat;
+    }
+
+    private function bodyOf(BaseResponse $response): string
+    {
+        $prop = (new \ReflectionClass(BaseResponse::class))->getProperty('body');
+        $prop->setAccessible(true);
+
+        return (string) $prop->getValue($response);
+    }
+
+    // ---------------------------------------------------------------- the reported issue
+
+    public function test_a_served_asset_carries_nosniff(): void
+    {
+        $headers = $this->headersOf($this->serve('/probe.json'));
+
+        $this->assertSame('nosniff', $headers['x-content-type-options'] ?? null);
+    }
+
+    public function test_a_served_asset_still_carries_its_content_type(): void
+    {
+        $headers = $this->headersOf($this->serve('/probe.json'));
+
+        $this->assertArrayHasKey('content-type', $headers);
+        $this->assertNotSame('', $headers['content-type']);
+    }
+
+    /** The polyglot case the header exists for: valid GIF bytes that also parse as HTML. */
+    public function test_a_polyglot_image_is_served_with_nosniff(): void
+    {
+        $response = $this->serve('/probe.gif');
+        $headers = $this->headersOf($response);
+
+        $this->assertSame('nosniff', $headers['x-content-type-options'] ?? null);
+        $this->assertStringContainsString('<script>', $this->bodyOf($response), 'the fixture really is a polyglot');
+    }
+
+    public function test_a_query_string_does_not_defeat_the_header(): void
+    {
+        $headers = $this->headersOf($this->serve('/probe.json?v=abc123'));
+
+        $this->assertSame('nosniff', $headers['x-content-type-options'] ?? null);
+    }
+
+    // ---------------------------------------------------------------- path traversal
+
+    public function test_a_traversal_cannot_read_a_file_outside_the_public_directory(): void
+    {
+        $response = $this->serve('/../service-account.json');
+
+        $this->assertStringNotContainsString(
+            'leaked',
+            $this->bodyOf($response),
+            'a ../ traversal escaped the public directory'
+        );
+    }
+
+    public function test_a_nested_traversal_is_also_refused(): void
+    {
+        $response = $this->serve('/assets/../../service-account.json');
+
+        $this->assertStringNotContainsString('leaked', $this->bodyOf($response));
+    }
+
+    public function test_a_refused_traversal_answers_404(): void
+    {
+        $response = $this->serve('/../service-account.json');
+
+        $this->assertSame(BaseResponse::STATUS_NOT_FOUND, $response->getStatusCode());
+    }
+
+    // ---------------------------------------------------------------- no collateral damage
+
+    public function test_a_legitimate_asset_is_still_served(): void
+    {
+        $response = $this->serve('/probe.json');
+
+        $this->assertSame('{"ok":true}', $this->bodyOf($response));
+        $this->assertSame(BaseResponse::STATUS_OK, $response->getStatusCode());
+    }
+
+    public function test_a_missing_asset_answers_404(): void
+    {
+        $this->assertSame(
+            BaseResponse::STATUS_NOT_FOUND,
+            $this->serve('/definitely-not-here.json')->getStatusCode()
+        );
+    }
+
+    /** A non-asset URI must fall through to the rest of the pipeline untouched. */
+    public function test_a_non_asset_request_passes_through(): void
+    {
+        $this->assertSame('passed through', $this->bodyOf($this->serve('/dashboard')));
+    }
+}
