@@ -60,11 +60,15 @@ class ServePublicAssetsTest extends IntegrationTestCase
         parent::tearDown();
     }
 
-    private function serve(string $uri): BaseResponse
+    private function serve(string $uri, array $headers = []): BaseResponse
     {
         $_SERVER['REQUEST_METHOD'] = 'GET';
         $_SERVER['REQUEST_URI'] = $uri;
         $_SERVER['HTTP_HOST'] = 'localhost';
+        unset($_SERVER['HTTP_IF_NONE_MATCH'], $_SERVER['HTTP_IF_MODIFIED_SINCE']);
+        foreach ($headers as $name => $value) {
+            $_SERVER['HTTP_' . strtoupper(str_replace('-', '_', $name))] = $value;
+        }
 
         $request = new Request();
 
@@ -158,6 +162,98 @@ class ServePublicAssetsTest extends IntegrationTestCase
         $response = $this->serve('/../service-account.json');
 
         $this->assertSame(BaseResponse::STATUS_NOT_FOUND, $response->getStatusCode());
+    }
+
+    // ---------------------------------------------------------------- cache revalidation
+
+    public function test_a_served_asset_carries_cache_validators(): void
+    {
+        $headers = $this->headersOf($this->serve('/probe.json'));
+
+        $this->assertArrayHasKey('etag', $headers);
+        $this->assertArrayHasKey('last-modified', $headers);
+        $this->assertSame('public, max-age=0, must-revalidate', $headers['cache-control'] ?? null);
+    }
+
+    /** The point of the validators: an unchanged asset costs a 304, not a re-download. */
+    public function test_a_matching_etag_gets_a_304_with_no_body(): void
+    {
+        $etag = $this->headersOf($this->serve('/probe.json'))['etag'];
+
+        $response = $this->serve('/probe.json', ['If-None-Match' => $etag]);
+
+        $this->assertSame(BaseResponse::STATUS_NOT_MODIFIED, $response->getStatusCode());
+        $this->assertSame('', $this->bodyOf($response));
+    }
+
+    public function test_a_stale_etag_gets_the_asset(): void
+    {
+        $response = $this->serve('/probe.json', ['If-None-Match' => '"0-0"']);
+
+        $this->assertSame(BaseResponse::STATUS_OK, $response->getStatusCode());
+        $this->assertSame('{"ok":true}', $this->bodyOf($response));
+    }
+
+    /** A `W/` prefix must still match — GET uses the weak comparison function. */
+    public function test_a_weak_etag_still_matches(): void
+    {
+        $etag = $this->headersOf($this->serve('/probe.json'))['etag'];
+
+        $response = $this->serve('/probe.json', ['If-None-Match' => 'W/' . $etag]);
+
+        $this->assertSame(BaseResponse::STATUS_NOT_MODIFIED, $response->getStatusCode());
+    }
+
+    public function test_an_etag_list_matches_on_any_member(): void
+    {
+        $etag = $this->headersOf($this->serve('/probe.json'))['etag'];
+
+        $response = $this->serve('/probe.json', ['If-None-Match' => '"nope", ' . $etag . ', "also-nope"']);
+
+        $this->assertSame(BaseResponse::STATUS_NOT_MODIFIED, $response->getStatusCode());
+    }
+
+    public function test_if_modified_since_is_honoured_when_no_etag_is_sent(): void
+    {
+        $response = $this->serve('/probe.json', [
+            'If-Modified-Since' => gmdate('D, d M Y H:i:s', time() + 60) . ' GMT',
+        ]);
+
+        $this->assertSame(BaseResponse::STATUS_NOT_MODIFIED, $response->getStatusCode());
+    }
+
+    public function test_an_older_if_modified_since_gets_the_asset(): void
+    {
+        $response = $this->serve('/probe.json', [
+            'If-Modified-Since' => gmdate('D, d M Y H:i:s', time() - 86400) . ' GMT',
+        ]);
+
+        $this->assertSame(BaseResponse::STATUS_OK, $response->getStatusCode());
+    }
+
+    /**
+     * An entity tag is exact; `If-Modified-Since` has one-second resolution and cannot tell two
+     * edits within the same second apart. So a non-matching ETag must win over a date that would
+     * otherwise say "unchanged" — otherwise the coarser test overrides the precise one.
+     */
+    public function test_a_non_matching_etag_wins_over_a_satisfied_if_modified_since(): void
+    {
+        $response = $this->serve('/probe.json', [
+            'If-None-Match'     => '"stale"',
+            'If-Modified-Since' => gmdate('D, d M Y H:i:s', time() + 60) . ' GMT',
+        ]);
+
+        $this->assertSame(BaseResponse::STATUS_OK, $response->getStatusCode());
+    }
+
+    /** An operator who knows their assets are content-hashed can opt into real caching. */
+    public function test_max_age_is_configurable_for_hashed_assets(): void
+    {
+        Config::set('app.asset_cache_max_age', 31536000);
+
+        $headers = $this->headersOf($this->serve('/probe.json'));
+
+        $this->assertSame('public, max-age=31536000', $headers['cache-control'] ?? null);
     }
 
     // ---------------------------------------------------------------- no collateral damage
