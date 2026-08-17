@@ -56,6 +56,24 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   you actually want. Apps that were relying on the loopback default were trusting their callers.
   (`1db731d`)
 
+- **Public assets are no longer content-sniffed, and can no longer be read from outside the public
+  directory.** Two issues in `ServePublicAssets`:
+
+  1. It set `Content-Type` and no other security header. `X-Content-Type-Options: nosniff` is now
+     sent with every asset. This matters most for an app serving user-uploaded files from its own
+     origin: a **polyglot** — bytes that are a valid image *and* parse as HTML, e.g.
+     `GIF89a<script>…` — becomes same-origin stored XSS if a browser sniffs it. Refusing to store
+     such files isn't workable (a real photograph can carry `<script>` in its EXIF), so declaring
+     the type authoritatively is the defence. Note this does **not** make SVG safe: `image/svg+xml`
+     is honoured rather than sniffed, and SVG is scriptable.
+
+  2. **Path traversal.** The raw `REQUEST_URI` was concatenated onto `public_path()` with no
+     normalisation, so `..` escaped the webroot and the file was read anyway. The extension
+     allowlist does not prevent this — the traversal target only has to *end* in an allowed
+     extension, and `.json`/`.pdf`/`.md` outside the webroot is where service-account keys and
+     uploaded documents live. The path is now `realpath()`-resolved and confined under
+     `public_path()`; anything outside answers 404. (`305e14b`)
+
 - **Database connections now honour their configured PDO `options`.** `Connection::getOptions()`
   built its option list from scratch and never merged
   `config('database.connections.<driver>.options')`. The scaffolded config ships that key already
