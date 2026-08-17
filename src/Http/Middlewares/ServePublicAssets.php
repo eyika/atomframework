@@ -74,6 +74,36 @@ class ServePublicAssets implements MiddlewareInterface
                         $response->setHeader('Access-Control-Allow-Headers', "Content-Type");
                     }
 
+                    /*
+                     * Cache validators, so an unchanged asset costs a 304 with no body instead of
+                     * a full re-download.
+                     *
+                     * `max-age` defaults to 0 — always revalidate, never serve stale. This
+                     * middleware serves EVERY public asset and cannot tell which filenames are
+                     * content-hashed, so a long default would land on mutable assets too, and a
+                     * stale asset cannot be withdrawn once a client has cached it. An operator who
+                     * knows their assets are hashed can raise it via config.
+                     */
+                    $mtime = filemtime($path);
+                    $etag = '"' . dechex((int) $mtime) . '-' . dechex((int) filesize($path)) . '"';
+                    $lastModified = gmdate('D, d M Y H:i:s', (int) $mtime) . ' GMT';
+                    $maxAge = (int) config('app.asset_cache_max_age', 0);
+
+                    $response->setHeader('ETag', $etag);
+                    $response->setHeader('Last-Modified', $lastModified);
+                    $response->setHeader(
+                        'Cache-Control',
+                        $maxAge > 0 ? "public, max-age=$maxAge" : 'public, max-age=0, must-revalidate'
+                    );
+
+                    if ($this->isUnchanged($request, $etag, (int) $mtime)) {
+                        // Clear the body explicitly rather than relying on the send path to drop
+                        // it: the response is a shared instance, so it can still be carrying the
+                        // previous asset, and a 304 object that holds content is a trap for
+                        // anything that inspects it before sending.
+                        return $response->body('')->status(BaseResponse::STATUS_NOT_MODIFIED);
+                    }
+
                     return $response->body(file_get_contents($path));
                 }
 
@@ -82,5 +112,46 @@ class ServePublicAssets implements MiddlewareInterface
         }
 
         return $next($request);
+    }
+
+    /**
+     * Whether the client's copy is still current, per RFC 9110 §13.
+     *
+     * `If-None-Match` wins outright when present — an entity tag is an exact identity check, while
+     * `If-Modified-Since` has only one-second resolution and so cannot distinguish two edits within
+     * the same second. Checking the date as a fallback would let that coarser test override the
+     * precise one.
+     */
+    private function isUnchanged(Request $request, string $etag, int $mtime): bool
+    {
+        $ifNoneMatch = $request->headers('If-None-Match');
+
+        if (is_string($ifNoneMatch) && $ifNoneMatch !== '') {
+            if (trim($ifNoneMatch) === '*') {
+                return true;
+            }
+
+            foreach (explode(',', $ifNoneMatch) as $candidate) {
+                // Weak comparison: a `W/` prefix still matches, which is what GET requires.
+                $candidate = trim($candidate);
+                $candidate = str_starts_with($candidate, 'W/') ? substr($candidate, 2) : $candidate;
+
+                if ($candidate === $etag) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        $ifModifiedSince = $request->headers('If-Modified-Since');
+
+        if (is_string($ifModifiedSince) && $ifModifiedSince !== '') {
+            $since = strtotime($ifModifiedSince);
+
+            return $since !== false && $mtime <= $since;
+        }
+
+        return false;
     }
 }
