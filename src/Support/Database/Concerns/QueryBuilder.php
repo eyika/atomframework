@@ -134,6 +134,48 @@ trait QueryBuilder
      * naturally an expression and so the easiest place to smuggle SQL in. The VALUE is always
      * bound, never inlined.
      */
+    /**
+     * Add a raw WHERE fragment, e.g. `whereRaw('quantity > reorder_level')`.
+     *
+     * For predicates the builder cannot express — a column compared to another column, a function
+     * call, a window over the row. Successive calls accumulate with AND, and each fragment is
+     * parenthesised when emitted so its own ORs cannot rebind against the surrounding ANDs.
+     *
+     * `$bind` is NAMED, and the names are rewritten to a unique prefix before use, so a
+     * `:amount` here can never collide with the bind that `where('amount', …)` generates.
+     *
+     * The FRAGMENT ITSELF is emitted verbatim — never build it from user input. Pass values
+     * through `$bind`, which is exactly what makes that unnecessary.
+     */
+    public function _whereRaw(string $sql, array $bind = [])
+    {
+        $sql = trim($sql);
+
+        if ($sql === '') {
+            return $this;
+        }
+
+        $key = \Eyika\Atom\Framework\Support\Database\Connection::RAW_WHERE_KEY;
+        $existing = $this->bind_or_filter[$key] ?? ['sql' => '', 'bind' => []];
+        $n = count($existing['bind']);
+
+        foreach ($bind as $name => $value) {
+            $placeholder = ':' . ltrim((string) $name, ':');
+            $unique = ':rw' . $n . '_' . ltrim((string) $name, ':');
+
+            // Word-boundary replace so `:id` doesn't also clobber `:id_type` — the same hazard
+            // exec() guards against when expanding IN lists.
+            $sql = preg_replace('/' . preg_quote($placeholder, '/') . '\b/', $unique, $sql);
+            $existing['bind'][$unique] = $value;
+            $n++;
+        }
+
+        $existing['sql'] = $existing['sql'] === '' ? $sql : $existing['sql'] . ' AND ' . $sql;
+        $this->bind_or_filter[$key] = $existing;
+
+        return $this;
+    }
+
     public function _having($column, $operatorOrValue = null, $value = null)
     {
         if ($value === null) {

@@ -53,6 +53,7 @@ use JsonSerializable;
  * @method static self offset($postion)
  * @method static self where($column, $operatorOrValue = null, $value = null)
  * @method static self whereIn($column, array $values)
+ * @method static self whereRaw(string $sql, array $bind = [])
  * @method static self whereNotIn($column, array $values)
  * @method static self whereLike($column, $value)
  * @method static self whereNotLike($column, $value)
@@ -124,7 +125,7 @@ abstract class Model implements ModelInterface, JsonSerializable, ArrayableContr
         'findByArray', 'all', 'get', 'cursor', 'lazy', 'paginate', 'random', 'count', 'avg', 'max', 'min', 'increment', 'decrement',
         'sum', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor', 'group_concat', 'update',
         'updateOrCreate', 'delete', 'restore', 'limit', 'offset', 'orderBy', 'groupBy', 'having',
-        'select', 'selectRaw', 'with', 'raw', 'where', 'whereIn',
+        'select', 'selectRaw', 'with', 'raw', 'where', 'whereIn', 'whereRaw',
         'whereNotIn', 'whereLike', 'whereNotLike', 'whereBetween', 'whereNotBetween', 'whereLessThan',
         'whereLessThanOrEqual', 'whereGreaterThan', 'whereGreaterThanOrEqual', 'whereNull', 'whereNotNull',
         'whereEqual', 'whereNotEqual', 'orWhere', 'orWhereIn', 'orWhereNotIn', 'orWhereLike', 'orWhereNotLike',
