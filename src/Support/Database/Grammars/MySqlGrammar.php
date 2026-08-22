@@ -23,6 +23,16 @@ class MySqlGrammar extends Grammar
         return 'RAND()';
     }
 
+    /**
+     * MySQL treats a backslash as an escape character INSIDE a string literal too, so the escape
+     * character has to be written doubled — `ESCAPE '\\'` — where SQLite and Postgres take it
+     * literally. This one line is the portability difference the app hit.
+     */
+    public function compileLikeEscape(): string
+    {
+        return " ESCAPE '\\\\'";
+    }
+
     public function now(): string
     {
         return 'now()';

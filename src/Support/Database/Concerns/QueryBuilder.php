@@ -1005,9 +1005,18 @@ trait QueryBuilder
         return $this->__where($column, $operatorOrValueOrMethod, $value, 'AND');
     }
     
-    public function _whereLike($column, $value)
+    /**
+     * Case-insensitive "contains" match. The term is wrapped in `%…%` for you.
+     *
+     * Pass `$escape = true` for a term a user typed. `%` and `_` are LIKE metacharacters, so
+     * without it `?q=%` means "every row" and `?q=t_e` matches "tee" and "the" alike. Escaping
+     * cannot be done at the call site portably — MySQL's LIKE has a default escape character and
+     * SQLite's has none, so the same hand-escaped pattern means different things in production and
+     * in a test suite; the escape character is emitted per-grammar for exactly that reason.
+     */
+    public function _whereLike($column, $value, bool $escape = false)
     {
-        return $this->__where($column, 'LIKE', $value, 'AND');
+        return $this->__where($column, $escape ? 'LIKE ESCAPE' : 'LIKE', $value, 'AND');
     }
     
     public function _whereIn($column, $values)
@@ -1020,9 +1029,10 @@ trait QueryBuilder
         return $this->__where($column, 'NOT IN', $values, 'AND');
     }
 
-    public function _whereNotLike($column, $value)
+    /** Inverse of {@see _whereLike()}; `$escape` behaves identically. */
+    public function _whereNotLike($column, $value, bool $escape = false)
     {
-        return $this->__where($column, 'NOT LIKE', $value, 'AND');
+        return $this->__where($column, $escape ? 'NOT LIKE ESCAPE' : 'NOT LIKE', $value, 'AND');
     }
 
     public function _whereBetween($column, array $range)
@@ -1096,14 +1106,16 @@ trait QueryBuilder
         return $this->__where($column, 'NOT IN', $values, 'OR');
     }
 
-    public function _orWhereLike($column, $value)
+    /** OR variant of {@see _whereLike()}; `$escape` behaves identically. */
+    public function _orWhereLike($column, $value, bool $escape = false)
     {
-        return $this->__where($column, 'LIKE', $value, 'OR');
+        return $this->__where($column, $escape ? 'LIKE ESCAPE' : 'LIKE', $value, 'OR');
     }
 
-    public function _orWhereNotLike($column, $value)
+    /** OR variant of {@see _whereNotLike()}; `$escape` behaves identically. */
+    public function _orWhereNotLike($column, $value, bool $escape = false)
     {
-        return $this->__where($column, 'NOT LIKE', $value, 'OR');
+        return $this->__where($column, $escape ? 'NOT LIKE ESCAPE' : 'NOT LIKE', $value, 'OR');
     }
     
     public function _orWhereLessThan($column, $value)
