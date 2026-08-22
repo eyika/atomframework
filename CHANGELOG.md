@@ -205,6 +205,38 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   <https://basttyydev.serv00.net/docs/beta/advanced/key-rotation>
 
 ### Added
+- **Query builder — `whereRaw()` on both builders.** For predicates the builder cannot express: a
+  column compared to another column, a function call, a window over the row.
+
+  ```php
+  Stock::whereRaw('quantity < reorder_level')->get();
+  DB::table('stock')->whereRaw('quantity > :floor', ['floor' => 10])->get();
+  ```
+
+  Successive calls accumulate with `AND`, and each fragment is parenthesised when emitted so its own
+  `OR`s cannot rebind against the surrounding `AND`s. `$bind` is named and the names are rewritten
+  to a unique prefix, so a raw `:quantity` cannot collide with the bind `where('quantity', …)`
+  generates. The fragment itself is emitted verbatim — never build it from user input.
+
+  It applies to **writes as well as reads**: `update()`/`delete()` take a different code path from
+  reads, and a raw predicate that path ignored would have widened the write to every row the
+  remaining conditions matched. (`94cd159`)
+
+- **Query builder — `whereLike()` can escape user-typed wildcards.**
+
+  ```php
+  Product::whereLike('title', $request->query('q'), escape: true)->get();
+  ```
+
+  `%` and `_` are LIKE metacharacters, so without this `?q=%` means "every row" and `?q=t_e` matches
+  "tee" and "the" alike. It is **opt-in** because the documented three-argument form
+  `where('title', 'LIKE', "%$term%")` passes its own wildcards and must keep meaning what it says.
+
+  Escaping at the call site is not portable, which is why it belongs here: **MySQL's LIKE has a
+  default escape character and SQLite's has none**, so the same hand-escaped pattern means different
+  things in production and in a test suite. The `ESCAPE` clause is emitted per grammar, and the
+  behaviour is asserted against both drivers. (`6923674`)
+
 - **HTTP — public assets now revalidate.** `ServePublicAssets` sends `ETag` and `Last-Modified`,
   honours `If-None-Match` (list-aware, `*`-aware, weak `W/` comparison) and `If-Modified-Since`, and
   answers `304 Not Modified` when the client's copy is current — so an unchanged asset costs a
@@ -407,6 +439,21 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Query builder — a `join()` made ordinary queries fail with "ambiguous column name".** A model
+  selects its own `fillable` columns **unqualified**, so joining any table that shares a column name
+  — `id`, universally — broke the SELECT before a `WHERE` was even involved.
+
+  Bare columns are now qualified with the base table in the select list, in `WHERE`, and in
+  `ORDER BY`/`GROUP BY` — but **only when a join is present**, so unjoined queries emit unchanged
+  SQL. Order/group qualification happens at emission, so it does not matter whether `join()` was
+  called before or after `orderBy()`.
+
+  Two adjacent defects in the dot-notation handling are fixed with it: a column naming the model's
+  **own** table (`where('order_items.sku', …)`) emitted a nonsensical self-join, and a column naming
+  an **already-joined** table joined it a second time — which made every column of that table
+  ambiguous, so `join('orders', …)->where('orders.status', …)` failed *on the qualified column*.
+  (`1a32f8a`)
+
 - **Query builder — `DB::select()` ignored its bindings.**
   `DB::select('… WHERE business_id = ?', [1])` returned an **empty result** against a table with
   matching rows: the method took a single parameter, so PHP discarded the bindings silently. It
