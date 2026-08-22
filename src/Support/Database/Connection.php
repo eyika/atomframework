@@ -92,6 +92,14 @@ class Connection {
   }
 
   /** Aggregates reachable through the dynamic `{function}_{column}` call form. */
+  /**
+   * Reserved `bind_or_filter` key holding a raw WHERE fragment as `['sql' => …, 'bind' => […]]`.
+   *
+   * Deliberately contains a space so it can never collide with a real column name, which is the
+   * same trick the trailing-clause keys ('GROUP BY', 'ORDER BY', …) rely on.
+   */
+  public const RAW_WHERE_KEY = 'WHERE RAW';
+
   public const AGGREGATE_FUNCTIONS = [
     'group_concat', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor',
     'min', 'max', 'avg', 'sum',
@@ -631,12 +639,25 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
   private function filter($filter, string|array $or_ands = "AND", string|array $operators = '=') {
     // if this method fails in the future, check fetch_cursor below to copy implementation
     $bind = []; $query = []; $incr_operator = false;
+    $rawWhere = null;
     if ( is_array($filter) ) {
 
 
       $i = 0; $j = 0; $len = count($filter);
 
+      // A raw predicate is NOT a column condition, so it must not reach condition() and must not
+      // count toward the connector bookkeeping below. Handling it here is not optional: this is
+      // the path update() and delete() take, and silently dropping the predicate would widen a
+      // `whereRaw(...)->delete()` to every row the remaining conditions match.
+      if ( array_key_exists(self::RAW_WHERE_KEY, $filter) ) {
+        $rawWhere = $filter[self::RAW_WHERE_KEY];
+        $len--;
+      }
+
       foreach ( $filter as $k => $v ) {
+        if ( $k === self::RAW_WHERE_KEY ) {
+          continue;
+        }
         if ($len - $j === 1)
           $or_and = '';
         else
@@ -653,8 +674,35 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
     else {
       $this->condition('id', $filter, $query, $bind, $incr_operator);
     }
-    
+
+    self::appendRawWhere($rawWhere, $query, $bind);
+
     return [$query ? ('WHERE ' . implode(' ', $query)) : '', $bind];
+  }
+
+  /**
+   * Append a raw WHERE fragment to an assembled predicate list.
+   *
+   * Each entry in `$where` carries a TRAILING connector except the last, which is deliberately
+   * left bare — so a fragment appended afterwards has to bring its own leading connector. The
+   * fragment is parenthesised so its own `OR`s cannot rebind against the surrounding `AND`s:
+   * `a = 1 AND b = 2 OR c = 3` means something very different from `a = 1 AND (b = 2 OR c = 3)`.
+   *
+   * @param array{sql?: string, bind?: array}|null $rawWhere
+   */
+  private static function appendRawWhere($rawWhere, array &$where, array &$bind): void
+  {
+    $sql = is_array($rawWhere) ? trim((string) ($rawWhere['sql'] ?? '')) : '';
+
+    if ($sql === '') {
+      return;
+    }
+
+    $where[] = ($where ? 'AND ' : '') . '(' . $sql . ')';
+
+    foreach ((array) ($rawWhere['bind'] ?? []) as $param => $value) {
+      $bind[$param] = $value;
+    }
   }
   
   protected function compileJoins(array $joins): string
@@ -708,11 +756,14 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
       // Explicit, because HAVING may now contribute binds before condition() first writes to it.
       $bind = [];
       $where = [];
+      $rawWhere = null;
 
       if ( $bind_or_filter ) {
         if ( is_array($bind_or_filter) ) {
           $i = 0; $j = 0; $len = count($bind_or_filter);
-          foreach (array_keys($clauses) as $_val) {
+          // The raw WHERE fragment is reserved like the trailing clauses: it is not a column
+          // condition, so it must not consume a connector slot in the bookkeeping below.
+          foreach ([...array_keys($clauses), self::RAW_WHERE_KEY] as $_val) {
             if (array_key_exists($_val, $bind_or_filter)) {
               $len--;
             }
@@ -724,6 +775,10 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
           }
 
           foreach ( $bind_or_filter as $k => $v ) {
+            if ( $k === self::RAW_WHERE_KEY ) {
+              $rawWhere = $v;
+              continue;
+            }
             if ( array_key_exists($k, $clauses) ) {
               if ( in_array($k, ['LIMIT', 'OFFSET'], true) ) {
                 // LIMIT/OFFSET are always integers — cast so a user-supplied value
@@ -759,6 +814,8 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
               $i++;
             $incr_operator = false;
           }
+
+          self::appendRawWhere($rawWhere, $where, $bind);
 
           if ( $where ?? null ) {
             $sql .= ' WHERE ' . implode( " ", $where);

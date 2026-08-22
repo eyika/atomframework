@@ -163,6 +163,47 @@ class DB
     }
 
     /**
+     * Add a raw WHERE fragment — mirrors QueryBuilder::_whereRaw().
+     *
+     * For predicates this builder cannot express: a column compared to another column, a function
+     * call, a window over the row. Successive calls accumulate with AND, and each fragment is
+     * parenthesised when emitted so its own ORs cannot rebind against the surrounding ANDs.
+     *
+     * `$bind` is NAMED, and the names are rewritten to a unique prefix, so a `:amount` here can
+     * never collide with the bind that `where('amount', …)` generates.
+     *
+     * The FRAGMENT ITSELF is emitted verbatim — never build it from user input. Pass values
+     * through `$bind`, which is exactly what makes that unnecessary.
+     */
+    public function whereRaw(string $sql, array $bind = [])
+    {
+        $sql = trim($sql);
+
+        if ($sql === '') {
+            return $this;
+        }
+
+        $key = Connection::RAW_WHERE_KEY;
+        $existing = $this->bind_or_filter[$key] ?? ['sql' => '', 'bind' => []];
+        $n = count($existing['bind']);
+
+        foreach ($bind as $name => $value) {
+            $placeholder = ':' . ltrim((string) $name, ':');
+            $unique = ':rw' . $n . '_' . ltrim((string) $name, ':');
+
+            // Word-boundary replace so `:id` doesn't also clobber `:id_type`.
+            $sql = preg_replace('/' . preg_quote($placeholder, '/') . '\b/', $unique, $sql);
+            $existing['bind'][$unique] = $value;
+            $n++;
+        }
+
+        $existing['sql'] = $existing['sql'] === '' ? $sql : $existing['sql'] . ' AND ' . $sql;
+        $this->bind_or_filter[$key] = $existing;
+
+        return $this;
+    }
+
+    /**
      * GROUP BY one or more columns — mirrors QueryBuilder::_groupBy().
      *
      * Note there is no chainable `select()` here: DB::select() is already a static raw-SELECT

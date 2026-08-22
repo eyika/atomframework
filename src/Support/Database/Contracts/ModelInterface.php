@@ -126,6 +126,16 @@ interface ModelInterface extends ModelEventsInterface
      */
     public function _selectRaw(string $expression);
 
+    /**
+     * Add a raw WHERE fragment — `whereRaw('quantity > reorder_level')`.
+     *
+     * For predicates the builder cannot express: a column compared to another column, a function
+     * call, a window over the row. Successive calls accumulate with AND. `$bind` is named and its
+     * names are rewritten to a unique prefix, so they cannot collide with column binds. The
+     * FRAGMENT is emitted verbatim — never build it from user input; pass values via $bind.
+     */
+    public function _whereRaw(string $sql, array $bind = []);
+
     // public function addSelect()
 
     /**
