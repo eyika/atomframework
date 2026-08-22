@@ -127,14 +127,6 @@ trait QueryBuilder
     }
 
     /**
-     * HAVING filters on an aggregate, which WHERE cannot — `having('SUM(total)', '>', 500)`.
-     *
-     * The left-hand side accepts a plain column or an aggregate call over one; anything else is
-     * rejected rather than interpolated, since HAVING is the one clause whose left side is
-     * naturally an expression and so the easiest place to smuggle SQL in. The VALUE is always
-     * bound, never inlined.
-     */
-    /**
      * Add a raw WHERE fragment, e.g. `whereRaw('quantity > reorder_level')`.
      *
      * For predicates the builder cannot express — a column compared to another column, a function
@@ -176,6 +168,14 @@ trait QueryBuilder
         return $this;
     }
 
+    /**
+     * HAVING filters on an aggregate, which WHERE cannot — `having('SUM(total)', '>', 500)`.
+     *
+     * The left-hand side accepts a plain column or an aggregate call over one; anything else is
+     * rejected rather than interpolated, since HAVING is the one clause whose left side is
+     * naturally an expression and so the easiest place to smuggle SQL in. The VALUE is always
+     * bound, never inlined.
+     */
     public function _having($column, $operatorOrValue = null, $value = null)
     {
         if ($value === null) {
@@ -1391,7 +1391,31 @@ trait QueryBuilder
     {
         if (strpos($column, '.') !== false) {
             [$relation, $field] = explode('.', $column, 2);
+
+            // The column already names THIS table. Auto-joining here would emit a self-join on a
+            // guessed key — `LEFT JOIN order_items ON order_items.order_items_id = order_items.id`
+            // — so take the qualification at face value.
+            if ($relation === $this->table) {
+                return $column;
+            }
+
+            // The table is already joined, explicitly or by an earlier dotted column. Joining it
+            // again makes every one of its columns ambiguous, so `join('orders', …)` followed by
+            // `where('orders.status', …)` — filtering child rows by a parent's state, which is
+            // the whole point of the join — failed on the qualified column itself.
+            foreach ($this->joins as $join) {
+                if (($join['table'] ?? null) === $relation) {
+                    return $column;
+                }
+            }
+
             $relation_plural = Str::plural($relation);
+
+            foreach ($this->joins as $join) {
+                if (($join['table'] ?? null) === $relation_plural) {
+                    return "$relation_plural.{$field}";
+                }
+            }
 
             // Example: posts.user_id = users.id
             // a relation map might be better here for flexibility

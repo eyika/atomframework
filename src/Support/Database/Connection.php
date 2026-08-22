@@ -74,16 +74,26 @@ class Connection {
    * and an empty result falls back to `*` (never `SELECT  FROM`). A STRING is returned verbatim —
    * it may be a raw expression the caller built deliberately (e.g. `count(id)`).
    */
-  public static function compileSelectList($select_what): string
+  /**
+   * @param string|null $baseTable When a JOIN is present, BARE column names are qualified with
+   *   this table. A model selects its own fillable columns unqualified, so joining any table that
+   *   shares a column name — `id`, universally — made the whole SELECT fail with "ambiguous column
+   *   name" before a WHERE was even involved. Columns that already carry a table, expressions,
+   *   aliases and `*` are left exactly as written.
+   */
+  public static function compileSelectList($select_what, ?string $baseTable = null): string
   {
       if (!is_array($select_what)) {
           return (string) $select_what;
       }
-      $cols = array_map(function ($col) {
+      $cols = array_map(function ($col) use ($baseTable) {
           $col = (string) $col;
           if ($col === '' || $col === '*'
               || str_contains($col, '(') || str_contains($col, ' ') || str_contains($col, '`')) {
               return $col;
+          }
+          if ($baseTable !== null && !str_contains($col, '.')) {
+              return self::quoteQualified($baseTable . '.' . $col);
           }
           return self::quoteQualified($col);
       }, $select_what);
@@ -91,7 +101,6 @@ class Connection {
       return $cols ? implode(', ', $cols) : '*';
   }
 
-  /** Aggregates reachable through the dynamic `{function}_{column}` call form. */
   /**
    * Reserved `bind_or_filter` key holding a raw WHERE fragment as `['sql' => …, 'bind' => […]]`.
    *
@@ -100,6 +109,7 @@ class Connection {
    */
   public const RAW_WHERE_KEY = 'WHERE RAW';
 
+  /** Aggregates reachable through the dynamic `{function}_{column}` call form. */
   public const AGGREGATE_FUNCTIONS = [
     'group_concat', 'var_pop', 'stddev', 'bit_and', 'bit_or', 'bit_xor',
     'min', 'max', 'avg', 'sum',
@@ -320,7 +330,7 @@ class Connection {
  * 
  * @return void
  */
-private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '', $_operator = '=') {
+private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '', $_operator = '=', ?string $baseTable = null) {
     $or_and = $or_and !== '' ? ' ' . $or_and : $or_and;
 
     // QueryBuilder appends a __dupN suffix to the bind key when multiple
@@ -340,6 +350,10 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
         $parts = explode('.', $k_col);
         $__k  = end($parts) . (preg_match('/__dup\d+$/', $k, $m) ? $m[0] : '');
         $_k   = implode('.', array_map($quoteIdent, $parts)); // quote + escape each part
+    } elseif ($baseTable !== null) {
+        // A JOIN is in play, so a bare column has to say which table it means — `where('id', 1)`
+        // across a join is ambiguous, and the database rejects it rather than guessing.
+        $_k = $quoteIdent($baseTable) . '.' . $quoteIdent($k_col);
     } else {
         $_k = $quoteIdent($k_col); // quote + escape normal column too
     }
@@ -681,6 +695,34 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
   }
 
   /**
+   * Qualify bare columns in an already-compiled ORDER BY / GROUP BY clause with the base table.
+   *
+   * Done at EMISSION rather than in the builder, so it does not matter whether `join()` was called
+   * before or after `orderBy()` — this codebase deliberately retired that kind of call-order
+   * folklore once already, when trailing clauses started being emitted in fixed SQL order.
+   *
+   * The clause was produced by our own quoting, so its shape is known: comma-separated terms of
+   * `"col" DIR` or `"tbl"."col" DIR`. A term that already carries a table, or is an expression, is
+   * left alone.
+   */
+  private function qualifyClauseColumns(string $clause, string $baseTable): string
+  {
+    $qualifiedBase = $this->grammar->wrapValue($baseTable);
+
+    $terms = array_map(function ($term) use ($qualifiedBase) {
+      $term = trim($term);
+
+      if ($term === '' || str_contains($term, '.') || str_contains($term, '(')) {
+        return $term;
+      }
+
+      return $qualifiedBase . '.' . $term;
+    }, explode(',', $clause));
+
+    return implode(', ', array_filter($terms, fn ($t) => $t !== ''));
+  }
+
+  /**
    * Append a raw WHERE fragment to an assembled predicate list.
    *
    * Each entry in `$where` carries a TRAILING connector except the last, which is deliberately
@@ -740,7 +782,11 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
       $bind = $bind_or_filter;
     }
     else {
-      $select_str = self::compileSelectList($select_what);
+      // Qualification is switched on ONLY by the presence of a join: without one there is no
+      // ambiguity to resolve, and prefixing every column would be noise in the emitted SQL.
+      $baseTable = (is_array($joins) && count($joins)) ? (string) $sql_or_table : null;
+
+      $select_str = self::compileSelectList($select_what, $baseTable);
       $sql = "SELECT {$select_str} FROM " . self::quoteIdent($sql_or_table);
 
       if ($joins = $this->compileJoins($joins)) {
@@ -808,7 +854,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
               $operator = $operators;
             }
             
-            $this->condition($k, $v, $where, $bind, $incr_operator, $or_and, $operator);
+            $this->condition($k, $v, $where, $bind, $incr_operator, $or_and, $operator, $baseTable);
             $j++;
             if ($incr_operator)
               $i++;
@@ -824,6 +870,16 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
         else {
           $sql .= ' WHERE id = :id';
           $bind[":id"] = $bind_or_filter;
+        }
+      }
+
+      // With a join in play, a bare ORDER BY / GROUP BY column is as ambiguous as a bare SELECT
+      // column — the database rejects it rather than guessing which table is meant.
+      if ($baseTable !== null) {
+        foreach (['ORDER BY', 'GROUP BY'] as $_clause) {
+          if ($clauses[$_clause] !== '') {
+            $clauses[$_clause] = $this->qualifyClauseColumns($clauses[$_clause], $baseTable);
+          }
         }
       }
 
