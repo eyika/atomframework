@@ -561,7 +561,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return Model
      */
-    public function _whereLike($column, $value);
+    public function _whereLike($column, $value, bool $escape = false);
 
     /**
      * Add a where clause to the query instance
@@ -571,7 +571,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return Model
      */
-    public function _whereNotLike($column, $value);
+    public function _whereNotLike($column, $value, bool $escape = false);
 
     /**
      * Add a where BETWEEN clause for a [min, max] range on a single column.
@@ -690,7 +690,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return Model
      */
-    public function _orWhereLike($column, $value);
+    public function _orWhereLike($column, $value, bool $escape = false);
 
     /**
      * Add a where clause to the query instance
@@ -700,7 +700,7 @@ interface ModelInterface extends ModelEventsInterface
      * 
      * @return Model
      */
-    public function _orWhereNotLike($column, $value);
+    public function _orWhereNotLike($column, $value, bool $escape = false);
     
     /**
      * Add a where clause to the query instance

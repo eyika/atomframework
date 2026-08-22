@@ -398,9 +398,22 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
 
     } else if ($_operator !== null && is_string($_operator) && str_contains(strtoupper($_operator), 'LIKE')) {
         // LIKE (case-insensitive)
+        $opUpper = strtoupper($_operator);
+
+        // The builder signals "escape the caller's wildcards" by appending ESCAPE to the operator.
+        // Opt-in, because the documented 3-arg idiom — where('title', 'LIKE', "%$term%") — passes
+        // its OWN wildcards and must keep meaning what it says.
+        $escapeWildcards = str_contains($opUpper, 'ESCAPE');
+
+        // Normalised rather than interpolated: the operator reaches SQL verbatim here, and
+        // safeComparator() does not cover LIKE, so this is the one comparison operator that was
+        // not being whitelisted.
+        $likeOperator = str_contains($opUpper, 'NOT') ? 'NOT LIKE' : 'LIKE';
+        $escapeClause = $escapeWildcards ? $this->grammar->compileLikeEscape() : '';
+
         $param = ":{$__k}";
-        $where[] = "LOWER({$_k}) $_operator LOWER($param){$or_and}";
-        $bind[$param] = "%$v%";
+        $where[] = "LOWER({$_k}) $likeOperator LOWER($param){$escapeClause}{$or_and}";
+        $bind[$param] = '%' . ($escapeWildcards ? $this->grammar::escapeLikeWildcards((string) $v) : $v) . '%';
         // Also consumes a slot ('LIKE'/'NOT LIKE' is pushed by __where()). This one failed
         // SILENTLY rather than loudly: a leaked LIKE produces valid SQL, so the following
         // clause quietly became a substring match instead of the equality that was asked for.

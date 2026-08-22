@@ -60,6 +60,44 @@ abstract class Grammar
         return 'now()';
     }
 
+    /**
+     * The character used to escape LIKE wildcards. Backslash matches MySQL's default, so a
+     * predicate means the same thing on every driver.
+     */
+    public const LIKE_ESCAPE_CHAR = '\\';
+
+    /**
+     * The trailing `ESCAPE '…'` clause for a LIKE predicate.
+     *
+     * This is why wildcard escaping cannot be done in the query builder: **MySQL's LIKE has a
+     * default escape character and SQLite's has none**, so the same `'%\\%%'` pattern means
+     * "contains a percent sign" on one and "contains a backslash followed by anything" on the
+     * other. Stating the escape character explicitly makes the predicate portable — which matters
+     * most when the test suite runs on SQLite and production runs on MySQL.
+     */
+    public function compileLikeEscape(): string
+    {
+        return " ESCAPE '\\'";
+    }
+
+    /**
+     * Escape LIKE wildcards in a user-supplied search term.
+     *
+     * `%` and `_` are LIKE metacharacters, and a search box is a text field a stranger types into:
+     * without this, `?q=%` means "every row" and `?q=t_e` matches "tee" and "the" alike. The
+     * escape character itself must be escaped first, or escaping would corrupt terms containing it.
+     */
+    public static function escapeLikeWildcards(string $value): string
+    {
+        $escape = static::LIKE_ESCAPE_CHAR;
+
+        return str_replace(
+            [$escape, '%', '_'],
+            [$escape . $escape, $escape . '%', $escape . '_'],
+            $value
+        );
+    }
+
     // --- INSERT ---------------------------------------------------------------------------
 
     /**
