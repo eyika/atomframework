@@ -439,6 +439,35 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **`app($key)` now resolves that binding.** `app()` took **no arguments**, so `app('some.binding')`
+  silently returned the Application — PHP discards extra arguments to a non-variadic function — and
+  the next `->method()` failed with *Call to undefined method Application::x()*.
+
+  That matters most where such a call is wrapped in a `try/catch`, which is exactly where a
+  resolution usually sits: the throw becomes a **plausible empty result** rather than an error. One
+  app had a broadcast-auth method return an empty grant this way, which would have refused every
+  private-channel subscription the moment realtime was enabled — a browser treats a null auth as
+  final, closes the socket and never retries.
+
+  Resolving before an application is bound now throws, rather than returning something plausible.
+  (`0a92d97`)
+
+- **A model may declare `protected $table`.** The base declared it `public`, so the Laravel-default
+  `protected $table` fatalled at class load with *Access level must be public* — a trap rather than
+  a preference, since `fillable`/`guarded`/`casts` beside it are `protected const`. Relaxing the
+  base is strictly more permissive: a subclass may still widen to `public`, so models already
+  written that way are unaffected. (`0a92d97`)
+
+- **A missing service provider no longer bricks the application.** Auto-discovery called
+  `new $provider($this)` with no `class_exists()` check, so a `vendor/` directory out of step with
+  `vendor/composer/installed.json` — a removed package, an interrupted `composer install`, a
+  lockfile restored without reconciling — fatalled the app at boot, **web and `artisan` alike**.
+  That takes down the very command you would use to repair it, and the message named the package
+  rather than the mismatch.
+
+  Missing providers are now skipped with a warning naming the manifest and telling you to run
+  `composer install`. (`0a92d97`)
+
 - **Query builder — a `join()` made ordinary queries fail with "ambiguous column name".** A model
   selects its own `fillable` columns **unqualified**, so joining any table that shares a column name
   — `id`, universally — broke the SELECT before a `WHERE` was even involved.
