@@ -93,6 +93,16 @@ class Application implements ApplicationInterface
                 continue;
             }
 
+            // A provider named in the manifest whose class is gone means vendor/ is out of step
+            // with vendor/composer/installed.json — a removed package, an interrupted install, a
+            // lockfile restored without reconciling. Instantiating it fataled the WHOLE app, web
+            // and console alike, which takes down the one command that repairs the situation. A
+            // half-installed optional package should degrade, not brick the application.
+            if (!class_exists($provider)) {
+                $this->warnMissingProvider($provider);
+                continue;
+            }
+
             // Deferred providers (PKG-04): don't register/boot now — record the
             // services they provide so they register lazily on first resolution.
             if (is_a($provider, DeferrableProvider::class, true)) {
@@ -118,6 +128,32 @@ class Application implements ApplicationInterface
     }
 
     /**
+     * Report a provider the manifest names but the filesystem does not have.
+     *
+     * The message names the MANIFEST rather than only the class, because the class name points at
+     * the package and the package is rarely the problem — the mismatch is.
+     */
+    protected function warnMissingProvider(string $provider): void
+    {
+        $message = "Service provider [$provider] not found; vendor/ is out of step with "
+            . "vendor/composer/installed.json. Run `composer install` to reconcile them. "
+            . "Skipping it for now.";
+
+        // Defensive: this runs during boot, so the logger may not be resolvable yet.
+        try {
+            if (function_exists('logger')) {
+                logger()->warning($message);
+
+                return;
+            }
+        } catch (\Throwable $loggingFailure) {
+            // fall through to PHP's log
+        }
+
+        error_log($message);
+    }
+
+    /**
      * Register (and boot) the deferred provider that supplies $service, then drop its
      * deferred entries so it is not triggered again (PKG-04). Overrides the container's
      * no-op hook, called from make() on first resolution of a deferred service.
@@ -130,6 +166,14 @@ class Application implements ApplicationInterface
 
         $provider = $this->deferredServices[$service];
         if ($this->loadedProviders()->keyExists($provider)) {
+            return;
+        }
+
+        // Same reasoning as registerProviders(): a deferred provider recorded from a stale
+        // manifest must not fatal the request that happens to touch its service first.
+        if (!class_exists($provider)) {
+            unset($this->deferredServices[$service]);
+            $this->warnMissingProvider($provider);
             return;
         }
 
