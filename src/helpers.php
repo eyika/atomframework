@@ -99,8 +99,32 @@ if (! function_exists("collect")) {
 }
 
 if (! function_exists("app")) {
-    function app() {
-        return Facade::getFacadeApplication();
+    /**
+     * The application container, or a binding resolved out of it.
+     *
+     * `app()` used to take NO arguments, so `app('some.binding')` silently returned the
+     * Application itself — PHP discards extra arguments to a non-variadic function — and the next
+     * `->method()` call failed with "Call to undefined method Application::x()". Wrapped in the
+     * try/catch that any careful caller puts around a resolution, that turned into a plausible
+     * empty result rather than an error, which is the worst of the available failure modes.
+     *
+     * @param  string|null $abstract Binding key. Omit to get the Application itself.
+     * @return mixed
+     */
+    function app(?string $abstract = null) {
+        $application = Facade::getFacadeApplication();
+
+        if ($abstract === null) {
+            return $application;
+        }
+
+        if ($application === null) {
+            throw new \RuntimeException(
+                "Cannot resolve [$abstract]: no application has been bound to the facades yet."
+            );
+        }
+
+        return $application->make($abstract);
     }
 }
 
