@@ -12,7 +12,16 @@ trait ModelProperties
      *
      * @var string
      */
-    public $table;
+    /**
+     * The model's table.
+     *
+     * `protected` rather than `public` so a subclass may declare it either way. As `public` it
+     * forced every model to write `public $table`, and `protected $table` — the first thing anyone
+     * writes, and consistent with the `protected const fillable`/`guarded`/`casts` sitting beside
+     * it — fatalled at class load with "Access level must be public". Nothing outside the model
+     * reads it.
+     */
+    protected $table;
 
     /**
      * The primary key for the model in db
