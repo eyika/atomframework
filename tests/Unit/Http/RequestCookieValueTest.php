@@ -7,7 +7,7 @@ use Eyika\Atom\Framework\Http\Request;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Reported by Claude C (vendra): `cookie()` returned a Cookie OBJECT while `query()`/`input()`
+ * Reported by a downstream consumer: `cookie()` returned a Cookie OBJECT while `query()`/`input()`
  * return the value, so the obvious line
  *
  *     $token = $request->cookie('cart_token') ?? $request->query('cart_token');

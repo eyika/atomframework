@@ -14,7 +14,7 @@ class EmptyReadWidget extends Model
 }
 
 /**
- * Reported by Claude C (vendra): `get()`/`all()` returned false rather than an empty Collection
+ * Reported by a downstream consumer: `get()`/`all()` returned false rather than an empty Collection
  * when nothing matched, because `_all()` bailed on a falsy `fetch()` result — and `[]` (matched
  * nothing) is just as falsy as `false` (cursor failed). So the documented "multi-result reads
  * return a Collection" only held for a NON-empty result, and `assertCount(0, …->get())` fatalled

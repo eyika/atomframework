@@ -14,7 +14,7 @@ class StaticCallWidget extends Model
 }
 
 /**
- * Reported by Claude A: `Model::orderBy('name')->get()` raised a raw PHP
+ * Reported by a downstream consumer: `Model::orderBy('name')->get()` raised a raw PHP
  * "Non-static method … cannot be called statically" Error rather than the framework's own
  * "not supported by dynamic static calls" message — because `orderBy()` was a plain public
  * method, so PHP resolved it directly and never consulted __callStatic. Whitelisting alone

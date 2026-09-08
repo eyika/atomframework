@@ -14,7 +14,7 @@ class AlignWidget extends Model
 }
 
 /**
- * Reported by Claude C (vendra): `whereIn(...)->where(...)` produced invalid SQL —
+ * Reported by a downstream consumer: `whereIn(...)->where(...)` produced invalid SQL —
  * `SQLSTATE[HY000]: General error: 1 near ":locale": syntax error` — while the reverse order
  * worked, and each clause alone worked.
  *

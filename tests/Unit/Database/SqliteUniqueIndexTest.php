@@ -10,7 +10,7 @@ use PDO;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Reported by Claude C (vendra): dropUnique() was unusable on SQLite, for two independent
+ * Reported by a downstream consumer: dropUnique() was unusable on SQLite, for two independent
  * reasons.
  *
  *  1. Name resolution ran a hard-coded INFORMATION_SCHEMA.STATISTICS query — MySQL-only — so

@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
  * instead of trying the next mailer. That is precisely the case failover exists for, so the driver
  * was least reliable exactly when it was most needed.
  *
- * Found while sweeping `catch (Exception)` sites after Claude A raised the Exception-vs-Error
+ * Found while sweeping `catch (Exception)` sites after a downstream consumer raised the Exception-vs-Error
  * distinction on their own code.
  */
 class FailoverDriverTest extends TestCase

@@ -32,7 +32,7 @@ class PublicColumnWidget extends Model
 }
 
 /**
- * Reported by Claude A (backtestfx): `guarded` promises a column never leaves the application and
+ * Reported by a downstream consumer: `guarded` promises a column never leaves the application and
  * `toArray()` enforces it, but nothing on the JSON **encode** path called `toArray()`.
  *
  * Two independent defects, and fixing either alone left the hole open:
