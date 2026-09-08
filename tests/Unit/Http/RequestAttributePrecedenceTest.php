@@ -6,7 +6,7 @@ use Eyika\Atom\Framework\Http\Request;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Reported by Claude C (vendra). `__set` writes to the attribute bag, but `__get` used to check
+ * Reported by a downstream consumer. `__set` writes to the attribute bag, but `__get` used to check
  * that bag LAST — after input, route params and query — so anything trusted server-side code
  * bound could be shadowed by a request parameter of the same name.
  *

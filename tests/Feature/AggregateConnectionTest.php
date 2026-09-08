@@ -14,7 +14,7 @@ class AggOrder extends Model
 }
 
 /**
- * Found while checking Claude C's report that aggregates were unavailable on the model builder.
+ * Found while checking a downstream consumer's report that aggregates were unavailable on the model builder.
  * They are available — but every one except count() was running on the WRONG CONNECTION.
  *
  * Connection::__callStatic did `new static(config('database'))` unconditionally, and the

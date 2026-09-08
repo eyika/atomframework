@@ -10,7 +10,7 @@ use Eyika\Atom\Framework\Http\Route;
 use Eyika\Atom\Framework\Exceptions\BaseException;
 
 /**
- * Reported by Claude C (vendra): every `->middleware('auth')` route was a 500 over real HTTP.
+ * Reported by a downstream consumer: every `->middleware('auth')` route was a 500 over real HTTP.
  *
  * `Pipeline::resolveMiddleware()` returned the pipe's first segment as the class name, so
  * `carry()` reached `new 'auth'` and threw `Class "auth" not found`. `Route::$middlewareAliases`

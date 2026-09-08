@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
 /**
- * Reported by Claude C (vendra): there was no way to set a custom message header, so
+ * Reported by a downstream consumer: there was no way to set a custom message header, so
  * `List-Unsubscribe` could not be sent at all. Gmail and Yahoo have REQUIRED it, together with
  * `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, on bulk mail since February 2024 — an
  * in-body unsubscribe link satisfies a human but not the automated check, and the throttling that

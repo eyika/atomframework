@@ -13,7 +13,7 @@ class GroupedOrder extends Model
 }
 
 /**
- * Requested by Claude C (vendra): with no GROUP BY, per-key aggregates — lifetime spend, order
+ * Requested by a downstream consumer: with no GROUP BY, per-key aggregates — lifetime spend, order
  * counts, last-order dates per customer — had to be computed in PHP over the whole table, which
  * is fine at a shop's volume and will not be at a warehouse's.
  *

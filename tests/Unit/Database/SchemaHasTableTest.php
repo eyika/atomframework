@@ -8,7 +8,7 @@ use Eyika\Atom\Framework\Support\Facade\DatabaseConnection;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Reported by Claude A (backtestfx): a migration guarded on `Schema::hasTable()` silently
+ * Reported by a downstream consumer: a migration guarded on `Schema::hasTable()` silently
  * skipped its own CREATE, and the failure only surfaced later as "no such table" at runtime.
  *
  * `hasTable()` used to return `$statement->rowCount() > 0 || $statement->fetch() !== false`.

@@ -8,7 +8,7 @@ use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Support\Config;
 
 /**
- * Reported by Claude C (vendra): assets served by this middleware carried no
+ * Reported by a downstream consumer: assets served by this middleware carried no
  * `X-Content-Type-Options: nosniff`.
  *
  * It matters because a multi-tenant app serves merchant-uploaded images from each shop's OWN

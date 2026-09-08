@@ -14,7 +14,7 @@ class GuardedWidget extends Model
 }
 
 /**
- * Reported by Claude C (vendra): a protected read dropped guarded columns from the SELECT, so the
+ * Reported by a downstream consumer: a protected read dropped guarded columns from the SELECT, so the
  * model's own property came back null — `created_at` off a plain `->get()` was null even though
  * the row had it, and a service reading that timestamp silently computed the wrong answer.
  *
