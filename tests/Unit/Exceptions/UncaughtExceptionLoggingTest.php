@@ -6,7 +6,7 @@ use Eyika\Atom\Framework\Exceptions\ErrorHandler;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Reported by Claude A (backtestfx), while chasing a 500 with nothing in the log.
+ * Reported by a downstream consumer, while chasing a 500 with nothing in the log.
  *
  * `handleException()` recorded uncaught throwables with a bare `error_log($exception)`, which
  * writes to PHP's error log — stderr under the dev server, wherever php.ini points under FPM —

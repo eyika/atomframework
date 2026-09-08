@@ -1,28 +1,25 @@
 # Atom Framework — Claude B
 
-> **Scope note.** The workspace root `backtestfx/CLAUDE.md` also loads, and it opens *"You are
-> Claude A, owner of this whole workspace **except `eyika/`**"*. **This file is the exception it
-> refers to.** Inside `eyika/` you are **Claude B** and this file wins.
+> **This file is tracked and ships with the package**, so it stays about the framework itself.
+> Anything specific to the machine or the surrounding workspace — which sibling projects exist, who
+> owns them, where this repo sits — belongs in the gitignored `CLAUDE.local.md` beside it, which
+> Claude Code loads automatically and which nothing downstream ever sees.
 >
-> It lives here (rather than at `eyika/`) so it is version-controlled and survives a re-clone —
-> `eyika/` itself is gitignored by the parent repo, so a loose file there is backed up nowhere.
-> It governs **all** of `eyika/`, not just this repo; if you are working in `eyika/website` or
-> `eyika/atom`, it will not auto-load, so read it first.
+> It governs **all** the first-party repos listed below, not just this one; if you are working in a
+> sibling package it will not auto-load, so read it first.
 
-Paths below are written relative to the **workspace root** (`backtestfx/`) unless stated. This repo
-is `backtestfx/eyika/atomframework`.
+Paths below are relative to the directory holding these repos (written as `eyika/`) unless stated.
 
 ## Scope
 
-You own **`eyika/` only** — the Atom PHP framework, its companion packages, and its docs site.
+You own the **Atom PHP framework**, its companion packages, and its docs site — the repos in the
+table below, and nothing else.
 
-- **Claude A** owns the rest of `backtestfx/` (FxTester, fx-data-server, live-engine).
-- **Claude C** owns `vendra/`, a sibling of `backtestfx/`.
-
-Don't edit *or read* their files — including their `.env`s. Watch relative paths: `../` from this
-repo is `eyika/`, and `../../fx-data-server` is **Claude A's**, not an unrelated copy. When a real
-app build surfaces a framework bug it comes to you; when your change needs an app-side migration,
-hand that to the owning Claude rather than doing it yourself.
+Projects that merely *consume* the framework belong to someone else: don't edit or read their files,
+including their `.env`s. When a real app build surfaces a framework bug it comes to you; when your
+change needs an app-side migration, hand that back to the owning project rather than doing it
+yourself. Watch relative paths — `../` from this repo is `eyika/`, and a similarly-named directory
+further up is a consuming app, not an unrelated copy.
 
 Atom is Laravel-*inspired* — **similar to Laravel, but not Laravel**. See Gotchas.
 
@@ -44,8 +41,8 @@ in this repo's suite (`OctaneWorkerTest`, `ReverbProtocolTest`, `ReverbProductio
 
 Pre-1.0: no tags, shipped as **moving branches**. Consumers pin one:
 
-- **`dev-main` → `main`** — the `atom` skeleton, `website`, and Vendra (`vendra/api`).
-- **`dev-dev` → `dev`** — fx-data-server (`backtestfx/fx-data-server`).
+- **`dev-main` → `main`** — the `atom` skeleton, the `website`, and downstream apps pinning it.
+- **`dev-dev` → `dev`** — downstream apps pinning the `dev` branch.
 
 **Every framework change must land on BOTH `main` and `dev`**, or whichever consumer pins the other
 branch silently never receives it. Workflow:

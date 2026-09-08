@@ -29,7 +29,7 @@ class PublicTableWidget extends Model
 }
 
 /**
- * Three issues reported by Claude C (vendra) while wiring up atom-reverb.
+ * Three issues reported by a downstream consumer while wiring up atom-reverb.
  *
  *  1. `app()` took NO arguments, so `app('some.binding')` silently returned the Application —
  *     PHP discards extra arguments to a non-variadic function. The next `->method()` then failed

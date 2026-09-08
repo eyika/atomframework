@@ -21,7 +21,7 @@ class SearchableProduct extends Model
 }
 
 /**
- * Reported by Claude C (vendra): the query builder could not express `LIKE … ESCAPE`, so a
+ * Reported by a downstream consumer: the query builder could not express `LIKE … ESCAPE`, so a
  * shopper-typed `%` or `_` had no portable fix — `?q=%` meant "every product in the shop" and
  * `?q=t_e` matched "tee" and "the" alike.
  *

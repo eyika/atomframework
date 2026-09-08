@@ -6,7 +6,7 @@ use Eyika\Atom\Framework\Support\Validator;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Reported by Claude C (vendra): the Validator handled dot notation for a FIXED path but had no
+ * Reported by a downstream consumer: the Validator handled dot notation for a FIXED path but had no
  * `items.*.name` form, so a repeated line-item payload (invoice lines) could not be validated
  * declaratively — `'items' => 'required|array'` was as far as it went, and each element then had
  * to be checked by hand in the controller.

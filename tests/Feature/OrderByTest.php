@@ -14,7 +14,7 @@ class SortWidget extends Model
 }
 
 /**
- * Reported by Claude C (vendra): orderBy() assigned bind_or_filter['ORDER BY'] wholesale, so a
+ * Reported by a downstream consumer: orderBy() assigned bind_or_filter['ORDER BY'] wholesale, so a
  * second call REPLACED the first — orderBy('is_default','DESC')->orderBy('currency') silently
  * sorted by currency alone, with no error. The direction was also appended once after the whole
  * comma list, so orderBy('a,b','DESC') emitted `ORDER BY a, b DESC` (a ascending).

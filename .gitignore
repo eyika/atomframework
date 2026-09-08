@@ -6,3 +6,6 @@ composer.lock
 
 # Test residue: the fixture app is a real base_path, so logging during tests lands here.
 tests/Fixtures/app/storage/
+
+# Local workspace orientation — machine-specific, must not ship with the package.
+CLAUDE.local.md

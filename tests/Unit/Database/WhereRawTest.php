@@ -18,7 +18,7 @@ class RawStock extends Model
 }
 
 /**
- * Reported by Claude C (vendra): neither builder had `whereRaw`, so a report could not filter on a
+ * Reported by a downstream consumer: neither builder had `whereRaw`, so a report could not filter on a
  * predicate the builder cannot express — a column compared to another column being the plain case.
  *
  * I deferred this once, because the seam is `fetch_cursor()`'s reserved-clause map and that

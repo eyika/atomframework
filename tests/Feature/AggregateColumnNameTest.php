@@ -14,7 +14,7 @@ class SnakeDonation extends Model
 }
 
 /**
- * Reported by Claude C (vendra) while verifying the aggregate API: `sum('campaign_id')` threw
+ * Reported by a downstream consumer while verifying the aggregate API: `sum('campaign_id')` threw
  * "no such column: campaign".
  *
  * __aggregate() dispatches as `{function}_{column}` — `sum_campaign_id` — and Connection's

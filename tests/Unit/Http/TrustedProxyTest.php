@@ -7,7 +7,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Reported by Claude A (backtestfx): the trusted-proxy API advertised a feature it did not have.
+ * Reported by a downstream consumer: the trusted-proxy API advertised a feature it did not have.
  *
  *  1. HEADER_X_FORWARDED_* were `$_SERVER` key STRINGS carrying the names of Symfony's bit flags,
  *     so the documented `A | B` usage produced a byte-wise-OR'd binary string, not an int —

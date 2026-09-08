@@ -7,7 +7,7 @@ use Eyika\Atom\Framework\Http\JsonResponse;
 use Eyika\Atom\Framework\Http\Response;
 
 /**
- * Reported by Claude A (backtestfx): `noContent()` emitted a 204 and then wrote two more bytes.
+ * Reported by a downstream consumer: `noContent()` emitted a 204 and then wrote two more bytes.
  *
  *     HTTP/1.1 204 No Content
  *     Content-Type: application/json

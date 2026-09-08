@@ -17,7 +17,7 @@ class JoinedOrderItem extends Model
 }
 
 /**
- * Reported by Claude C (vendra): `OrderItem::…->join('orders', …)->get()` failed with
+ * Reported by a downstream consumer: `OrderItem::…->join('orders', …)->get()` failed with
  * `ambiguous column name: id`, so a report could not filter child rows by a parent's state in one
  * query.
  *

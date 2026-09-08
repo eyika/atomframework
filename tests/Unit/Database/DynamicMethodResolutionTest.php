@@ -39,7 +39,7 @@ class DynamicMethodResolutionTest extends TestCase
     /**
      * The REVERSE direction of the test above, and the one that was missing: every `_`-prefixed
      * public builder method must appear in the whitelist. Without it the list drifts silently —
-     * reported by Claude A when `Model::orderBy(...)` blew up after fx-data-server dropped ~331
+     * reported by a downstream consumer when `Model::orderBy(...)` blew up after that app dropped ~331
      * redundant `getBuilder()` hops.
      *
      * The invariant is deliberately mechanical — whitelist == set of `_foo` methods — so it can

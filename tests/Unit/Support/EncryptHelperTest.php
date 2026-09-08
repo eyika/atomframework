@@ -6,7 +6,7 @@ use Eyika\Atom\Framework\Support\Facade\Facade;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Reported by Claude A: the `new Encrypter()` fallback in encrypt()/decrypt() was unreachable.
+ * Reported by a downstream consumer: the `new Encrypter()` fallback in encrypt()/decrypt() was unreachable.
  *
  *     if (!$encrypter = app()->make('encrypter')) { $encrypter = new Encrypter(); }
  *
@@ -17,7 +17,7 @@ use PHPUnit\Framework\TestCase;
  *
  * It matters because ModelHelpers::encryptValues()/decryptValues() call these globals rather than
  * the Encrypter facade, so any model declaring `const encrypted` was unusable without a booted
- * container — it cost Claude A 13 test errors and forced their DatabaseTestCase to construct a
+ * container — it cost the reporting app 13 test errors and forced its DatabaseTestCase to construct a
  * minimal Application purely so 'encrypter' would resolve.
  */
 class EncryptHelperTest extends TestCase
@@ -67,7 +67,7 @@ class EncryptHelperTest extends TestCase
      * than depending on whatever the surrounding suite happened to leave set, so it never skips.
      */
     /**
-     * Claude A's second point: because ModelHelpers calls these helpers rather than the facade,
+     * The second point in the same report: because ModelHelpers calls these helpers rather than the facade,
      * `Encrypter::swap()` could not substitute the encrypter used for model-level encryption
      * whenever no application was bound — swap() only fills the facade's own resolved cache in
      * that case. Resolving through the facade makes the swap authoritative.
