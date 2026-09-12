@@ -454,6 +454,20 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Range replies emit `206`, and redirects emit their own status.** A code passed to
+  `Response::setHeader($key, $value, $code)` was replayed into PHP's `header($h, $replace, $code)`,
+  whose third argument **forces** the response code — so it overwrote the status the response had
+  already emitted. A `206` built as `setHeader('Content-Type', $mime, STATUS_OK)` then
+  `status(206)` went out as **200** with a perfectly correct `Content-Range` beside it.
+
+  That is not cosmetic: a range reply answered 200 is a *complete* representation as far as any
+  cache is concerned, so a 500-byte "whole video" could be stored against that URL and served to
+  everyone after it.
+
+  A code given to `setHeader()` now sets the response status directly, and headers can no longer
+  carry one. `redirect()`, `back()` and `download()`'s not-found branch set their status ONLY by
+  baking it into a header, so this is also what fixes **`redirect()` emitting 200**. (`5c08006`)
+
 - **Video and audio are served.** The asset allowlist had no video type at all, so a stored `.mp4`
   never entered the asset branch — it fell through to the router and came back as an error page.
   `mp4`, `webm`, `ogv`, `mov`, `mp3`, `m4a`, `wav` and `ogg` are now served, with **explicit** MIME
