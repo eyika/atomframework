@@ -71,8 +71,11 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
      normalisation, so `..` escaped the webroot and the file was read anyway. The extension
      allowlist does not prevent this — the traversal target only has to *end* in an allowed
      extension, and `.json`/`.pdf`/`.md` outside the webroot is where service-account keys and
-     uploaded documents live. The path is now `realpath()`-resolved and confined under
-     `public_path()`; anything outside answers 404. (`305e14b`)
+     uploaded documents live. Anything outside the public directory answers 404. (`305e14b`)
+
+     *(That confinement was originally `realpath()`-based, which turned out to refuse legitimate
+     symlinks too — see the lexical-confinement entry under Fixed. The traversal defence is
+     unchanged; only how containment is decided.)*
 
 - **Database connections now honour their configured PDO `options`.** `Connection::getOptions()`
   built its option list from scratch and never merged
