@@ -205,6 +205,11 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   <https://basttyydev.serv00.net/docs/beta/advanced/key-rotation>
 
 ### Added
+- **`Support\Path`** — lexical path helpers: `normalizeUri()`, `normalize()` and `isWithin()`.
+  String arithmetic only, and they work on paths that do not exist, which is what separates them
+  from `realpath()`. Use them when you need to decide whether a path is contained *before* touching
+  the filesystem. (`462a673`)
+
 - **Query builder — `whereRaw()` on both builders.** For predicates the builder cannot express: a
   column compared to another column, a function call, a window over the row.
 
@@ -439,6 +444,29 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Serving `public/storage` no longer 404s — the traversal guard was refusing the framework's own
+  symlink.** `ServePublicAssets` confined requests with `realpath()`, which collapses `..` **and**
+  resolves symlinks in the same step. `public/storage` is a symlink, created by this framework's own
+  `storage:link`, so a legitimate upload resolved outside the webroot and was refused.
+
+  It only showed under `artisan serve`: Apache and LiteSpeed serve `public/` from their own config
+  with symlink-following on, so the request never reaches PHP and production was fine. And it failed
+  quietly — the page renders around the gap and nothing is logged.
+
+  **Traversal is a lexical property of the request** (`..` climbing out of a root); **following a
+  symlink is a deployment decision** you made by running `storage:link` or pointing a directory at a
+  media volume. `realpath()` conflates them, so defending against the first forbade the second.
+  Containment is now decided lexically, before the filesystem is consulted, and the path is resolved
+  only to open the file — which is also what the web servers in front of this code do, so
+  development and production agree.
+
+  `/../../secrets.json` is still refused, and refused *earlier* than before: before any link is
+  resolved. (`462a673`)
+
+- **`Response::download()` had the same blind spot.** With `filesystem.download_base` configured, a
+  file behind a symlink *inside* that base was refused for the same reason — a media volume, or the
+  `storage:link` target. Fixed the same way, so both paths now reason identically. (`462a673`)
+
 - **`app($key)` now resolves that binding.** `app()` took **no arguments**, so `app('some.binding')`
   silently returned the Application — PHP discards extra arguments to a non-variadic function — and
   the next `->method()` failed with *Call to undefined method Application::x()*.
