@@ -12,7 +12,7 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   scriptable document on your origin. `svg` stays on the asset allowlist, because apps legitimately
   serve their own bundled icons, but it now carries
   `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`, which stops
-  script execution while leaving the image to render. (`<pending>`)
+  script execution while leaving the image to render. (`80b1548`)
 
 
 - **BREAKING — trusted-proxy header flags are now real, and nothing upstream is trusted by
@@ -461,13 +461,13 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   and a browser handed octet-stream for a video downloads it instead of playing it.
 
   As with the symlink fix, this only ever broke local development — Apache and LiteSpeed serve
-  `public/` themselves and never reach PHP. (`<pending>`)
+  `public/` themselves and never reach PHP. (`80b1548`)
 
 - **Range requests (`206 Partial Content`) for served assets.** A `<video>` element will not let the
   user seek without `Accept-Ranges`, and without ranges every request read the whole file into
   memory. Single ranges, suffix ranges (`bytes=-500` is the **last** 500 bytes), clamping when a
   range overshoots, and `416` with the real size when it cannot be satisfied. A multi-range request
-  gets the whole file. (`<pending>`)
+  gets the whole file. (`80b1548`)
 
 - **The error page no longer reports HTTP 200.** `renderErrorPage()` used `response()->html($page)`,
   whose status defaults to `STATUS_OK` — so a missing route came back **200 `text/html`** with an
@@ -478,7 +478,7 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   never fires the `??`, because `getCode()` returns an int and never null — so an exception carrying
   code `0` produced a response with status `0`. An exception's code is now used only when it is a
   plausible HTTP status, so `NotFoundHttpException` renders `404` and a `PDOException` carrying
-  SQLSTATE `1054` does not become one. (`<pending>`)
+  SQLSTATE `1054` does not become one. (`80b1548`)
 
 - **Serving `public/storage` no longer 404s — the traversal guard was refusing the framework's own
   symlink.** `ServePublicAssets` confined requests with `realpath()`, which collapses `..` **and**
