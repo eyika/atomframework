@@ -4,6 +4,7 @@ namespace Eyika\Atom\Framework\Http;
 
 use Exception;
 use Eyika\Atom\Framework\Support\Facade\Request as FacadeRequest;
+use Eyika\Atom\Framework\Support\Path;
 
 class Response extends BaseResponse
 {
@@ -95,12 +96,19 @@ class Response extends BaseResponse
     {
         $status = self::STATUS_OK;
 
-        // Resolve the real path (collapses ../) and, when a download base dir is
-        // configured, confine to it — prevents traversal to arbitrary files when
-        // the path is influenced by user input.
-        $real = realpath($file_path);
+        // When a download base dir is configured, confine to it — prevents traversal to arbitrary
+        // files when the path is influenced by user input.
+        //
+        // Containment is decided LEXICALLY, on the path as given, and only then is the file
+        // resolved for reading. Deciding it with realpath() instead conflated two different
+        // things: `..` climbing out of the base (which must be refused) and a symlink INSIDE the
+        // base pointing elsewhere (which the operator put there deliberately — a media volume, or
+        // the link `storage:link` creates). The same conflation made ServePublicAssets refuse
+        // every file under `public/storage`.
         $base = config('filesystem.download_base');
-        $confined = $base ? (is_string($real) && str_starts_with($real, realpath($base) . DIRECTORY_SEPARATOR)) : true;
+        $confined = $base ? Path::isWithin($file_path, $base) : true;
+
+        $real = realpath($file_path);
 
         if ($real === false || !is_file($real) || !$confined) {
             $status = self::STATUS_NOT_FOUND;
