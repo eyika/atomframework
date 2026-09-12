@@ -7,6 +7,13 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
 ## [Unreleased]
 
 ### Security
+- **SVG is now served with a script-neutralising CSP.** `X-Content-Type-Options: nosniff` cannot help
+  SVG — `image/svg+xml` is *honoured* rather than sniffed, so an SVG navigated to directly is a
+  scriptable document on your origin. `svg` stays on the asset allowlist, because apps legitimately
+  serve their own bundled icons, but it now carries
+  `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`, which stops
+  script execution while leaving the image to render. (`<pending>`)
+
 
 - **BREAKING — trusted-proxy header flags are now real, and nothing upstream is trusted by
   default.** Four compounding defects in the same small API.
@@ -447,6 +454,32 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Video and audio are served.** The asset allowlist had no video type at all, so a stored `.mp4`
+  never entered the asset branch — it fell through to the router and came back as an error page.
+  `mp4`, `webm`, `ogv`, `mov`, `mp3`, `m4a`, `wav` and `ogg` are now served, with **explicit** MIME
+  types: `mime_content_type()` returns `application/octet-stream` for webm and mp3 on a stock build,
+  and a browser handed octet-stream for a video downloads it instead of playing it.
+
+  As with the symlink fix, this only ever broke local development — Apache and LiteSpeed serve
+  `public/` themselves and never reach PHP. (`<pending>`)
+
+- **Range requests (`206 Partial Content`) for served assets.** A `<video>` element will not let the
+  user seek without `Accept-Ranges`, and without ranges every request read the whole file into
+  memory. Single ranges, suffix ranges (`bytes=-500` is the **last** 500 bytes), clamping when a
+  range overshoots, and `416` with the real size when it cannot be satisfied. A multi-range request
+  gets the whole file. (`<pending>`)
+
+- **The error page no longer reports HTTP 200.** `renderErrorPage()` used `response()->html($page)`,
+  whose status defaults to `STATUS_OK` — so a missing route came back **200 `text/html`** with an
+  error page in the body, and anything reading the status rather than the body (a health check, a
+  link checker, a build step) saw success.
+
+  The non-debug branch had a second defect in the same expression: `$exception->getCode() ?? 500`
+  never fires the `??`, because `getCode()` returns an int and never null — so an exception carrying
+  code `0` produced a response with status `0`. An exception's code is now used only when it is a
+  plausible HTTP status, so `NotFoundHttpException` renders `404` and a `PDOException` carrying
+  SQLSTATE `1054` does not become one. (`<pending>`)
+
 - **Serving `public/storage` no longer 404s — the traversal guard was refusing the framework's own
   symlink.** `ServePublicAssets` confined requests with `realpath()`, which collapses `..` **and**
   resolves symlinks in the same step. `public/storage` is a symlink, created by this framework's own
