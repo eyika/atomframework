@@ -19,6 +19,8 @@ class BaseResponse
     public const REQUEST_OLD_INPUTS_KEY = 'old_inputs';
 
     public const STATUS_OK = 200;
+    public const STATUS_PARTIAL_CONTENT = 206;
+    public const STATUS_RANGE_NOT_SATISFIABLE = 416;
     public const STATUS_NO_CONTENT = 204;
     public const STATUS_CREATED = 201;
     public const STATUS_MOVED_PERMANENTLY = 301;

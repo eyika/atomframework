@@ -180,6 +180,8 @@ class ExceptionHandler implements ContractExceptionHandler
 
     protected function renderErrorPage(Request $request, Throwable $exception): BaseResponse
     {
+        $status = self::statusFor($exception);
+
         if (config('app.debug', false)) {
             $whoops = new \Whoops\Run;
             $whoops->allowQuit(false);
@@ -189,16 +191,37 @@ class ExceptionHandler implements ContractExceptionHandler
             $this->hideSecretsFromWhoops($handler);
             $whoops->pushHandler($handler);
 
-            return response()->html($whoops->handleException($exception));
+            // The status matters as much as the page. `html()` defaults to 200, so the debug error
+            // page was served as a SUCCESS — a missing asset came back 200 text/html, and anything
+            // reading the status code (a health check, a link checker, a build step, a QA probe)
+            // saw success while the body was an error page.
+            return response()->html($whoops->handleException($exception), $status);
         }
 
         $serverErrorPage = config('view.server_error.path', '');
 
         if (!empty($serverErrorPage)) {
-            return response()->view($serverErrorPage)->withErrors(['message' => $exception->getMessage()]);
+            return response()->view($serverErrorPage)
+                ->status($status)
+                ->withErrors(['message' => $exception->getMessage()]);
         }
 
-        return response()->html('An error occured, contact administrator', $exception->getCode() ?? BaseResponse::STATUS_INTERNAL_SERVER_ERROR);
+        return response()->html('An error occured, contact administrator', $status);
+    }
+
+    /**
+     * The HTTP status an exception should be rendered with.
+     *
+     * `$exception->getCode() ?? 500` was doing nothing useful: getCode() returns an int and never
+     * null, so `??` never fired — and a generic exception carrying code 0 produced a response with
+     * status 0. HTTP exceptions carry a real status (NotFoundHttpException is 404), so use it when
+     * it is plausible and fall back to 500 otherwise.
+     */
+    protected static function statusFor(Throwable $exception): int
+    {
+        $code = (int) $exception->getCode();
+
+        return ($code >= 400 && $code <= 599) ? $code : BaseResponse::STATUS_INTERNAL_SERVER_ERROR;
     }
 
     /**
