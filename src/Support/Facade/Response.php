@@ -9,6 +9,7 @@ use Eyika\Atom\Framework\Http\Proxy;
 /**
  * @method static HttpResponse getInstance()
  * @method static int getStatusCode()
+ * @method static HttpResponse status(int $code) Set the response status
  * @method static BaseResponse terminate()
  * @method static HttpResponse plain(string $message, int $statusCode = self::STATUS_OK)
  * @method static HttpResponse image(string $data, int $statusCode = self::STATUS_OK, string $type = "jpeg")
@@ -22,7 +23,7 @@ use Eyika\Atom\Framework\Http\Proxy;
  * @method static HttpResponse|Proxy proxy(Request $request, ?string $target = null, array $extraHeaders = [])
  * @method static HttpResponse setCsrf()
  * @method static HttpResponse setCookie($name, $value = '', $expiry = 0, $path = '/', $domain = '', $secure = false, $httpOnly = true) Method to set a cookie header
- * @method static HttpResponse setHeader(string $key, string $content, int|null $code = null, bool $replace = true) Method to set a header
+ * @method static HttpResponse setHeader(string $key, string $content, int|null $code = null, bool $replace = true) Method to set a header; $code also sets the response status
  */
 class Response extends Facade
 {
