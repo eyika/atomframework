@@ -76,6 +76,84 @@ class DownloadTest extends TestCase
         rmdir($base);
     }
 
+    /**
+     * A link INSIDE the configured base, pointing at storage elsewhere — the shape `storage:link`
+     * creates, and the one a media volume mounted outside the app also takes.
+     *
+     * Confinement used to be decided with `realpath()`, which collapses `..` AND resolves symlinks
+     * in one step, so the file behind such a link resolved outside the base and was refused. That
+     * is the same conflation that made ServePublicAssets 404 every upload under `public/storage`.
+     * Traversal is lexical; following a link the operator placed there is not.
+     */
+    public function test_a_file_behind_a_link_inside_the_base_is_served(): void
+    {
+        $root   = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'dllink_' . uniqid();
+        $base   = $root . DIRECTORY_SEPARATOR . 'downloads';
+        $target = $root . DIRECTORY_SEPARATOR . 'media';
+        mkdir($base, 0777, true);
+        mkdir($target, 0777, true);
+        file_put_contents($target . DIRECTORY_SEPARATOR . 'invoice.pdf', 'PDFBYTES');
+
+        $link = $base . DIRECTORY_SEPARATOR . 'media';
+        if (!$this->makeLink($target, $link)) {
+            $this->fail('could not create a link; the regression cannot be exercised');
+        }
+
+        Config::set('filesystem.download_base', $base);
+
+        $response = (new Response())->download($link . DIRECTORY_SEPARATOR . 'invoice.pdf');
+
+        $this->assertTrue((bool) $this->prop($response, 'isFileResponse'), 'a linked file inside the base was refused');
+
+        @rmdir($link);
+        @unlink($link);
+        @unlink($target . DIRECTORY_SEPARATOR . 'invoice.pdf');
+        @rmdir($target);
+        @rmdir($base);
+        @rmdir($root);
+    }
+
+    /** A climb out of the base is still refused — lexically, before any link is resolved. */
+    public function test_a_climb_out_of_the_base_is_still_refused(): void
+    {
+        $root = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'dlclimb_' . uniqid();
+        $base = $root . DIRECTORY_SEPARATOR . 'downloads';
+        mkdir($base, 0777, true);
+        file_put_contents($root . DIRECTORY_SEPARATOR . 'secret.txt', 'secret');
+
+        Config::set('filesystem.download_base', $base);
+
+        $climb = $base . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'secret.txt';
+        $this->assertSame('File not found.', $this->prop((new Response())->download($climb), 'body'));
+
+        @unlink($root . DIRECTORY_SEPARATOR . 'secret.txt');
+        @rmdir($base);
+        @rmdir($root);
+    }
+
+    /**
+     * `symlink()` needs elevation on Windows; a junction does not, and `realpath()` follows both
+     * identically. Falling back keeps this from silently skipping on the platform it was found on.
+     */
+    private function makeLink(string $target, string $link): bool
+    {
+        if (@symlink($target, $link)) {
+            return true;
+        }
+
+        if (DIRECTORY_SEPARATOR !== '\\') {
+            return false;
+        }
+
+        @exec(sprintf(
+            'cmd /c mklink /J %s %s 2>&1',
+            escapeshellarg(str_replace('/', '\\', $link)),
+            escapeshellarg(str_replace('/', '\\', $target))
+        ), $output, $status);
+
+        return $status === 0;
+    }
+
     public function test_download_filename_has_no_crlf(): void
     {
         $tmp = tempnam(sys_get_temp_dir(), 'dl');

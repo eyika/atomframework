@@ -28,6 +28,9 @@ class ServePublicAssetsTest extends IntegrationTestCase
     private string $publicDir;
     private string $outsideFile;
     private array $configSnapshot;
+    private string $linkTarget;
+    private string $publicLink;
+    private bool $linked = false;
 
     protected function setUp(): void
     {
@@ -48,6 +51,43 @@ class ServePublicAssetsTest extends IntegrationTestCase
         // the allowlist accepts.
         $this->outsideFile = dirname($this->publicDir) . '/service-account.json';
         file_put_contents($this->outsideFile, '{"private_key":"leaked"}');
+
+        // The shape `storage:link` creates: a link INSIDE the public root pointing at storage.
+        // The file behind it is legitimately servable, even though it resolves outside public/.
+        $this->linkTarget = dirname($this->publicDir) . '/storage/app/public';
+        @mkdir($this->linkTarget . '/products', 0777, true);
+        file_put_contents($this->linkTarget . '/products/shot.jpg', 'IMAGEBYTES');
+
+        $this->publicLink = $this->publicDir . '/storage';
+        $this->linked = $this->makeLink($this->linkTarget, $this->publicLink);
+    }
+
+    /**
+     * Create a directory link, the way `storage:link` does.
+     *
+     * Falls back to a Windows junction: `symlink()` needs elevation there, while a junction does
+     * not, and `realpath()` follows both identically — which is the behaviour under test. Without
+     * the fallback this test would silently skip on Windows, hiding the very regression it exists
+     * to catch.
+     */
+    private function makeLink(string $target, string $link): bool
+    {
+        if (@symlink($target, $link)) {
+            return true;
+        }
+
+        if (DIRECTORY_SEPARATOR !== '\\') {
+            return false;
+        }
+
+        $command = sprintf(
+            'cmd /c mklink /J %s %s 2>&1',
+            escapeshellarg(str_replace('/', '\\', $link)),
+            escapeshellarg(str_replace('/', '\\', $target))
+        );
+        @exec($command, $output, $status);
+
+        return $status === 0;
     }
 
     protected function tearDown(): void
@@ -55,6 +95,14 @@ class ServePublicAssetsTest extends IntegrationTestCase
         @unlink($this->publicDir . '/probe.json');
         @unlink($this->publicDir . '/probe.gif');
         @unlink($this->outsideFile);
+
+        if ($this->linked) {
+            // A junction is removed as a directory, a symlink as a file — try both.
+            @rmdir($this->publicLink);
+            @unlink($this->publicLink);
+        }
+        @unlink($this->linkTarget . '/products/shot.jpg');
+        @rmdir($this->linkTarget . '/products');
 
         Config::restore($this->configSnapshot);
         parent::tearDown();
@@ -161,6 +209,45 @@ class ServePublicAssetsTest extends IntegrationTestCase
     {
         $response = $this->serve('/../service-account.json');
 
+        $this->assertSame(BaseResponse::STATUS_NOT_FOUND, $response->getStatusCode());
+    }
+
+    // ---------------------------------------------------------------- symlinked directories
+
+    /**
+     * The reported regression. `public/storage` is a link this framework's own `storage:link`
+     * creates, so a file behind it resolves OUTSIDE public/ — and a `realpath()`-based guard
+     * refused it, 404ing every upload under `artisan serve` while Apache and LiteSpeed served
+     * them fine.
+     */
+    public function test_a_file_behind_a_link_inside_the_public_root_is_served(): void
+    {
+        $this->assertTrue($this->linked, 'could not create a link; the regression cannot be exercised');
+
+        $response = $this->serve('/storage/products/shot.jpg');
+
+        $this->assertSame(BaseResponse::STATUS_OK, $response->getStatusCode());
+        $this->assertSame('IMAGEBYTES', $this->bodyOf($response));
+    }
+
+    /** A linked asset is an asset: it gets the same headers as any other. */
+    public function test_a_file_behind_a_link_still_carries_the_asset_headers(): void
+    {
+        $headers = $this->headersOf($this->serve('/storage/products/shot.jpg'));
+
+        $this->assertSame('nosniff', $headers['x-content-type-options'] ?? null);
+        $this->assertArrayHasKey('etag', $headers);
+    }
+
+    /**
+     * Following a link must NOT reopen traversal. Climbing out through the link is still refused,
+     * because containment is decided on the URI before any link is resolved.
+     */
+    public function test_a_traversal_through_the_link_is_still_refused(): void
+    {
+        $response = $this->serve('/storage/../../service-account.json');
+
+        $this->assertStringNotContainsString('leaked', $this->bodyOf($response));
         $this->assertSame(BaseResponse::STATUS_NOT_FOUND, $response->getStatusCode());
     }
 

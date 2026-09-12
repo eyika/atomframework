@@ -7,6 +7,7 @@ use Eyika\Atom\Framework\Http\BaseResponse;
 use Eyika\Atom\Framework\Http\Request;
 use Eyika\Atom\Framework\Http\Contracts\MiddlewareInterface;
 use Eyika\Atom\Framework\Support\Facade\Response;
+use Eyika\Atom\Framework\Support\Path;
 
 class ServePublicAssets implements MiddlewareInterface
 {
@@ -28,23 +29,26 @@ class ServePublicAssets implements MiddlewareInterface
             if (preg_match('/\.(?:js|css|svg|ico|woff|woff2|ttf|webp|pdf|png|jpg|json|jpeg|gif|md)$/', $uri)) {
                 $request->isAssetRequest(true);
 
-                // Resolve the request target and CONFINE it to the public directory. `$uri` is
-                // the raw REQUEST_URI, so `/../../secrets.json` used to be concatenated straight
-                // onto public_path() and read with file_get_contents — the extension allowlist
-                // does not stop it, because the traversal target only has to END in an allowed
-                // extension. Browsers normalise `..` before sending, but a raw client does not,
-                // and `.json`/`.pdf`/`.md` outside the webroot is exactly where service-account
-                // keys and uploaded documents live. (Same realpath-confinement as
-                // Response::download().)
-                $real = realpath(public_path() . $uri);
-                $publicRoot = realpath(public_path());
+                // CONFINE the request to the public directory, then resolve it to read the file.
+                //
+                // `$uri` is the raw REQUEST_URI, so `/../../secrets.json` used to be concatenated
+                // straight onto public_path() and read with file_get_contents — and the extension
+                // allowlist does not stop that, because the traversal target only has to END in an
+                // allowed extension. Browsers normalise `..` before sending; a raw client does not.
+                //
+                // Containment is decided LEXICALLY, before the filesystem is consulted. It used to
+                // be decided with realpath(), which collapses `..` and resolves symlinks in the
+                // same step — so refusing traversal also refused `public/storage`, the symlink this
+                // framework's own `storage:link` creates. Every uploaded file then 404'd under
+                // `artisan serve` while Apache and LiteSpeed served them fine, because they follow
+                // symlinks by default. Traversal is a property of the URI; following a symlink is a
+                // deployment decision the operator made. Deciding lexically separates the two, and
+                // matches what the web servers in front of this code already do.
+                $normalised = Path::normalizeUri($uri);
 
-                $confined = $real !== false
-                    && $publicRoot !== false
-                    && is_file($real)
-                    && str_starts_with($real, $publicRoot . DIRECTORY_SEPARATOR);
+                $real = $normalised === null ? false : realpath(public_path() . $normalised);
 
-                if ($confined) {
+                if ($real !== false && is_file($real)) {
                     $path = $real;
                     $mime = mime_content_type($path);
                     $ext = pathinfo($path, PATHINFO_EXTENSION);
