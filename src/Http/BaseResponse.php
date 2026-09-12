@@ -110,12 +110,33 @@ class BaseResponse
         return $this;
     }
 
-    // Method to set a header
+    /**
+     * Set a response header.
+     *
+     * `$code` still means "this response has this status", but it now routes through
+     * `$statusCode` rather than racing with it. It used to be replayed into PHP's
+     * `header($h, $replace, $code)`, whose third argument FORCES the response code — so the emitted
+     * status was whichever coded header happened to be written last, not what `status()` was given.
+     *
+     * A `206` built as `setHeader('Content-Type', $mime, STATUS_OK)` then `status(206)` therefore
+     * went out as **200**: `emitStatus(206)` ran first, and replaying Content-Type set it back. That
+     * is invisible to a browser on a small file, and poison to a cache — a range reply answered 200
+     * is a complete representation, so a 500-byte "whole video" can be stored against the URL.
+     *
+     * 304 escaped it only because the bodyless branch skips Content-Type/Length, and `plain()`
+     * landed on the right value by luck: its code was baked into the header it emitted.
+     *
+     * Setting it here keeps last-write-wins over a single field, in call order, which is how the
+     * chain reads.
+     */
     public function setHeader(string $key, string $content, int|null $code = null, bool $replace = true)
     {
-        if ($code)
+        if ($code) {
             $this->headers[] = [$key => [$content, $replace, $code]];
-        else $this->headers[] = [$key => [$content, $replace]];
+            $this->statusCode = $code;
+        } else {
+            $this->headers[] = [$key => [$content, $replace]];
+        }
 
         return $this;
     }
@@ -283,8 +304,11 @@ class BaseResponse
                     continue;
                 }
 
+                // $value[2], where a code was given to setHeader(), is deliberately NOT passed on.
+                // The status is emitted once, by emitStatus(); a header must not be able to
+                // override it afterwards. emitHeader() no longer accepts one — see setHeader().
                 $val = str_contains($key, 'Set-Cookie') ? (string) $value[0] : $value[0];
-                $this->emitHeader("{$key}: {$val}", (bool) $value[1], $value[2] ?? null);
+                $this->emitHeader("{$key}: {$val}", (bool) $value[1]);
             }
         }
     }
@@ -332,13 +356,22 @@ class BaseResponse
         }
     }
 
-    protected function emitHeader(string $header, bool $replace = true, ?int $code = null): void
+    /**
+     * Emit one header line.
+     *
+     * There is no status-code parameter, and adding one back would be a mistake. PHP's
+     * `header($h, $replace, $code)` third argument FORCES the response code, so a header emitted
+     * after `emitStatus()` could silently overwrite the status the response was given — which is
+     * exactly how range replies once went out as `200` with a correct `Content-Range` beside them.
+     * A code handed to `setHeader()` reaches the status through `$statusCode` instead.
+     */
+    protected function emitHeader(string $header, bool $replace = true): void
     {
         $this->sentHeaders[] = $header;
         if (self::$captureOutput) {
             self::$capturedHeaders[] = $header;
         } else {
-            $code !== null ? header($header, $replace, $code) : header($header, $replace);
+            header($header, $replace);
         }
     }
 
