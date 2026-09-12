@@ -47,6 +47,12 @@ class ServePublicAssetsTest extends IntegrationTestCase
         file_put_contents($this->publicDir . '/probe.json', '{"ok":true}');
         file_put_contents($this->publicDir . '/probe.gif', "GIF89a<script>alert(1)</script>");
 
+        // 1 KB of recognisable bytes: enough to range over, small enough to assert on exactly.
+        file_put_contents($this->publicDir . '/probe.mp4', str_repeat('V', 1024));
+        file_put_contents($this->publicDir . '/probe.webm', str_repeat('W', 64));
+        file_put_contents($this->publicDir . '/probe.mp3', str_repeat('A', 64));
+        file_put_contents($this->publicDir . '/probe.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>');
+
         // A file the request must NOT be able to reach: a sibling of public/, with an extension
         // the allowlist accepts.
         $this->outsideFile = dirname($this->publicDir) . '/service-account.json';
@@ -94,6 +100,10 @@ class ServePublicAssetsTest extends IntegrationTestCase
     {
         @unlink($this->publicDir . '/probe.json');
         @unlink($this->publicDir . '/probe.gif');
+        @unlink($this->publicDir . '/probe.mp4');
+        @unlink($this->publicDir . '/probe.webm');
+        @unlink($this->publicDir . '/probe.mp3');
+        @unlink($this->publicDir . '/probe.svg');
         @unlink($this->outsideFile);
 
         if ($this->linked) {
@@ -210,6 +220,125 @@ class ServePublicAssetsTest extends IntegrationTestCase
         $response = $this->serve('/../service-account.json');
 
         $this->assertSame(BaseResponse::STATUS_NOT_FOUND, $response->getStatusCode());
+    }
+
+    // ---------------------------------------------------------------- media types
+
+    /**
+     * The reported gap: no video type was on the allowlist at all, so a request for a stored video
+     * never entered the asset branch. It fell through to the router and came back as an error page
+     * - at HTTP 200, which is why a 1.8MB video read as a 210KB "success" in a status column.
+     */
+    public function test_a_video_is_served(): void
+    {
+        $response = $this->serve('/probe.mp4');
+
+        $this->assertSame(BaseResponse::STATUS_OK, $response->getStatusCode());
+        $this->assertSame(1024, strlen($this->bodyOf($response)));
+        $this->assertSame('video/mp4', $this->headersOf($response)['content-type'] ?? null);
+    }
+
+    /**
+     * These two are why the MIME map is explicit: mime_content_type() returns
+     * application/octet-stream for them on a stock build, and a browser handed octet-stream for a
+     * video downloads it instead of playing it.
+     */
+    public function test_types_mime_content_type_gets_wrong_are_declared_explicitly(): void
+    {
+        $this->assertSame('video/webm', $this->headersOf($this->serve('/probe.webm'))['content-type'] ?? null);
+        $this->assertSame('audio/mpeg', $this->headersOf($this->serve('/probe.mp3'))['content-type'] ?? null);
+    }
+
+    // ---------------------------------------------------------------- range requests
+
+    /** A video element checks for this before it will let the user seek. */
+    public function test_a_served_asset_advertises_range_support(): void
+    {
+        $this->assertSame('bytes', $this->headersOf($this->serve('/probe.mp4'))['accept-ranges'] ?? null);
+    }
+
+    public function test_a_range_request_returns_206_with_only_that_slice(): void
+    {
+        $response = $this->serve('/probe.mp4', ['Range' => 'bytes=0-99']);
+        $headers = $this->headersOf($response);
+
+        $this->assertSame(BaseResponse::STATUS_PARTIAL_CONTENT, $response->getStatusCode());
+        $this->assertSame(100, strlen($this->bodyOf($response)));
+        $this->assertSame('bytes 0-99/1024', $headers['content-range'] ?? null);
+        $this->assertSame('100', $headers['content-length'] ?? null);
+    }
+
+    public function test_an_open_ended_range_runs_to_the_end_of_the_file(): void
+    {
+        $response = $this->serve('/probe.mp4', ['Range' => 'bytes=1000-']);
+
+        $this->assertSame(BaseResponse::STATUS_PARTIAL_CONTENT, $response->getStatusCode());
+        $this->assertSame(24, strlen($this->bodyOf($response)));
+        $this->assertSame('bytes 1000-1023/1024', $this->headersOf($response)['content-range'] ?? null);
+    }
+
+    /** `bytes=-500` means the LAST 500 bytes, not "from 0 to 500". */
+    public function test_a_suffix_range_returns_the_tail(): void
+    {
+        $response = $this->serve('/probe.mp4', ['Range' => 'bytes=-24']);
+
+        $this->assertSame(BaseResponse::STATUS_PARTIAL_CONTENT, $response->getStatusCode());
+        $this->assertSame(24, strlen($this->bodyOf($response)));
+        $this->assertSame('bytes 1000-1023/1024', $this->headersOf($response)['content-range'] ?? null);
+    }
+
+    /** A client may ask past the end; clamp rather than refuse. */
+    public function test_a_range_past_the_end_is_clamped(): void
+    {
+        $response = $this->serve('/probe.mp4', ['Range' => 'bytes=1000-99999']);
+
+        $this->assertSame(BaseResponse::STATUS_PARTIAL_CONTENT, $response->getStatusCode());
+        $this->assertSame('bytes 1000-1023/1024', $this->headersOf($response)['content-range'] ?? null);
+    }
+
+    /** A start beyond the file cannot be satisfied - 416 plus the real size, so the client corrects. */
+    public function test_an_unsatisfiable_range_answers_416(): void
+    {
+        $response = $this->serve('/probe.mp4', ['Range' => 'bytes=5000-6000']);
+
+        $this->assertSame(BaseResponse::STATUS_RANGE_NOT_SATISFIABLE, $response->getStatusCode());
+        $this->assertSame('bytes */1024', $this->headersOf($response)['content-range'] ?? null);
+        $this->assertSame('', $this->bodyOf($response));
+    }
+
+    /** Multi-range is a multipart document no media element needs; send the whole file instead. */
+    public function test_a_multi_range_request_gets_the_whole_file(): void
+    {
+        $response = $this->serve('/probe.mp4', ['Range' => 'bytes=0-9,20-29']);
+
+        $this->assertSame(BaseResponse::STATUS_OK, $response->getStatusCode());
+        $this->assertSame(1024, strlen($this->bodyOf($response)));
+    }
+
+    public function test_a_request_without_a_range_still_gets_the_whole_file(): void
+    {
+        $this->assertSame(1024, strlen($this->bodyOf($this->serve('/probe.mp4'))));
+    }
+
+    // ---------------------------------------------------------------- svg
+
+    /**
+     * SVG stays servable - apps serve their own bundled icons - but nosniff cannot help it:
+     * image/svg+xml is honoured rather than sniffed, so an SVG navigated to directly is a
+     * scriptable document on this origin. The CSP neutralises that without refusing the file, so
+     * the allowlist and the warning in this middleware finally agree.
+     */
+    public function test_an_svg_is_served_with_a_script_neutralising_csp(): void
+    {
+        $headers = $this->headersOf($this->serve('/probe.svg'));
+
+        $this->assertNotNull($headers['content-security-policy'] ?? null, 'SVG was served with no CSP');
+        $this->assertStringContainsString("default-src 'none'", $headers['content-security-policy']);
+    }
+
+    public function test_a_non_svg_asset_carries_no_csp(): void
+    {
+        $this->assertArrayNotHasKey('content-security-policy', $this->headersOf($this->serve('/probe.gif')));
     }
 
     // ---------------------------------------------------------------- symlinked directories
