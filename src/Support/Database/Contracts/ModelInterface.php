@@ -445,24 +445,24 @@ interface ModelInterface extends ModelEventsInterface
     public function _bit_xor(string $column);
 
     /**
-     * Increment the given column by 1 or the given number of steps
-     * 
+     * Atomically increment the given column by 1 or the given number of steps
+     *
      * @param string $column
      * @param int $step
-     * 
-     * @return bool
+     *
+     * @return int the number of rows changed
      */
-    public function _increment(string $column, int $step = 1);
+    public function _increment(string $column, int $step = 1): int;
 
     /**
-     * Decrement the given column by 1 or the given number of steps
-     * 
+     * Atomically decrement the given column by 1 or the given number of steps
+     *
      * @param string $column
      * @param int $step
-     * 
-     * @return bool
+     *
+     * @return int the number of rows changed
      */
-    public function _decrement(string $column, int $step = 1);
+    public function _decrement(string $column, int $step = 1): int;
 
     /**
      * update a model

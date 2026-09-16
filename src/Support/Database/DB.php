@@ -614,28 +614,37 @@ class DB
         return $this->_update($values, $id);
     }
 
-    public function increment(string $column, int $step = 1)
+    /**
+     * Atomically add $step to a column, returning the number of rows changed.
+     *
+     * This read the connection's result BACKWARDS — `if (increment(...)) return false;` — and the
+     * connection returned a PDOStatement, which is an object and so always truthy. The `return
+     * true` below it was therefore unreachable: a successful increment reported **false**, every
+     * time. A caller doing the sensible thing with the result learned that the builder could not
+     * be trusted, and reached for read-modify-write instead — which is the race this method
+     * exists to avoid.
+     *
+     * The model builder's `_increment()` had the same line WITHOUT the inverted test, so the two
+     * builders disagreed about the same operation by a single `!`. They now share one contract:
+     * rows changed, matching `update()`, which is what this compiles to.
+     */
+    public function increment(string $column, int $step = 1): int
     {
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
         $operators = $this->operators;
         $column = $this->parseColumn($column);
 
-        if (DatabaseConnection::increment($column, $this->table, $query_arr, $operators, $this->or_ands, $step)) {
-            return false;
-        }
-        return true;
+        return DatabaseConnection::increment($column, $this->table, $query_arr, $operators, $this->or_ands, $step);
     }
 
-    public function decrement(string $column, int $step = 1)
+    /** @see increment() — same contract, returns the number of rows changed. */
+    public function decrement(string $column, int $step = 1): int
     {
         $query_arr = $this->bind_or_filter === null ? [] : $this->bind_or_filter;
         $operators = $this->operators;
         $column = $this->parseColumn($column);
 
-        if (DatabaseConnection::decrement($column, $this->table, $query_arr, $operators, $this->or_ands, $step)) {
-            return false;
-        }
-        return true;
+        return DatabaseConnection::decrement($column, $this->table, $query_arr, $operators, $this->or_ands, $step);
     }
 
     public function delete(int|null $id = null)
