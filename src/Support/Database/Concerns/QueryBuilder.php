@@ -890,32 +890,34 @@ trait QueryBuilder
         return $aggregate;
     }
 
-    public function _increment($column, $step = 1)
+    /**
+     * Atomically add $step to a column, returning the number of rows changed.
+     *
+     * Previously returned a bare `true` whenever the statement ran, which is no signal at all — a
+     * failure throws, so the `false` branch was unreachable. Now the same contract as the `DB`
+     * builder and as `update()`: rows changed, so a caller can tell an increment that landed from
+     * one whose row had gone.
+     */
+    public function _increment($column, $step = 1): int
     {
         if ($this->bind_or_filter === null)
             $this->bind_or_filter['id'] = $this->{$this->primaryKey};
         $query_arr = $this->bind_or_filter;
         $column = $this->_parseColumn($column);
 
-        if (!DatabaseConnection::increment($column, $this->table, $query_arr, $this->operators, $this->or_ands, $step)) {
-            return false;
-        }
-        return true;
+        return DatabaseConnection::increment($column, $this->table, $query_arr, $this->operators, $this->or_ands, $step);
     }
 
-    public function _decrement($column, $step = 1)
+    /** @see _increment() — same contract, returns the number of rows changed. */
+    public function _decrement($column, $step = 1): int
     {
-
         if ($this->bind_or_filter === null)
             $this->bind_or_filter['id'] = $this->{$this->primaryKey};
 
         $query_arr = $this->bind_or_filter;
         $column = $this->_parseColumn($column);
 
-        if (!DatabaseConnection::decrement($column, $this->table, $query_arr, $this->operators, $this->or_ands, $step)) {
-            return false;
-        }
-        return true;
+        return DatabaseConnection::decrement($column, $this->table, $query_arr, $this->operators, $this->or_ands, $step);
     }
 
     public function _update($values, $id=0, $is_protected = true)
