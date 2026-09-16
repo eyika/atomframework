@@ -1021,7 +1021,18 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
   
   /* --- Atomic increments/decrements --- */
   
-  public function increment(string $column, string $table, array $filters, string|array $operators = '=', string|array $or_ands = "AND", $step = 1) {
+  /**
+   * Atomically add $step to a column, in the database, in one statement.
+   *
+   * Returns the number of rows the UPDATE changed — the same contract as update(), which this
+   * ultimately is. It used to return the raw PDOStatement, which is an object and therefore always
+   * truthy, so neither caller could tell success from failure and one of them read the result
+   * backwards for it.
+   *
+   * Note a NULL column is NOT incremented: `NULL + 1` is NULL in SQL, so the row matches, nothing
+   * changes, and the count comes back 0. Give counter columns a NOT NULL default.
+   */
+  public function increment(string $column, string $table, array $filters, string|array $operators = '=', string|array $or_ands = "AND", $step = 1): int {
     $bind = $where = [];
 
     $i = 0; $j = 0; $len = count($filters);
@@ -1041,20 +1052,20 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
 
     $where_sql = $where ? ' WHERE ' . implode( " ", $where) : '';
 
-    $step = intval($step);
-    if ( $step > 0 ) {
-      $step = "+{$step}";
-    }
+    // Always signed, so the operator is never missing. `if ($step > 0) "+$step"` left a step of 0
+    // bare, emitting `SET col = col 0` — a syntax error rather than the no-op it reads as.
+    $step = sprintf('%+d', intval($step));
 
     $parts = explode('.', $column);
     $column = implode('.', array_map(fn($part) => $this->grammar->wrapValue($part), $parts)); // quote each part
 
     $sql = "UPDATE " . $this->grammar->wrapTable($table) . " SET {$column} = {$column} {$step}{$where_sql}";
-    // info($sql);
-    return $this->exec($sql, $bind);
+
+    return $this->exec($sql, $bind)->rowCount();
   }
   
-  public function decrement(string $column, string $table, array $filters, string|array $operators = '=', string|array $or_ands = "AND", $step = 1) {
+  /** @see increment() — same contract, returns the number of rows changed. */
+  public function decrement(string $column, string $table, array $filters, string|array $operators = '=', string|array $or_ands = "AND", $step = 1): int {
     $step = -abs($step);
     return $this->increment($column, $table, $filters, $operators, $or_ands, $step);
   }

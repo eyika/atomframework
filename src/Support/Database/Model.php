@@ -42,8 +42,8 @@ use JsonSerializable;
  * @method static int stddev(string $column)
  * @method static int bit_and(string $column)
  * @method static int bit_xor(string $column)
- * @method static bool increment(string $column, int $step = 1)
- * @method static bool decrement(string $column, int $step = 1)
+ * @method static int increment(string $column, int $step = 1) Atomically add to a column; returns rows changed
+ * @method static int decrement(string $column, int $step = 1) Atomically subtract from a column; returns rows changed
  * @method static string group_concat(string $column)
  * @method static self|bool update($values, $id=0, $is_protected = true)
  * @method static self|bool updateOrCreate($values, $id=0, $is_protected = true)
