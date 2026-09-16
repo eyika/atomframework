@@ -454,6 +454,27 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **BREAKING — `increment()` / `decrement()` return the number of rows changed, and no longer
+  report failure on success.** `DB::table(...)->increment($col)` read its result backwards, and the
+  connection it was reading returned a `PDOStatement` — an object, so always truthy — while PDO
+  raises on error rather than returning anything falsy. The `return true` was therefore
+  unreachable: **a successful increment returned `false`, every time**.
+
+  ```php
+  // before: false, always — whether it worked or not
+  // now:    1 (rows changed), or 0 if nothing matched
+  DB::table('posts')->where('id', 1)->increment('views');
+  ```
+
+  The model builder had the same line without the inverted test, so the two builders disagreed
+  about the same operation by a single `!` — and returned a bare `true` regardless, which is no
+  signal either. Both now return rows changed, matching `update()`, which is what an increment
+  compiles to. **If you were checking the result of a model `increment()`/`decrement()`, note it is
+  now an `int`**: `0` where the row was already gone, so `if (...)` finally means something.
+
+  A `$step` of `0` also emitted `SET col = col 0` — a SQL syntax error rather than the no-op it
+  reads as — and is now a no-op reporting `0`. (`ae545ee`)
+
 - **Range replies emit `206`, and redirects emit their own status.** A code passed to
   `Response::setHeader($key, $value, $code)` was replayed into PHP's `header($h, $replace, $code)`,
   whose third argument **forces** the response code — so it overwrote the status the response had
