@@ -454,6 +454,25 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **Delayed jobs are no longer offset by your application's timezone.** Every datetime the queue
+  stored was built as `gmdate(…, strtotime('now +N seconds UTC'))`, which reads the clock *locally*
+  and then relabels that reading as UTC rather than converting it. With `APP_TIMEZONE=Africa/Lagos`
+  a 60-second delay became 3660; at `America/New_York` it became **-14340**, so a job fell due
+  almost four hours before it was queued.
+
+  The reservation guard was hit harder than the delay. Its cutoff is "now minus one minute", which
+  east of Greenwich computed to nearly an hour in the **future** — so a job another worker had just
+  reserved looked abandoned, and **the double-run protection added in the previous release did not
+  hold for any deployment east of UTC**. West of it, reservations never expired and a crashed
+  worker stranded its job for good. If you run outside UTC, update. (`06ae97d`)
+
+- **The queue no longer mistakes a table in another database for its own.** `sqlTableExists()`
+  queried `information_schema.tables` without a database qualifier, and that view spans every
+  schema on the server — so a `jobs` table in a sibling database (a test database beside a
+  development one) reported this one as present, table creation was skipped, and the next query
+  failed against a table that did not exist. A regression from the previous release, which lost the
+  scope while fixing that check's pattern matching. (`06ae97d`)
+
 - **The queue now uses your configured database connection, and honours its port.** `dispatch()`
   assembled `"mysql:dbname=…;host=…"` by hand and never wrote a port, so a database on anything but
   3306 was silently not the one your application was using — and a second engine running beside an
