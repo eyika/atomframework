@@ -2,6 +2,7 @@
 namespace Eyika\Atom\Framework\Foundation\Console\Concerns;
 
 use Eyika\Atom\Framework\Foundation\Console\Job_Queue;
+use Eyika\Atom\Framework\Foundation\Console\QueueConnector;
 use PDO;
 use SQLite3;
 
@@ -30,42 +31,44 @@ trait ShouldQueue
         return $this->delay;
     }
 
+    /**
+     * Build the queue on the application's CONFIGURED database connection.
+     *
+     * This used to hand-assemble `"mysql:dbname=…;host=…"` from `env()`, which was wrong twice
+     * over. It dropped the port, so a database on anything but 3306 was silently the wrong server —
+     * and with a second engine running beside an old one, "wrong server" means the new credentials
+     * presented to the old host, i.e. an access-denied that looks like a password problem and is
+     * not. It also dropped the charset and every configured PDO option, including
+     * `ERRMODE_EXCEPTION`, so a queue write that failed did so in silence.
+     *
+     * Reading `env()` rather than `config()` was the deeper error: `env()` sees `$_ENV` only, and
+     * php.ini ships `variables_order="GPCS"`, so an exported shell variable never arrives. An app
+     * that configures its database in `config/database.php` without a `.env` got a DSN of empty
+     * strings and connected to whatever localhost default PDO chose.
+     *
+     * `Connection::makePdo()` builds the handle exactly as the ORM builds its own, from the same
+     * config, so the dispatcher and the worker cannot disagree about where the queue lives.
+     */
+    private static function makeQueue(): Job_Queue
+    {
+        $queue = QueueConnector::make();
+        $queue->setPipeline('default');
+        $queue->selectPipeline('default');
+
+        return $queue;
+    }
+
     public static function dispatch (): self
     {
         $me = new self;
-        $me::$queue = new Job_Queue('mysql', [
-            'mysql' => [
-                'table_name' => 'jobs',     //the table that jobs will be stored in
-                'use_compression' => true
-            ]
-        ]);
-
-        $db_name = env('DB_DATABASE');
-        $db_host = env('DB_HOST');
-
-        $pdo = new PDO("mysql:dbname=$db_name;host=$db_host", env('DB_USERNAME'), env('DB_PASSWORD'));
-        $me::$queue->addQueueConnection($pdo);
-        $me::$queue->setPipeline('default');
-        $me::$queue->selectPipeline('default');
+        $me::$queue = self::makeQueue();
 
         return $me;
     }
 
     public function init (): self
     {
-        $this::$queue = new Job_Queue('mysql', [
-            'mysql' => [
-                'table_name' => 'jobs',     //the table that jobs will be stored in
-                'use_compression' => true
-            ]
-        ]);
-        $db_name = env('DB_DATABASE');
-        $db_host = env('DB_HOST');
-
-        $pdo = new PDO("mysql:dbname=$db_name;host=$db_host", env('DB_USERNAME'), env('DB_PASSWORD'));
-        $this::$queue->addQueueConnection($pdo);
-        $this::$queue->setPipeline('default');
-        $this::$queue->selectPipeline('default');
+        $this::$queue = self::makeQueue();
 
         return $this;
     }

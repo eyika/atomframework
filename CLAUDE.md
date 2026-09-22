@@ -114,7 +114,8 @@ passed. Run both after every change; nothing lands red.
 - **No auto constructor DI** — resolve with `App::make(...)`.
 - **No** `FormRequest` / `Gate` / `Policy` / `Resource` base classes.
 - **Cache is PSR-6** (no `remember()`).
-- **Queue is MySQL-only, drain-and-exit** — run via cron (`queue:work`); flags `--daemon`, `--once`,
+- **Queue runs on `database.default`** (mysql/sqlite/pgsql/sqlsrv), **drain-and-exit** — `config/queue.php`
+  is still not read, so `QUEUE_CONNECTION` changes nothing. Run via cron (`queue:work`); flags `--daemon`, `--once`,
   `--max-jobs`, `--max-time`, `--sleep`, `--pipeline`, `--no-overlap-guard`.
 - **Don't call `config()` inside files under `config/`.**
 - **`env()` reads `$_ENV` only**, and php.ini ships `variables_order="GPCS"` (no `E`) — exported
