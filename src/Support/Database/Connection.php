@@ -254,17 +254,33 @@ class Connection {
    */
   protected function getDsn(): string
   {
-      $host = $this->config['connections'][$this->driver]['host'] ?? '127.0.0.1';
-      $port = $this->config['connections'][$this->driver]['port'] ?? '3306';
-      $database = $this->config['connections'][$this->driver]['database'];
-      $charset = $this->config['connections'][$this->driver]['charset'] ?? 'utf8mb4';
+      return self::dsnFor($this->config, $this->driver);
+  }
 
-      return match ($this->driver) {
+  /**
+   * Build a DSN for one connection of a database config.
+   *
+   * Static, and taking the config explicitly, so anything needing a correctly-assembled
+   * connection can have one WITHOUT constructing a Connection — whose constructor resolves the
+   * grammar and publishes it to `self::$activeGrammar`, a side effect no caller merely wanting a
+   * PDO handle should trigger.
+   *
+   * It exists because the queue hand-rolled `"mysql:dbname=…;host=…"` in three places and dropped
+   * the port every time, so a database on any port but 3306 silently got the wrong server.
+   */
+  protected static function dsnFor(array $config, string $driver): string
+  {
+      $host = $config['connections'][$driver]['host'] ?? '127.0.0.1';
+      $port = $config['connections'][$driver]['port'] ?? '3306';
+      $database = $config['connections'][$driver]['database'];
+      $charset = $config['connections'][$driver]['charset'] ?? 'utf8mb4';
+
+      return match ($driver) {
           'mysql' => "mysql:host={$host};port={$port};dbname={$database};charset={$charset}",
           'sqlite' => "sqlite:{$database}",
           'pgsql' => "pgsql:host={$host};dbname={$database};",
           'sqlsrv' => "sqlsrv:Server={$host};Database={$database}",
-          default => throw new Exception("Unsupported database driver: {$this->config['connections'][$this->driver]['driver']}"),
+          default => throw new Exception("Unsupported database driver: {$driver}"),
       };
   }
 
@@ -272,6 +288,12 @@ class Connection {
    * Get PDO options.
    */
   protected function getOptions(): array
+  {
+      return self::optionsFor($this->config, $this->driver);
+  }
+
+  /** @see dsnFor() — the same extraction, so a PDO built elsewhere gets identical options. */
+  protected static function optionsFor(array $config, string $driver): array
   {
       $options = [
           PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
@@ -284,7 +306,7 @@ class Connection {
       // can carry transaction/temp-table/session state between requests, so enable it
       // only for stateless-per-request deployments, via
       // config: database.connections.<driver>.persistent = true.
-      if (!empty($this->config['connections'][$this->driver]['persistent'])) {
+      if (!empty($config['connections'][$driver]['persistent'])) {
           $options[PDO::ATTR_PERSISTENT] = true;
       }
 
@@ -298,7 +320,7 @@ class Connection {
       // NULL values are dropped rather than passed through: that same scaffolded key is null
       // whenever the env var is unset, and handing PDO a null SSL_CA would fail the connection
       // for every deployment that has simply never configured TLS.
-      $configured = $this->config['connections'][$this->driver]['options'] ?? [];
+      $configured = $config['connections'][$driver]['options'] ?? [];
       if (is_array($configured)) {
           foreach ($configured as $option => $value) {
               if ($value !== null) {
@@ -308,6 +330,33 @@ class Connection {
       }
 
       return $options;
+  }
+
+  /**
+   * Open a NEW PDO handle for one connection of a database config.
+   *
+   * A separate handle, deliberately, rather than the ORM's: the queue writes its job row on its
+   * own terms, and sharing this connection would silently enrol every dispatch in whatever
+   * transaction the surrounding request happens to have open.
+   *
+   * What it guarantees is that the handle is built the same way `connect()` builds its own — port
+   * and charset included, `ERRMODE_EXCEPTION` included, the connection's configured `options`
+   * (TLS, init command) included.
+   */
+  public static function makePdo(array $config, string $connection): PDO
+  {
+      if (empty($config['connections'][$connection])) {
+          throw new Exception(
+              "No '{$connection}' database connection is configured; check config/database.php."
+          );
+      }
+
+      return new PDO(
+          self::dsnFor($config, $connection),
+          $config['connections'][$connection]['username'] ?? null,
+          $config['connections'][$connection]['password'] ?? null,
+          self::optionsFor($config, $connection)
+      );
   }
 
   /**

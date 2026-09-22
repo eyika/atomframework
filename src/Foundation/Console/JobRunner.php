@@ -3,7 +3,6 @@ namespace Eyika\Atom\Framework\Foundation\Console;
 
 use Eyika\Atom\Framework\Foundation\Console\Contracts\QueueInterface;
 use Eyika\Atom\Framework\Support\SignedPayload;
-use PDO;
 use Throwable;
 
 /**
@@ -92,20 +91,7 @@ class JobRunner
 
     private function makeQueue(string $pipeline): Job_Queue
     {
-        //TODO: db abstraction so we can be driver-agnostic
-        $dbtype = config('database.connections.mysql.driver');
-        $dbhost = config('database.connections.mysql.host');
-        $dbname = config('database.connections.mysql.database');
-        $dbuser = config('database.connections.mysql.username');
-        $dbpass = config('database.connections.mysql.password');
-
-        $queue = new Job_Queue(Job_Queue::QUEUE_TYPE_MYSQL, [
-            $dbtype => [
-                'table_name'      => 'jobs',
-                'use_compression' => true,
-            ],
-        ]);
-        $queue->addQueueConnection(new PDO("$dbtype:dbname=$dbname;host=$dbhost", $dbuser, $dbpass));
+        $queue = QueueConnector::make();
         $queue->watchPipeline($pipeline);
 
         return $queue;
