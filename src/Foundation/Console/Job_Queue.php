@@ -238,9 +238,9 @@ class Job_Queue
 			case self::QUEUE_TYPE_SQLSRV:
 				$table_name = $this->getSqlTableName()[0];
 				$field_value = $this->usesCompression() ? 'COMPRESS(?)' : '?';
-				$delay_date_time = gmdate('Y-m-d H:i:s', strtotime('now +'.$delay.' seconds UTC'));
-				$added_dt = gmdate('Y-m-d H:i:s');
-				$time_to_retry_dt = gmdate('Y-m-d H:i:s', strtotime('now +'.$time_to_retry.' seconds UTC'));
+				$added_dt = self::utcTimestamp();
+				$delay_date_time = self::utcTimestamp($delay);
+				$time_to_retry_dt = self::utcTimestamp($time_to_retry);
 				$delay_column = $this->quoteDatabaseKey('delay', false);
 				$statement = $this->connection->prepare("INSERT INTO {$table_name} (pipeline, payload, {$delay_column}, added_dt, send_dt, priority, is_reserved, reserved_dt, is_buried, attempts, time_to_retry_dt) VALUES (?, {$field_value}, ?, ?, ?, ?, 0, NULL, 0, 0, ?)");
 				$statement->execute([
@@ -292,7 +292,7 @@ class Job_Queue
 					$attempts_left = 10;
 
 					while ($attempts_left-- > 0) {
-						$stale_before = gmdate('Y-m-d H:i:s', strtotime('now -1 minutes UTC'));
+						$stale_before = self::utcTimestamp(-60);
 						$candidate = $this->selectPendingCandidate($stale_before);
 
 						if ($candidate === null) {
@@ -331,7 +331,7 @@ class Job_Queue
 		$table_name = $this->getSqlTableName()[0];
 		$field = $this->usesCompression() ? 'UNCOMPRESS(payload) payload' : 'payload';
 		$delay_column = $this->quoteDatabaseKey('delay', false);
-		$send_dt = gmdate('Y-m-d H:i:s');
+		$send_dt = self::utcTimestamp();
 
 		$statement = $this->connection->prepare("SELECT id, {$field}, {$delay_column}, added_dt, send_dt, priority, is_reserved, reserved_dt, is_buried, buried_dt, attempts
 			FROM {$table_name}
@@ -360,8 +360,8 @@ class Job_Queue
 	 */
 	protected function claimPendingJob(int $id, string $stale_before, int $delay): bool {
 		$table_name = $this->getSqlTableName()[0];
-		$reserved_dt = gmdate('Y-m-d H:i:s');
-		$retry_time = gmdate('Y-m-d H:i:s', strtotime("now +$delay seconds UTC"));
+		$reserved_dt = self::utcTimestamp();
+		$retry_time = self::utcTimestamp($delay);
 
 		$statement = $this->connection->prepare("UPDATE {$table_name}
 			SET is_reserved = 1, reserved_dt = ?, time_to_retry_dt = ?, attempts = attempts + 1
@@ -420,7 +420,7 @@ class Job_Queue
 		$table_name = $this->getSqlTableName()[0];
 		$field = $this->usesCompression() ? 'UNCOMPRESS(payload) payload' : 'payload';
 		$delay_column = $this->quoteDatabaseKey('delay', false);
-		$send_dt = gmdate('Y-m-d H:i:s');
+		$send_dt = self::utcTimestamp();
 
 		$statement = $this->connection->prepare("SELECT id, {$field}, {$delay_column}, added_dt, send_dt, priority, attempts, is_reserved, reserved_dt, is_buried, buried_dt
 			FROM {$table_name}
@@ -450,8 +450,8 @@ class Job_Queue
 	 */
 	protected function claimBuriedJob(int $id, int $delay): bool {
 		$table_name = $this->getSqlTableName()[0];
-		$send_dt = gmdate('Y-m-d H:i:s');
-		$retry_time = gmdate('Y-m-d H:i:s', strtotime("now +$delay seconds UTC"));
+		$send_dt = self::utcTimestamp();
+		$retry_time = self::utcTimestamp($delay);
 
 		$statement = $this->connection->prepare("UPDATE {$table_name}
 			SET attempts = attempts + 1, time_to_retry_dt = ?
@@ -502,8 +502,8 @@ class Job_Queue
 			case self::QUEUE_TYPE_SQLSRV:
 				$table_name = $this->getSqlTableName()[0];
 				$field_value = $this->usesCompression() ? 'COMPRESS(?)' : '?';
-				$buried_dt = gmdate('Y-m-d H:i:s');
-				$time_to_retry_dt = gmdate('Y-m-d H:i:s', strtotime('now +'.$time_to_retry.' seconds UTC'));
+				$buried_dt = self::utcTimestamp();
+				$time_to_retry_dt = self::utcTimestamp($time_to_retry);
 				$statement = $this->connection->prepare("UPDATE {$table_name} SET payload = {$field_value}, is_buried = 1, buried_dt = ?, time_to_retry_dt = ?, is_reserved = 0, reserved_dt = NULL WHERE id = ?");
 				$statement->execute([$job['payload'], $buried_dt, $time_to_retry_dt, $job['id'] ]);
 			break;
@@ -534,7 +534,7 @@ class Job_Queue
 			case self::QUEUE_TYPE_SQLSRV:
 				$table_name = $this->getSqlTableName()[1];
 				$field_value = $this->usesCompression() ? 'COMPRESS(?)' : '?';
-				$added_dt = gmdate('Y-m-d H:i:s');
+				$added_dt = self::utcTimestamp();
 				$statement = $this->connection->prepare("INSERT INTO {$table_name} (pipeline, payload, added_dt, attempts) VALUES (?, {$field_value}, ?, ?)");
 				$statement->execute([
 					$this->pipeline,
@@ -679,6 +679,33 @@ class Job_Queue
 			&& ($this->options[self::QUEUE_TYPE_MYSQL]['use_compression'] ?? false) === true;
 	}
 
+	/**
+	 * A UTC timestamp string for a moment $offset seconds from now.
+	 *
+	 * Every stored datetime goes through here, because the arithmetic it replaces was wrong
+	 * wherever the application's timezone was not UTC:
+	 *
+	 *     gmdate('Y-m-d H:i:s', strtotime('now +60 seconds UTC'))
+	 *
+	 * `strtotime()` reads "now" on the LOCAL clock and the trailing "UTC" then relabels that
+	 * wall-clock reading as UTC, so the result is displaced by the offset rather than converted by
+	 * it. At `Africa/Lagos` a 60-second delay became 3660; at `America/New_York` it became -14340,
+	 * so a job was due almost four hours before it was queued.
+	 *
+	 * The reservation guard was the worse casualty. Its cutoff is "now minus one minute", and east
+	 * of Greenwich that computed to nearly an hour in the FUTURE — so `reserved_dt <= cutoff` was
+	 * true of a reservation made a moment ago, and a job another worker had just taken looked
+	 * abandoned. West of Greenwich the cutoff sat hours in the past, so a reservation never expired
+	 * and a crashed worker stranded its job for good.
+	 *
+	 * `time()` is an absolute instant and needs no parsing, so there is nothing left to relabel.
+	 * Taking one reading per statement also stops `added_dt` and `send_dt` being read from the
+	 * clock at two different moments.
+	 */
+	protected static function utcTimestamp(int $offset = 0): string {
+		return gmdate('Y-m-d H:i:s', time() + $offset);
+	}
+
 	/** Whether this queue is backed by a SQL table rather than a queue daemon. */
 	public function isSqlQueueType(): bool {
 		return in_array($this->queue_type, self::SQL_QUEUE_TYPES, true);
@@ -718,20 +745,31 @@ class Job_Queue
 	}
 
 	/**
-	 * Does this table already exist?
+	 * Does this table already exist IN THE DATABASE WE ARE CONNECTED TO?
 	 *
-	 * The MySQL arm used `SHOW TABLES LIKE`, whose argument is a LIKE PATTERN — a table name
-	 * containing `_` (both defaults do) matches any single character there, so it could report a
-	 * different table as present. information_schema compares the name exactly, and every driver
-	 * here has it except SQLite.
+	 * Both halves of that question have been got wrong here. `SHOW TABLES LIKE` took the table name
+	 * as a LIKE PATTERN, so the `_` in both default names matched any single character and a
+	 * neighbouring table could answer for this one. Replacing it with a bare `information_schema`
+	 * lookup fixed the pattern and broke the scope: `information_schema.tables` spans EVERY schema
+	 * on the server, so `jobs` in a sibling database — a test database beside a development one,
+	 * which is the ordinary local arrangement — reported this table as present. Creation was then
+	 * skipped and the first real query failed against a table that does not exist, with nothing
+	 * connecting the failure to its cause.
+	 *
+	 * Each driver is therefore scoped to its own current database, and only then compared exactly.
 	 */
 	protected function sqlTableExists(string $table_name): bool {
-		if($this->sqlDriver() === self::QUEUE_TYPE_SQLITE) {
-			$statement = $this->connection->prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?");
-		} else {
-			$statement = $this->connection->prepare("SELECT table_name FROM information_schema.tables WHERE table_name = ?");
-		}
+		$sql = match($this->sqlDriver()) {
+			self::QUEUE_TYPE_SQLITE => "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+			self::QUEUE_TYPE_MYSQL => "SELECT table_name FROM information_schema.tables WHERE table_name = ? AND table_schema = DATABASE()",
+			self::QUEUE_TYPE_PGSQL => "SELECT table_name FROM information_schema.tables WHERE table_name = ? AND table_schema = current_schema()",
+			// SQL Server's information_schema is already per-database; the schema check keeps a
+			// table of the same name under another schema from answering for dbo's.
+			self::QUEUE_TYPE_SQLSRV => "SELECT table_name FROM information_schema.tables WHERE table_name = ? AND table_schema = SCHEMA_NAME()",
+			default => throw new Exception("Cannot check for an existing table on driver '{$this->sqlDriver()}'."),
+		};
 
+		$statement = $this->connection->prepare($sql);
 		$statement->execute([ $table_name ]);
 
 		return count($statement->fetchAll(PDO::FETCH_ASSOC)) > 0;
