@@ -454,6 +454,37 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Fixed
+- **The queue now uses your configured database connection, and honours its port.** `dispatch()`
+  assembled `"mysql:dbname=…;host=…"` by hand and never wrote a port, so a database on anything but
+  3306 was silently not the one your application was using — and a second engine running beside an
+  older one meant the new credentials reaching the old host, which answers *access denied*.
+
+  Three places hand-rolled that DSN (`ShouldQueue::dispatch()`, `ShouldQueue::init()` and the
+  worker's `JobRunner`), so the dispatcher and the worker could disagree about which database the
+  queue lived in. All three also dropped the charset and every configured PDO option, including
+  `ERRMODE_EXCEPTION` — so a queue write that failed did so in silence. `dispatch()` additionally
+  read `env()` rather than `config()`, and `env()` sees `$_ENV` only: an app configuring its
+  database in `config/database.php` with no `.env` got a DSN of empty strings. (`d341e45`)
+
+- **The queue runs on any database the framework supports** — `mysql`, `sqlite`, `pgsql`, `sqlsrv`,
+  following `config('database.default')`. `sqlite` was a declared queue type that could never have
+  worked: the one `CREATE TABLE` was MySQL's, so the queue could not create the table it then
+  queried. Schema is now per driver, and the SQL dialect is taken from the **connection** rather
+  than a label, so a handle you pass to `onConnection()` is quoted correctly too. (`d341e45`)
+
+- **A job can no longer run twice.** `getNextJobAndReserve()` selected a job and then claimed it
+  with an unconditional `WHERE id = ?`, so two workers that selected the same row both succeeded
+  and both ran it. Only the flock overlap guard kept that to one worker — a second worker, or
+  `--no-overlap-guard`, double-executed silently. The claim is now conditional and checked, and a
+  worker that loses the race moves to the next job instead of running one it does not hold.
+  `getNextBuriedJob()`, which reserved nothing at all, got the same treatment. (`d341e45`)
+
+- **`kickJob()` never worked.** It assigned its table name to `$table_name[0]` and then interpolated
+  `{$table_name}` — an array — so every call raised *Array to string conversion* and ran
+  `UPDATE Array SET …`. `failJob()` separately returned an undefined variable on one path, which its
+  `: int` return type turned into a TypeError. The queue subsystem had no tests at all; it does now.
+  (`d341e45`)
+
 - **BREAKING — `increment()` / `decrement()` return the number of rows changed, and no longer
   report failure on success.** `DB::table(...)->increment($col)` read its result backwards, and the
   connection it was reading returned a `PDOStatement` — an object, so always truthy — while PDO
