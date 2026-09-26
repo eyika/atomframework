@@ -210,6 +210,25 @@ class Blueprint
         return $this->addColumn('dateTime', $column, compact('precision'));
     }
 
+    /**
+     * A calendar day, with no time and no timezone.
+     *
+     * The absence of this was not a small gap. `dateTime()` was the nearest thing, and it stores a
+     * midnight nobody meant — which is wrong the moment the application's timezone is not UTC,
+     * because midnight in `Africa/Lagos` is the previous day in UTC. For a pay date or a delivery
+     * promise that is a silently wrong answer rather than an imprecise one.
+     */
+    public function date(string $column): ColumnDefinition
+    {
+        return $this->addColumn('date', $column);
+    }
+
+    /** A time of day, with no date — a cutoff or an opening hour. @see date() */
+    public function time(string $column, int $precision = 0): ColumnDefinition
+    {
+        return $this->addColumn('time', $column, compact('precision'));
+    }
+
     public function timestamp(string $column): ColumnDefinition
     {
         return $this->addColumn('timestamp', $column);
@@ -266,10 +285,22 @@ class Blueprint
         return $foreignKey;
     }
 
-    public function unique(string|array $column): self
+    /**
+     * A unique index, optionally under a name you choose.
+     *
+     * `$name` exists because the generated one is `unique_<col>_<col>_…_<hash>`, which on a wide
+     * composite key runs past **MySQL's 64-character identifier limit** and fails the migration
+     * with `1059 Identifier name … is too long`. Every neighbour here — `index()`, `fulltext()`,
+     * `spatialIndex()` — already took a name; `unique()` alone dropped it, so the only way out was
+     * to call `addIndex()` underneath it.
+     *
+     * The failure is also invisible until it is expensive: SQLite has no identifier length limit,
+     * so a suite that runs on SQLite stays green, and an existing database never re-runs the
+     * migration that grew the key. The first place it can surface is a from-scratch MySQL migrate.
+     */
+    public function unique(string|array $column, ?string $name = null): self
     {
-        // $this->indexes[] = is_string($column) ? "UNIQUE(`$column`)" : "UNIQUE(`" . implode("`, `", $column) . "`)";
-        $this->addIndex('UNIQUE', Arr::wrap($column));
+        $this->addIndex('UNIQUE', Arr::wrap($column), $name);
         return $this;
     }
 

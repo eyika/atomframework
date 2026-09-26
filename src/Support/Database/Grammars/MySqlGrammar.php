@@ -62,6 +62,7 @@ class MySqlGrammar extends Grammar
             'tinyInteger' => 'TINYINT', 'smallInteger' => 'SMALLINT', 'mediumInteger' => 'MEDIUMINT',
             'text' => 'TEXT', 'tinyText' => 'TINYTEXT', 'mediumText' => 'MEDIUMTEXT', 'longText' => 'LONGTEXT',
             'json' => 'JSON', 'decimal' => 'DECIMAL', 'timestamp' => 'TIMESTAMP', 'dateTime' => 'DATETIME',
+            'date' => 'DATE', 'time' => 'TIME',
             'geometry' => 'GEOMETRY', 'blob' => 'BLOB', 'tinyBlob' => 'TINYBLOB', 'mediumBlob' => 'MEDIUMBLOB',
             'longBlob' => 'LONGBLOB',
         ];
