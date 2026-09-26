@@ -879,4 +879,15 @@ interface ModelInterface extends ModelEventsInterface
      * @return self
      */
     public function _lockForUpdate();
+
+    /**
+     * Add FOR UPDATE SKIP LOCKED to the next read: lock the matched rows, but step over any a
+     * concurrent transaction already holds rather than queueing behind them.
+     *
+     * Degrades to a plain FOR UPDATE where the server cannot express it, so it is always safe to
+     * ask for.
+     *
+     * @return self
+     */
+    public function _skipLocked();
 }

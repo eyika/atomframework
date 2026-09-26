@@ -31,6 +31,7 @@ use JsonSerializable;
  * @method static \Eyika\Atom\Framework\Support\Collections\LazyCollection lazy(bool $is_protected = true, array $select = [])
  * @method static void observe(string|object|array $observers)
  * @method self lockForUpdate()
+ * @method self skipLocked() Lock the read's rows, stepping over rows another transaction holds
  * @method static PaginatedData|false paginate(int $currentPage = null, int $recordsPerPage = null, bool $isProtected = true, array $select = [], ?string $routeName = null)
  * @method static self|null random()
  * @method static int count(string $column = '')
@@ -131,7 +132,7 @@ abstract class Model implements ModelInterface, JsonSerializable, ArrayableContr
         'whereEqual', 'whereNotEqual', 'orWhere', 'orWhereIn', 'orWhereNotIn', 'orWhereLike', 'orWhereNotLike',
         'orWhereLessThan', 'orWhereLessThanOrEqual', 'orWhereGreaterThan', 'orWhereGreaterThanOrEqual',
         'orWhereEqual', 'orWhereNotEqual', 'orWhereNull', 'orWhereNotNull', 'beginTransaction',
-        'commit', 'rollback', 'distinct', 'join', 'leftJoin', 'rightJoin', 'fullOuterJoin', 'lockForUpdate'
+        'commit', 'rollback', 'distinct', 'join', 'leftJoin', 'rightJoin', 'fullOuterJoin', 'lockForUpdate', 'skipLocked'
     ];
 
     /**
