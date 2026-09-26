@@ -59,8 +59,19 @@ abstract class Command implements ShouldLogMessages
         return $this->arguments[$index];
     }
 
-    // Method to get command line option
-    public function option($name, $default = null): null|string
+    /**
+     * Read a named option, e.g. `--workers=4` as `option('workers')`.
+     *
+     * Options are NOT readable off `arguments()`, which is the raw argv list and numerically
+     * indexed — `$arguments['workers']` finds nothing, and with a `?? $default` beside it that is
+     * silent. Flags come through here; positional tokens come through `argument(int $index)`.
+     *
+     * The return type used to be `null|string`, which **coerced the caller's own default**:
+     * `option('workers', 32)` handed back the string `"32"`, and `option('force', false)` handed
+     * back `""`. A value the caller supplied should come back as the caller wrote it, so the
+     * default now passes through untouched. A flag given without `=` is `true`.
+     */
+    public function option($name, $default = null): mixed
     {
         return $this->options[$name] ?? $default;
     }
@@ -116,6 +127,27 @@ abstract class Command implements ShouldLogMessages
                 
                 $this->options[$name] = $value;
             }
+        }
+    }
+
+    /**
+     * Write an unadorned line to the console.
+     *
+     * `info()` already emits console output without a level or a timestamp — it is not the
+     * log-shaped thing its name suggests — but `line()` is what a reader reaches for when printing
+     * a table of numbers rather than announcing an event, and its absence sent one consumer to
+     * `STDOUT` directly. Same output, name that says what it does.
+     */
+    protected function line(string $message = ''): void
+    {
+        $this->info($message);
+    }
+
+    /** Blank lines, for separating sections of output. */
+    protected function newLine(int $count = 1): void
+    {
+        for ($i = 0; $i < max(1, $count); $i++) {
+            $this->line('');
         }
     }
 
