@@ -109,6 +109,23 @@ trait ShouldQueue
     }
 
     /**
+     * Extend this job's reservation while it is still working.
+     *
+     * A reservation is a LEASE, not a lock: once it lapses, another worker is entitled to start
+     * this same job while this one is still running. The lease comes from
+     * `config('queue.retry_after')` and defaults to 60 seconds, so a handler that legitimately
+     * takes longer should call `$this->touch()` periodically — around each slow step, not once at
+     * the top.
+     *
+     * Without this the deadline existed but nothing could satisfy it, which made "finish inside a
+     * minute" an undocumented correctness requirement.
+     */
+    protected function touch(): bool
+    {
+        return $this::$queue->touchJob($this->job);
+    }
+
+    /**
      * Release the job to a different Queue
      * 
      * @param int $delay in minutes

@@ -59,6 +59,19 @@ class Job_Queue
 	protected static $cache = [];
 
 	/**
+	 * Did the last claim attempt lose every race rather than find an empty pipeline?
+	 *
+	 * Without this the two are indistinguishable to the caller — a worker that lost ten races
+	 * returned the same empty array as one with nothing to do, so `JobRunner` slept **with work
+	 * pending**. The more workers, the more often, which is a starvation mode rather than a
+	 * slowdown: the busier the queue, the more likely a worker decides it is idle.
+	 */
+	protected bool $contended = false;
+
+	/** Memoised answer to supportsSkipLocked(); the probe costs one round trip. */
+	protected ?bool $skipLockedSupport = null;
+
+	/**
 	 * The construct
 	 *
 	 * @param string $queue_type - self::QUEUE_TYPE_MYSQL is default
@@ -274,40 +287,18 @@ class Job_Queue
 	 */
 	public function getNextJobAndReserve() {
 		$this->runPreChecks();
+		$this->contended = false;
 		$job = [];
+
 		switch($this->queue_type) {
 			case self::QUEUE_TYPE_MYSQL:
 			case self::QUEUE_TYPE_SQLITE:
 			case self::QUEUE_TYPE_PGSQL:
 			case self::QUEUE_TYPE_SQLSRV:
 				if ($this->connection instanceof PDO || $this->connection instanceof SQLite3) {
-					// Selecting a candidate and claiming it are two statements, so between them
-					// another worker can take the same row. The claim used to be an unconditional
-					// `WHERE id = ?`, so BOTH workers succeeded and the job ran twice. It is now
-					// conditional on the row still being free, and losing means looking for the
-					// next candidate rather than running a job we do not hold.
-					//
-					// Bounded, because losing every race is indistinguishable from an empty
-					// pipeline after a while and a worker must not spin on a busy queue.
-					$attempts_left = 10;
-
-					while ($attempts_left-- > 0) {
-						$stale_before = self::utcTimestamp(-60);
-						$candidate = $this->selectPendingCandidate($stale_before);
-
-						if ($candidate === null) {
-							break;
-						}
-
-						if ($this->claimPendingJob($candidate['id'], $stale_before, $candidate['delay'])) {
-							$job = [
-								'id' => $candidate['id'],
-								'attempts' => $candidate['attempts'] + 1,
-								'payload' => $candidate['payload'],
-							];
-							break;
-						}
-					}
+					$job = $this->supportsSkipLocked()
+						? ($this->claimWithRowLock() ?? [])
+						: ($this->claimByCompareAndSwap() ?? []);
 				}
 			break;
 
@@ -317,6 +308,109 @@ class Job_Queue
 		}
 
 		return $job;
+	}
+
+	/**
+	 * Claim a job by locking its row: one statement decides the winner, inside a transaction.
+	 *
+	 * `SKIP LOCKED` is what makes this a queue rather than a bottleneck. A plain `FOR UPDATE`
+	 * makes every worker queue behind whoever holds the head row; SKIP LOCKED steps over held rows,
+	 * so N workers take N different jobs. The database picks the winner, so the claim below needs
+	 * no compare-and-swap — we already hold the row.
+	 *
+	 * This is the same primitive Solid Queue and Shopify's reservation work are built on, and the
+	 * framework could already write it (`Connection::readjob()` does, for the `_queue` table); the
+	 * job queue simply predated it.
+	 */
+	protected function claimWithRowLock(): ?array {
+		$table_name = $this->getSqlTableName()[0];
+		$field = $this->usesCompression() ? 'UNCOMPRESS(payload) payload' : 'payload';
+		$delay_column = $this->quoteDatabaseKey('delay', false);
+		$send_dt = self::utcTimestamp();
+		$stale_before = self::utcTimestamp(-$this->reservationTimeout());
+
+		// An application may already be inside a transaction when it dispatches; nesting one here
+		// would raise rather than help, so only own the transaction if nobody else does.
+		$owns_transaction = !$this->connection->inTransaction();
+
+		if($owns_transaction) {
+			$this->connection->beginTransaction();
+		}
+
+		try {
+			$statement = $this->connection->prepare("SELECT id, {$field}, {$delay_column}, attempts
+				FROM {$table_name}
+				WHERE pipeline = ? AND send_dt <= ? AND is_buried = 0 AND (is_reserved = 0 OR (is_reserved = 1 AND reserved_dt <= ? ) ) AND (attempts = 0 OR (attempts >= 1 AND time_to_retry_dt <= ?) )
+				ORDER BY priority ASC, id ASC LIMIT 1 FOR UPDATE SKIP LOCKED");
+			$statement->execute([ $this->pipeline, $send_dt, $stale_before, $send_dt ]);
+			$result = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+			if(!count($result)) {
+				if($owns_transaction) {
+					$this->connection->commit();
+				}
+				return null;
+			}
+
+			$row = $result[0];
+			$delay = intval($row['delay']);
+
+			$statement = $this->connection->prepare("UPDATE {$table_name}
+				SET is_reserved = 1, reserved_dt = ?, time_to_retry_dt = ?, attempts = attempts + 1
+				WHERE id = ?");
+			$statement->execute([ self::utcTimestamp(), self::utcTimestamp($delay), $row['id'] ]);
+
+			if($owns_transaction) {
+				$this->connection->commit();
+			}
+
+			return [
+				'id' => intval($row['id']),
+				'attempts' => intval($row['attempts']) + 1,
+				'payload' => $row['payload'],
+			];
+		} catch (Exception $e) {
+			if($owns_transaction && $this->connection->inTransaction()) {
+				$this->connection->rollBack();
+			}
+			throw $e;
+		}
+	}
+
+	/**
+	 * Claim a job by optimistic compare-and-swap, for servers without SKIP LOCKED.
+	 *
+	 * **This path must stay.** MySQL below 8.0 and MariaDB below 10.6 have no SKIP LOCKED, and
+	 * removing this would break those deployments silently, at the moment a job is claimed.
+	 *
+	 * It is correct but wasteful: the SELECT takes no locks, so N workers all read the same head
+	 * row and N-1 lose the race and re-read. Losing is reported through `sawContention()` so the
+	 * caller does not mistake a contended queue for an idle one.
+	 */
+	protected function claimByCompareAndSwap(): ?array {
+		$attempts_left = 10;
+
+		while ($attempts_left-- > 0) {
+			$stale_before = self::utcTimestamp(-$this->reservationTimeout());
+			$candidate = $this->selectPendingCandidate($stale_before);
+
+			if ($candidate === null) {
+				return null;
+			}
+
+			if ($this->claimPendingJob($candidate['id'], $stale_before, $candidate['delay'])) {
+				return [
+					'id' => $candidate['id'],
+					'attempts' => $candidate['attempts'] + 1,
+					'payload' => $candidate['payload'],
+				];
+			}
+		}
+
+		// Ran out of attempts with candidates still appearing: the queue is busy, not empty.
+		$this->contended = true;
+
+		return null;
 	}
 
 	/**
@@ -336,7 +430,7 @@ class Job_Queue
 		$statement = $this->connection->prepare("SELECT id, {$field}, {$delay_column}, added_dt, send_dt, priority, is_reserved, reserved_dt, is_buried, buried_dt, attempts
 			FROM {$table_name}
 			WHERE pipeline = ? AND send_dt <= ? AND is_buried = 0 AND (is_reserved = 0 OR (is_reserved = 1 AND reserved_dt <= ? ) ) AND (attempts = 0 OR (attempts >= 1 AND time_to_retry_dt <= ?) )
-			ORDER BY priority ASC LIMIT 1");
+			ORDER BY priority ASC, id ASC LIMIT 1");
 		$statement->execute([ $this->pipeline, $send_dt, $stale_before, $send_dt ]);
 		$result = $statement->fetchAll(PDO::FETCH_ASSOC);
 
@@ -379,6 +473,7 @@ class Job_Queue
 	 */
 	public function getNextBuriedJob() {
 		$this->runPreChecks();
+		$this->contended = false;
 		$job = [];
 		switch($this->queue_type) {
 			case self::QUEUE_TYPE_MYSQL:
@@ -425,7 +520,7 @@ class Job_Queue
 		$statement = $this->connection->prepare("SELECT id, {$field}, {$delay_column}, added_dt, send_dt, priority, attempts, is_reserved, reserved_dt, is_buried, buried_dt
 			FROM {$table_name}
 			WHERE pipeline = ? AND send_dt <= ? AND is_buried = 1 AND (attempts >= 1 AND time_to_retry_dt <= ?)
-			ORDER BY priority ASC LIMIT 1");
+			ORDER BY priority ASC, id ASC LIMIT 1");
 		$statement->execute([ $this->pipeline, $send_dt, $send_dt ]);
 		$result = $statement->fetchAll(PDO::FETCH_ASSOC);
 
@@ -706,6 +801,88 @@ class Job_Queue
 		return gmdate('Y-m-d H:i:s', time() + $offset);
 	}
 
+	/**
+	 * How long a reservation is honoured before another worker may take the job, in seconds.
+	 *
+	 * Was hardcoded to 60, unrelated to any configuration, and never renewed — so "every job must
+	 * finish in under a minute" was an **undocumented correctness requirement**, and a `handle()`
+	 * that ran longer became eligible to be claimed again while it was still running. It is now a
+	 * per-queue option, and `touchJob()` lets a long job extend its own lease.
+	 */
+	public function reservationTimeout(): int {
+		$configured = $this->options[$this->queue_type]['reservation_timeout'] ?? null;
+
+		return $configured === null ? 60 : max(1, (int) $configured);
+	}
+
+	/** True when the last claim attempt lost every race rather than finding an empty pipeline. */
+	public function sawContention(): bool {
+		return $this->contended;
+	}
+
+	/**
+	 * Can this connection run SELECT ... FOR UPDATE SKIP LOCKED?
+	 *
+	 * Asked of the server rather than read off its version string. MariaDB has had SKIP LOCKED
+	 * since 10.6 and MySQL since 8.0, so no single version threshold is right for both, and MariaDB
+	 * may prefix a compatibility version (`5.5.5-…`) that a naive comparison reads instead of the
+	 * real one. With emulated prepares off, `prepare()` round-trips and raises on a syntax error,
+	 * which makes preparing the clause a direct question about the grammar the server accepts.
+	 */
+	public function supportsSkipLocked(): bool {
+		if($this->skipLockedSupport !== null) {
+			return $this->skipLockedSupport;
+		}
+
+		if(!($this->connection instanceof PDO)) {
+			return $this->skipLockedSupport = false;
+		}
+
+		// SQLite compiles locks away entirely; SQL Server spells the idea READPAST, as a table
+		// hint rather than a suffix, so this clause is not its grammar.
+		if(in_array($this->sqlDriver(), [self::QUEUE_TYPE_SQLITE, self::QUEUE_TYPE_SQLSRV], true)) {
+			return $this->skipLockedSupport = false;
+		}
+
+		try {
+			$this->connection->prepare('SELECT 1 FROM DUAL FOR UPDATE SKIP LOCKED');
+			return $this->skipLockedSupport = true;
+		} catch (Exception $e) {
+			return $this->skipLockedSupport = false;
+		}
+	}
+
+	/**
+	 * Extend this job's reservation, for a handler that legitimately runs longer than the lease.
+	 *
+	 * Without it the lease is a hard deadline nobody declared: pass it, and another worker is
+	 * entitled to start the same job while this one is still working.
+	 */
+	public function touchJob($job): bool {
+		if(!$this->isSqlQueueType() || !($this->connection instanceof PDO)) {
+			return false;
+		}
+
+		$table_name = $this->getSqlTableName()[0];
+
+		$statement = $this->connection->prepare("UPDATE {$table_name} SET reserved_dt = ? WHERE id = ? AND is_reserved = 1");
+		$statement->execute([ self::utcTimestamp(), $job['id'] ]);
+
+		if($statement->rowCount() === 1) {
+			return true;
+		}
+
+		// A zero count here is AMBIGUOUS on MySQL/MariaDB, which count rows *changed* rather than
+		// rows matched: a touch inside the same second writes the second it already holds, changes
+		// nothing, and reports 0 — which is the common case, since a job touches its own lease
+		// promptly. SQLite counts matched rows instead and returns 1, so a SQLite-only test cannot
+		// see this at all. Ask the question the caller actually means: do we still hold it?
+		$check = $this->connection->prepare("SELECT 1 FROM {$table_name} WHERE id = ? AND is_reserved = 1");
+		$check->execute([ $job['id'] ]);
+
+		return count($check->fetchAll(PDO::FETCH_ASSOC)) > 0;
+	}
+
 	/** Whether this queue is backed by a SQL table rather than a queue daemon. */
 	public function isSqlQueueType(): bool {
 		return in_array($this->queue_type, self::SQL_QUEUE_TYPES, true);
@@ -803,7 +980,11 @@ class Job_Queue
 				`attempts` tinyint(4) UNSIGNED NOT NULL,
 				`time_to_retry_dt` datetime NULL,
 				PRIMARY KEY (`id`),
-				KEY `pipeline_send_dt_is_buried_is_reserved` (`pipeline`(75), `send_dt`, `is_buried`, `is_reserved`)
+				-- Ordered to match the claim query's predicate AND its ordering, so the planner
+				-- can satisfy both without a filesort. The previous index stopped before
+				-- `priority`, so every poll filesorted every due row — twice every poll interval,
+				-- forever, on a queue with nothing in it.
+				KEY `pipeline_claim` (`pipeline`(75), `is_buried`, `is_reserved`, `send_dt`, `priority`, `id`)
 			);"],
 
 			self::QUEUE_TYPE_SQLITE => ["CREATE TABLE IF NOT EXISTS {$table_name} (
@@ -820,7 +1001,7 @@ class Job_Queue
 				`buried_dt` TEXT NULL,
 				`attempts` INTEGER NOT NULL,
 				`time_to_retry_dt` TEXT NULL
-			);", "CREATE INDEX IF NOT EXISTS `job_queue_pipeline_idx` ON {$table_name} (`pipeline`, `send_dt`, `is_buried`, `is_reserved`);"],
+			);", "CREATE INDEX IF NOT EXISTS `job_queue_pipeline_idx` ON {$table_name} (`pipeline`, `is_buried`, `is_reserved`, `send_dt`, `priority`, `id`);"],
 
 			self::QUEUE_TYPE_PGSQL => ["CREATE TABLE IF NOT EXISTS {$table_name} (
 				\"id\" SERIAL PRIMARY KEY,
@@ -836,7 +1017,7 @@ class Job_Queue
 				\"buried_dt\" TIMESTAMP NULL,
 				\"attempts\" SMALLINT NOT NULL,
 				\"time_to_retry_dt\" TIMESTAMP NULL
-			);", "CREATE INDEX IF NOT EXISTS job_queue_pipeline_idx ON {$table_name} (\"pipeline\", \"send_dt\", \"is_buried\", \"is_reserved\");"],
+			);", "CREATE INDEX IF NOT EXISTS job_queue_pipeline_idx ON {$table_name} (\"pipeline\", \"is_buried\", \"is_reserved\", \"send_dt\", \"priority\", \"id\");"],
 
 			self::QUEUE_TYPE_SQLSRV => ["IF OBJECT_ID(N'{$table_name}', N'U') IS NULL CREATE TABLE {$table_name} (
 				[id] INT IDENTITY(1,1) PRIMARY KEY,

@@ -5,6 +5,7 @@ namespace Eyika\Atom\Framework\Support\Database\Concerns;
 use Carbon\Carbon;
 use Exception;
 use Eyika\Atom\Framework\Support\Arr;
+use Eyika\Atom\Framework\Support\Database\Connection;
 use Eyika\Atom\Framework\Support\Database\Model;
 use Eyika\Atom\Framework\Support\Str;
 use Eyika\Atom\Framework\Support\Database\PaginatedData;
@@ -21,7 +22,8 @@ trait QueryBuilder
     }
 
     /** Pessimistic write lock (SELECT ... FOR UPDATE) for the next first()/get(). */
-    protected $for_update = false;
+    /** Lock mode for the next read — one of Connection::LOCK_*. */
+    protected $for_update = Connection::LOCK_NONE;
 
     /**
      * Add a row-level write lock to the next first()/get() read. Use inside a
@@ -34,7 +36,19 @@ trait QueryBuilder
      */
     public function _lockForUpdate()
     {
-        $this->for_update = true;
+        $this->for_update = Connection::LOCK_UPDATE;
+        return $this;
+    }
+
+    /**
+     * Lock the rows this read returns, stepping over any another transaction already holds.
+     *
+     * @see DB::skipLocked() — same contract, and the same graceful degradation to a plain
+     * FOR UPDATE on a server that cannot express it.
+     */
+    public function _skipLocked()
+    {
+        $this->for_update = Connection::LOCK_UPDATE_SKIP_LOCKED;
         return $this;
     }
 
@@ -61,7 +75,7 @@ trait QueryBuilder
         $this->or_ands = '';
         $this->operators = '=';
         $this->order = '';
-        $this->for_update = false;
+        $this->for_update = Connection::LOCK_NONE;
         $this->transaction_mode = false;
         $this->with_model_name = '';
         $this->joins = [];

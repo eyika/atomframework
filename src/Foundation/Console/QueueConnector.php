@@ -68,6 +68,11 @@ final class QueueConnector
                 'table_name' => self::JOBS_TABLE,
                 'failed_table_name' => self::FAILED_JOBS_TABLE,
                 'use_compression' => true,
+                // How long a reservation is honoured before another worker may take the job. This
+                // was hardcoded at 60 seconds and never renewed, which made "every job must finish
+                // within a minute" an undocumented correctness requirement. `config/queue.php`'s
+                // `retry_after` is the natural home for it and is finally read for something.
+                'reservation_timeout' => (int) config('queue.retry_after', 60),
             ],
         ]);
 

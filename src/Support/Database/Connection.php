@@ -32,6 +32,18 @@ class Connection {
    */
   protected static ?Grammar $activeGrammar = null;
 
+  /** No row lock. */
+  public const LOCK_NONE = 0;
+
+  /** SELECT ... FOR UPDATE — queue behind whoever holds the row. */
+  public const LOCK_UPDATE = 1;
+
+  /** SELECT ... FOR UPDATE SKIP LOCKED — step over held rows instead of waiting for them. */
+  public const LOCK_UPDATE_SKIP_LOCKED = 2;
+
+  /** Memoised answer to supportsSkipLocked(), which costs a round trip the first time. */
+  protected ?bool $skipLockedSupport = null;
+
   public function __construct(array $config)
   {
       $this->config = $config;
@@ -357,6 +369,44 @@ class Connection {
           $config['connections'][$connection]['password'] ?? null,
           self::optionsFor($config, $connection)
       );
+  }
+
+  /**
+   * Can this connection actually run SELECT ... FOR UPDATE SKIP LOCKED?
+   *
+   * **Asked of the server, not inferred from its version string.** Two different products share
+   * this driver and their version lines do not sort against each other: MariaDB has had SKIP
+   * LOCKED since 10.6 while MySQL needed 8.0, so a single `version_compare($v, '8.0')` is wrong
+   * for one of them whichever threshold is picked. MariaDB can also prefix a compatibility version
+   * onto the string it reports (`5.5.5-…`), which a naive comparison then reads instead of the
+   * real one. Verified against MariaDB 11.8.9, which reports cleanly and supports the clause.
+   *
+   * With emulated prepares off (which this connection sets), `prepare()` round-trips to the server
+   * and raises on a syntax error, so preparing the clause without executing it is a direct
+   * question about the grammar the server accepts. One round trip, once per connection.
+   */
+  public function supportsSkipLocked(): bool
+  {
+      if ($this->skipLockedSupport !== null) {
+          return $this->skipLockedSupport;
+      }
+
+      // SQLite compiles locks away entirely; SQL Server spells the idea READPAST, in a table hint
+      // rather than a suffix, so this clause is simply not its grammar.
+      if (in_array($this->driver, ['sqlite', 'sqlsrv'], true)) {
+          return $this->skipLockedSupport = false;
+      }
+
+      if (!isset($this->db)) {
+          $this->connect();
+      }
+
+      try {
+          $this->db->prepare('SELECT 1 FROM DUAL FOR UPDATE SKIP LOCKED');
+          return $this->skipLockedSupport = true;
+      } catch (PDOException $e) {
+          return $this->skipLockedSupport = false;
+      }
   }
 
   /**
@@ -838,7 +888,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
    * @return \PDOStatement|false
    */
   
-  public function fetch_cursor($sql_or_table, $bind_or_filter = [], $select_what = '*', string|array $operators = "=", string|array $or_ands = "AND", $joins = [], bool $lock = false) {
+  public function fetch_cursor($sql_or_table, $bind_or_filter = [], $select_what = '*', string|array $operators = "=", string|array $or_ands = "AND", $joins = [], bool|int $lock = false) {
     if ( strpos($sql_or_table, ' ') || (strpos($sql_or_table, 'SELECT ') === 0) ) {
       $sql = $sql_or_table;
       $bind = $bind_or_filter;
@@ -954,8 +1004,14 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
 
       // Pessimistic row lock (SELECT ... FOR UPDATE) — serializes concurrent readers
       // within a transaction so read-modify-write flows (e.g. wallet balances) are safe.
+      //
+      // SKIP LOCKED is REQUESTED here and granted only where the server has it, because emitting
+      // it on a server without it is a syntax error rather than a degraded query. A caller that
+      // asks for it and runs on MySQL 5.7 gets a plain FOR UPDATE and correct-but-slower
+      // behaviour, which is the right way round.
       if ($lock) {
-        $sql .= $this->grammar->compileForUpdate();
+        $skipLocked = ((int) $lock === self::LOCK_UPDATE_SKIP_LOCKED) && $this->supportsSkipLocked();
+        $sql .= $this->grammar->compileForUpdate($skipLocked);
       }
     }
     // logger()->info($sql, isset($bind) &&  is_array($bind) ? $bind : []);
@@ -973,7 +1029,7 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
    * 
    * @return array
    */
-  public function fetch($sql_or_table, $bind_or_filter = [], $select_what = '*', array|string $operators = '=', array|string $or_ands = "AND", bool $lock = false, array $joins = []) {
+  public function fetch($sql_or_table, $bind_or_filter = [], $select_what = '*', array|string $operators = '=', array|string $or_ands = "AND", bool|int $lock = false, array $joins = []) {
     if (!$statement = $this->fetch_cursor($sql_or_table, $bind_or_filter, $select_what, $operators, $or_ands, $joins, $lock)) {
       return false;
     }
