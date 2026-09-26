@@ -454,6 +454,13 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Added
+- **`Command::line()` and `Command::newLine()`.** There was no output method named for printing, only
+  the level-named `info()`/`error()`/`warn()` — so printing a table of numbers meant reaching for a
+  log-level method, or writing to `STDOUT` by hand.
+
+  Console output was never actually decorated: `info()` formats as the message alone, with no
+  timestamp, channel or level. `line()` prints the same thing and says what it is for. (`446b980`)
+
 - **`Blueprint::date()` and `Blueprint::time()`.** A date-only or time-only column had no method at
   all, so `$table->date('started_on')` failed with *Call to undefined method* — at migration **run**
   time, in a file that lints clean.
@@ -491,6 +498,11 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   longer than the lease. (`964bb61`)
 
 ### Fixed
+- **`Command::option()` no longer rewrites your default.** It was typed `null|string`, so
+  `option('workers', 32)` handed back the string `"32"` and `option('force', false)` handed back
+  `""` — falsy by luck rather than by contract. A default now comes back as you wrote it, and a
+  flag given without a value (`--daemon`) reads as boolean `true`. (`446b980`)
+
 - **The queue claims jobs with a row lock, and no longer mistakes contention for an idle queue.**
   The claim was an optimistic compare-and-swap: every worker read the same head row and all but one
   lost the race and read again. Worse, a worker that lost *every* race reported the same empty
