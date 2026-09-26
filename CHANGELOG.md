@@ -453,7 +453,49 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   **`make:seeder`**, which generate `Schema`/`Blueprint` migrations and `Seeder` classes for the
   built-in migration engine. (`5b458ee`)
 
+### Added
+- **`skipLocked()` on both query builders.** `SELECT ... FOR UPDATE SKIP LOCKED` locks the rows a
+  read returns while stepping over rows another transaction already holds — the primitive a work
+  queue needs, because it lets N workers take N different rows instead of queueing for the same one.
+  The grammar could only ever emit a plain `FOR UPDATE`, so no application could express it.
+
+  ```php
+  DB::table('jobs')->where('state', 'ready')->skipLocked()->first();
+  Order::where('status', 'pending')->skipLocked()->get();
+  ```
+
+  Needs MySQL 8.0+, MariaDB 10.6+ or PostgreSQL, and **degrades to a plain `FOR UPDATE` where the
+  server cannot do it**, so it is always safe to ask for. Support is asked of the server rather than
+  parsed out of its version string. (`964bb61`)
+
+- **`ShouldQueue::touch()`** extends a running job's reservation, for handlers that legitimately run
+  longer than the lease. (`964bb61`)
+
 ### Fixed
+- **The queue claims jobs with a row lock, and no longer mistakes contention for an idle queue.**
+  The claim was an optimistic compare-and-swap: every worker read the same head row and all but one
+  lost the race and read again. Worse, a worker that lost *every* race reported the same empty
+  result as a worker with nothing to do — so the runner slept **with jobs pending**, and the busier
+  the queue the more often that happened.
+
+  Where the server supports it the claim is now a single locked statement inside a transaction. The
+  compare-and-swap path **remains** for MySQL below 8.0 and MariaDB below 10.6, which have no
+  `SKIP LOCKED`. (`964bb61`)
+
+- **The reservation lease is configurable and renewable.** It was hardcoded at 60 seconds and never
+  renewed, so a `handle()` running longer became eligible to be claimed again *while it was still
+  running* — "finish inside a minute" was a correctness requirement nobody had written down. It now
+  comes from `config('queue.retry_after')`, and a long job can call `$this->touch()`. (`964bb61`)
+
+- **Equal-priority jobs come out in the order they were queued.** `ORDER BY priority ASC` had no
+  tiebreaker while every job defaults to `priority = 1024`, so the queue was not FIFO and had no
+  defined order at all. Now `ORDER BY priority ASC, id ASC`. (`964bb61`)
+
+- **The queue's index covers its own claim query.** The old index stopped before `priority`, so
+  every poll filesorted every due row — twice per poll interval, forever, even on an idle queue.
+  New installs get `(pipeline, is_buried, is_reserved, send_dt, priority, id)`; existing tables keep
+  the index they have. (`964bb61`)
+
 - **Delayed jobs are no longer offset by your application's timezone.** Every datetime the queue
   stored was built as `gmdate(…, strtotime('now +N seconds UTC'))`, which reads the clock *locally*
   and then relabels that reading as UTC rather than converting it. With `APP_TIMEZONE=Africa/Lagos`
