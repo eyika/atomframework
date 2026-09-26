@@ -69,6 +69,7 @@ class SqliteGrammar extends Grammar
             'tinyInteger' => 'INTEGER', 'smallInteger' => 'INTEGER', 'mediumInteger' => 'INTEGER',
             'text' => 'TEXT', 'tinyText' => 'TEXT', 'mediumText' => 'TEXT', 'longText' => 'TEXT',
             'json' => 'TEXT', 'decimal' => 'NUMERIC', 'timestamp' => 'DATETIME', 'dateTime' => 'DATETIME',
+            'date' => 'DATE', 'time' => 'TIME',
             'geometry' => 'TEXT', 'blob' => 'BLOB', 'tinyBlob' => 'BLOB', 'mediumBlob' => 'BLOB',
             'longBlob' => 'BLOB',
         ];

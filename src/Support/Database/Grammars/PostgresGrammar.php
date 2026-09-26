@@ -46,6 +46,7 @@ class PostgresGrammar extends Grammar
             'tinyInteger' => 'SMALLINT', 'smallInteger' => 'SMALLINT', 'mediumInteger' => 'INTEGER',
             'text' => 'TEXT', 'tinyText' => 'TEXT', 'mediumText' => 'TEXT', 'longText' => 'TEXT',
             'json' => 'JSONB', 'decimal' => 'NUMERIC', 'timestamp' => 'TIMESTAMP', 'dateTime' => 'TIMESTAMP',
+            'date' => 'DATE', 'time' => 'TIME',
             'geometry' => 'GEOMETRY', 'blob' => 'BYTEA', 'tinyBlob' => 'BYTEA', 'mediumBlob' => 'BYTEA',
             'longBlob' => 'BYTEA',
         ];
