@@ -153,10 +153,16 @@ abstract class Grammar
      * Pessimistic row-lock suffix for SELECT ... (within a transaction). MySQL/Postgres
      * use ' FOR UPDATE'; SQLite has no row locks (the transaction itself serializes) so
      * it returns an empty string.
+     *
+     * `$skipLocked` adds SKIP LOCKED, which steps over rows another transaction already holds
+     * instead of queueing behind them. That is the difference between a work queue where N workers
+     * each take a different row and one where N-1 block on the first. It is NOT free to ask for:
+     * the dialect has to have it, so callers go through `Connection::supportsSkipLocked()` and get
+     * a plain FOR UPDATE where it does not.
      */
-    public function compileForUpdate(): string
+    public function compileForUpdate(bool $skipLocked = false): string
     {
-        return ' FOR UPDATE';
+        return $skipLocked ? ' FOR UPDATE SKIP LOCKED' : ' FOR UPDATE';
     }
 
     // === Schema / DDL =====================================================================

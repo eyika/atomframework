@@ -73,6 +73,13 @@ class JobRunner
                     }
                 } elseif (!$this->options['daemon']) {
                     break; // periodic mode: nothing due, drain-and-exit
+                } elseif ($queue->sawContention()) {
+                    // Not idle — this worker lost every race for a row that another worker took.
+                    // Sleeping here is the starvation case: the busier the queue, the more often a
+                    // worker would decide there was nothing to do and sleep on a backlog.
+                    if ($this->maxTimeReached($start)) {
+                        break;
+                    }
                 } else {
                     if ($this->maxTimeReached($start)) {
                         break;

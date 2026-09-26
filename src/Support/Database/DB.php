@@ -19,7 +19,8 @@ class DB
     protected array $joins = [];
     protected array|string $operators;
     protected $order;
-    protected bool $for_update = false;
+    /** Lock mode for the next read — one of Connection::LOCK_*. */
+    protected int $for_update = Connection::LOCK_NONE;
 
     /** Raw projection expressions added by selectRaw(), merged into the select list at fetch time. */
     protected array $selectedRaw = [];
@@ -126,7 +127,7 @@ class DB
         $this->or_ands = '';
         $this->operators = '=';
         $this->order = '';
-        $this->for_update = false;
+        $this->for_update = Connection::LOCK_NONE;
         $this->selectedRaw = [];
         self::$transaction_mode = false;
     }
@@ -138,7 +139,23 @@ class DB
      */
     public function lockForUpdate()
     {
-        $this->for_update = true;
+        $this->for_update = Connection::LOCK_UPDATE;
+        return $this;
+    }
+
+    /**
+     * Lock the rows this read returns, stepping over any another transaction already holds.
+     *
+     * The difference from `lockForUpdate()` is what happens under contention: FOR UPDATE queues
+     * behind the holder, SKIP LOCKED passes it by. For a work queue that is the whole ballgame —
+     * N workers take N different rows instead of all N queueing for the same one.
+     *
+     * Requires MySQL 8.0+, MariaDB 10.6+ or PostgreSQL. Where the server cannot do it the read
+     * degrades to a plain FOR UPDATE rather than failing, so this is always safe to ask for.
+     */
+    public function skipLocked()
+    {
+        $this->for_update = Connection::LOCK_UPDATE_SKIP_LOCKED;
         return $this;
     }
 

@@ -41,8 +41,14 @@ class SqliteGrammar extends Grammar
         return 'BEGIN';
     }
 
-    /** SQLite has no row-level locks — the transaction serializes writes on its own. */
-    public function compileForUpdate(): string
+    /**
+     * SQLite has no row-level locks — the transaction serializes writes on its own.
+     *
+     * Which means a lock COMPILES AWAY here, and a test that only runs on SQLite cannot tell a
+     * correct claim from a missing one. Anything asserting locking behaviour has to either assert
+     * the emitted SQL as text or run against a server that really locks.
+     */
+    public function compileForUpdate(bool $skipLocked = false): string
     {
         return '';
     }
