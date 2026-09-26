@@ -454,6 +454,25 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Added
+- **`Blueprint::date()` and `Blueprint::time()`.** A date-only or time-only column had no method at
+  all, so `$table->date('started_on')` failed with *Call to undefined method* — at migration **run**
+  time, in a file that lints clean.
+
+  Prefer `date()` over `dateTime()` for a calendar day: a date stored as a datetime holds a midnight
+  nobody meant, and midnight in a timezone east of UTC is the *previous day* in UTC. (`93499a1`)
+
+- **`Blueprint::unique()` accepts an index name**, like `index()`, `fulltext()` and `spatialIndex()`
+  already did. The generated name is `unique_<col>_…_<hash>`, which on four columns runs past
+  MySQL's 64-character identifier limit and fails the migration with `1059`:
+
+  ```php
+  $table->unique(['cart_id', 'variant_id', 'bundle_id', 'personalisation_key'], 'cart_items_line_unique');
+  ```
+
+  Worth knowing that this one hides — SQLite has no identifier length limit, so a suite running on
+  SQLite stays green, and a database that already has the table never re-runs the migration.
+  (`93499a1`)
+
 - **`skipLocked()` on both query builders.** `SELECT ... FOR UPDATE SKIP LOCKED` locks the rows a
   read returns while stepping over rows another transaction already holds — the primitive a work
   queue needs, because it lets N workers take N different rows instead of queueing for the same one.
