@@ -514,6 +514,15 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   longer than the lease. (`964bb61`)
 
 ### Fixed
+- **A view variable is no longer shadowed by the renderer's own locals.** `extract()` ran in a scope
+  holding `$file`, `$paths`, `$data`, `$get_output` and `$cached_file`, and `EXTR_SKIP` means the
+  *caller* loses the collision — so `{{ $file }}` rendered the template's name and `{{ $data }}`
+  rendered the framework's parameter array, with nothing raised. (`{{ $data }}` could then fail
+  inside `e()` with a TypeError naming `helpers.php`, making an engine bug look like a template bug.)
+
+  Templates now execute in an isolated scope with no borrowable names, and the three that remain are
+  refused explicitly if you pass them. (`ffcaaa1`)
+
 - **Setting a cookie no longer empties the response.** `sendHeaders()` passed its cookie callback
   the cookie's *name* instead of the cookie, which raised a `TypeError` inside `send()` — after any
   controller `try/catch` had returned, and before every other header. The throw took the remaining
