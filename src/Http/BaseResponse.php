@@ -256,6 +256,18 @@ class BaseResponse
         return $this->_responseSent;
     }
 
+    /**
+     * The body as it stands, so a middleware can post-process a payload on the way out.
+     *
+     * `status()` gained `getStatusCode()` for exactly this reason and `body` did not, which left
+     * reflection as the only way for a middleware to read what it was about to send — on every
+     * response. There is no seam-less way to format every timestamp at the boundary without it.
+     */
+    public function getBody(): string
+    {
+        return (string) $this->body;
+    }
+
     public function body(string $content)
     {
         $this->body = $content;
@@ -287,7 +299,17 @@ class BaseResponse
 
     protected function sendHeaders()
     {
-        $this->cookies->each(function (Cookie $cookie) {
+        // `Arrayable::each()` hands the callback ($key, $value) -- key FIRST, which is the
+        // convention every other caller in the framework already follows. This one declared
+        // `function (Cookie $cookie)` and so received the cookie's NAME, a string, where a Cookie
+        // was required: a TypeError on any response that set a cookie.
+        //
+        // Thrown from here it was catastrophic rather than merely wrong. Cookies are emitted before
+        // every other header, and `_send()` emits status -> headers -> body in sequence with nothing
+        // guarding it, so the throw took the remaining headers AND the body with it. What reached
+        // the browser was a plausible 200 with an empty body, raised after the controller's own
+        // try/catch had already returned, from a call that itself returned normally.
+        $this->cookies->each(function ($name, Cookie $cookie) {
             // Emit a real Set-Cookie header (with all attributes/flags) rather than a
             // plain "name: value" header. `false` = don't replace, so multiple cookies
             // each get their own Set-Cookie line.

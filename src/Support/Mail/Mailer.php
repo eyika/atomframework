@@ -157,6 +157,21 @@ class Mailer
         return new static(static::$config, static::$driver);
     }
 
+    /**
+     * Send, and raise if the provider refused the message.
+     *
+     * `send()` returns a `MailerResponse`, which is an object and therefore always truthy — so
+     * `if (Mailer::send($subject))` reports success for a refused message, and a `try/catch` around
+     * it is dead code because the driver already caught the exception. Use this where a failure
+     * should stop the caller, notably in a queued job whose retry keys off the result: a refused
+     * message returning "true" is deleted from the queue on its first attempt, with no bury, no
+     * failure row and nothing logged by the caller.
+     */
+    public static function sendOrFail($subject, $to = null): MailerResponse
+    {
+        return self::send($subject, $to)->throwIfFailed();
+    }
+
     public static function send($subject, $to = null): MailerResponse
     {
         if (!self::$instantiated) {

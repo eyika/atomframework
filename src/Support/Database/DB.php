@@ -200,6 +200,10 @@ class DB
             return $this;
         }
 
+        // Named bindings only — see Connection::assertNamedRawBindings() for why a positional `?`
+        // cannot be supported here and why PDO's own error points somewhere else entirely.
+        Connection::assertNamedRawBindings($sql, $bind);
+
         $key = Connection::RAW_WHERE_KEY;
         $existing = $this->bind_or_filter[$key] ?? ['sql' => '', 'bind' => []];
         $n = count($existing['bind']);

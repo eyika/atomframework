@@ -844,6 +844,45 @@ private function condition($k, $v, &$where, &$bind, &$incr_operator, $or_and = '
    *
    * @param array{sql?: string, bind?: array}|null $rawWhere
    */
+  /**
+   * Refuse a positional-placeholder raw fragment, by name, before PDO can misdescribe it.
+   *
+   * `whereRaw()` takes NAMED bindings — it rewrites each `:name` to a unique `:rwN_name` so a raw
+   * fragment cannot collide with the binds `where()` generates. A caller who reaches for `?`
+   * instead got no substitution at all, and PDO then answered:
+   *
+   *     SQLSTATE[HY000]: General error: 25 column index out of range
+   *
+   * which reads as a mismatch between the SELECT list and the result set — a schema or migration
+   * problem — while the actual fault is one character in a predicate. One consumer logged a 500
+   * carrying that text and went looking at migrations.
+   *
+   * Positional bindings cannot simply be supported here either, and that is worth stating: PDO
+   * forbids mixing named and positional placeholders in one statement, and every other clause this
+   * builder emits is named. So the honest answer is to fail immediately, saying which style the
+   * method takes.
+   */
+  public static function assertNamedRawBindings(string $sql, array $bind): void
+  {
+      foreach (array_keys($bind) as $name) {
+          if (is_int($name) || ctype_digit((string) $name)) {
+              throw new Exception(
+                  'whereRaw() takes NAMED bindings: pass '
+                  . "['name' => \$value] and reference :name in the SQL, not a positional array."
+              );
+          }
+      }
+
+      // A `?` with bindings is unambiguous; a `?` with none may be a literal in a string, so it is
+      // left alone rather than guessed at.
+      if ($bind !== [] && str_contains($sql, '?')) {
+          throw new Exception(
+              'whereRaw() takes NAMED bindings: the fragment uses a positional `?` placeholder. '
+              . 'Use a named placeholder (:name) and key the bindings by that name.'
+          );
+      }
+  }
+
   private static function appendRawWhere($rawWhere, array &$where, array &$bind): void
   {
     $sql = is_array($rawWhere) ? trim((string) ($rawWhere['sql'] ?? '')) : '';
