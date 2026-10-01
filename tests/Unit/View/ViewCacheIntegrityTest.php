@@ -3,6 +3,7 @@
 namespace Eyika\Atom\Framework\Tests\Unit\View;
 
 use Eyika\Atom\Framework\Support\Config;
+use Eyika\Atom\Framework\Support\View\Exceptions\ViewCompilationException;
 use Eyika\Atom\Framework\Support\View\Twig;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
@@ -203,6 +204,88 @@ class ViewCacheIntegrityTest extends TestCase
         $this->render('stable.php');
 
         $this->assertSame($before, filemtime($compiled), 'an unchanged template was recompiled');
+    }
+
+    // ---------------------------------------------------------------- the render scope
+
+    /**
+     * `extract()` ran where `$file`, `$paths`, `$data`, `$get_output` and `$cached_file` were live
+     * locals, and `EXTR_SKIP` means the CALLER loses those collisions — silently.
+     *
+     * `data` is an ordinary name for a view variable. `{{ $data }}` rendered the framework's own
+     * parameter array, which is not even reliably quiet: `e()` then fails on an array with a
+     * TypeError pointing at `helpers.php`, so the engine's bug reads as the caller's template.
+     */
+    public function test_a_view_variable_is_not_shadowed_by_the_renderers_locals(): void
+    {
+        $this->writeView('scope.php', 'data=[{{ $data }}] file=[{{ $file }}] paths=[{{ $paths }}] out=[{{ $get_output }}]');
+
+        $output = (string) Twig::make('scope.php', $this->viewDir . '/', [
+            'data' => 'MY-DATA',
+            'file' => 'MY-FILE',
+            'paths' => 'MY-PATHS',
+            'get_output' => 'MY-OUT',
+        ], true);
+
+        $this->assertSame('data=[MY-DATA] file=[MY-FILE] paths=[MY-PATHS] out=[MY-OUT]', $output);
+    }
+
+    /** The renderer's own parameters are reserved, and saying so beats rendering the wrong value. */
+    public function test_a_reserved_variable_name_is_refused_by_name(): void
+    {
+        $this->writeView('reserved.php', '{{ $__atom_view }}');
+
+        $this->expectException(ViewCompilationException::class);
+        $this->expectExceptionMessageMatches('/__atom_view.*reserved/');
+
+        Twig::make('reserved.php', $this->viewDir . '/', ['__atom_view' => 'x'], true);
+    }
+
+    // ---------------------------------------------------------------- require, not require_once
+
+    /**
+     * A guard rather than a regression: `make()` must use `require`, in both branches.
+     *
+     * `require_once` would execute the compiled file on the first render in a process and then
+     * return `true` without executing it again — so under a long-running `queue:work --daemon` the
+     * FIRST email of each worker lifetime would render and every one after it would be blank. That
+     * is almost exactly the empty-artifact symptom, from an unrelated cause, which is why it is
+     * worth pinning: it reads like a safe optimisation.
+     */
+    public function test_the_same_template_renders_twice_in_one_process(): void
+    {
+        $this->writeView('twice.php', 'rendered: {{ $n }}');
+
+        $first = (string) Twig::make('twice.php', $this->viewDir . '/', ['n' => 'one'], true);
+        $second = (string) Twig::make('twice.php', $this->viewDir . '/', ['n' => 'two'], true);
+
+        $this->assertSame('rendered: one', $first, 'the first render was wrong');
+        $this->assertNotSame('', $second, 'the second render was BLANK — require_once would do this');
+        $this->assertSame('rendered: two', $second, 'the second render did not see its own data');
+    }
+
+    /** The same template, same data, twice — both non-empty and equal. */
+    public function test_repeated_renders_are_stable(): void
+    {
+        $this->writeView('stable-render.php', 'always the same');
+
+        $first = (string) Twig::make('stable-render.php', $this->viewDir . '/', [], true);
+        $second = (string) Twig::make('stable-render.php', $this->viewDir . '/', [], true);
+
+        $this->assertNotSame('', $first);
+        $this->assertSame($first, $second);
+    }
+
+    public function test_the_renderer_uses_require_rather_than_require_once(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 3) . '/src/Support/View/Twig.php');
+
+        $this->assertStringNotContainsString(
+            'require_once $__atom_view',
+            $source,
+            'require_once would render only the first time in a long-running process'
+        );
+        $this->assertStringContainsString('require $__atom_view;', $source);
     }
 
     /** A changed include must invalidate too — that was already true and must stay true. */
