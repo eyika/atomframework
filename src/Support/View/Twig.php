@@ -53,16 +53,52 @@ class Twig
         self::$paths = Arr::wrap($paths);
         self::$cache_path = config('view.compiled');
 
-        $cached_file = self::cache($file);
+        return self::renderIsolated(self::cache($file), $data, $get_output);
+    }
 
-        extract($data, EXTR_SKIP);
-        if (!$get_output) {
-            require $cached_file;
+    /**
+     * Execute a compiled template in a scope of its own.
+     *
+     * `extract()` used to run inside `make()`, where `$file`, `$paths`, `$data`, `$get_output` and
+     * `$cached_file` were all live locals. With `EXTR_SKIP` the caller's values LOSE those name
+     * collisions silently: a template using `{{ $file }}` rendered the template's own name, and
+     * `{{ $data }}` rendered the framework's parameter array — which is not even reliably silent,
+     * since `e()` then fails on an array with a TypeError pointing at `helpers.php`. `data` is a
+     * perfectly ordinary thing for someone to call their view variable.
+     *
+     * Rendering here leaves only this method's own three parameters in scope, and they are prefixed
+     * so that no plausible view variable can reach them. The guard below closes even that, because
+     * the one outcome worth ruling out completely is rendering a different value than the caller
+     * passed without saying so.
+     *
+     * **`require`, never `require_once`** — in both branches, and this is load-bearing rather than
+     * stylistic. `require_once` would execute the compiled file on the first render in a process and
+     * then return `true` without executing it again, so under a long-running `queue:work --daemon`
+     * the FIRST email of each worker lifetime would render and every one after it would be blank.
+     * That is almost exactly the symptom of the empty-artifact bug, from a completely unrelated
+     * cause — and it reads like a harmless optimisation, which is what makes it worth saying out
+     * loud. `ViewCacheIntegrityTest` renders the same template twice in one process to hold it.
+     */
+    private static function renderIsolated(string $__atom_view, array $__atom_data, bool $__atom_capture): ?string
+    {
+        foreach (['__atom_view', '__atom_data', '__atom_capture'] as $__atom_reserved) {
+            if (array_key_exists($__atom_reserved, $__atom_data)) {
+                throw new ViewCompilationException(
+                    $__atom_view,
+                    "[{$__atom_reserved}] is reserved by the view renderer; rename that view variable"
+                );
+            }
+        }
+
+        extract($__atom_data, EXTR_SKIP);
+
+        if (!$__atom_capture) {
+            require $__atom_view;
             return null;
         }
 
         ob_start();
-        require $cached_file;
+        require $__atom_view;
         return ob_get_clean();
     }
 
