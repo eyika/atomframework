@@ -3,6 +3,7 @@
 namespace Eyika\Atom\Framework\Support\View;
 
 use Eyika\Atom\Framework\Support\Arr;
+use Eyika\Atom\Framework\Support\View\Exceptions\ViewCompilationException;
 use Eyika\Atom\Framework\Support\View\Exceptions\ViewNotFoundException;
 
 /**
@@ -88,13 +89,55 @@ class Twig
         }
 
         $code = self::compileCode($code);
-        file_put_contents(
+        self::writeAtomically(
             $cached_file,
-            '<?php class_exists(\'' . __CLASS__ . '\') or exit; ?>' . PHP_EOL . $code,
-            LOCK_EX
+            '<?php class_exists(\'' . __CLASS__ . '\') or exit; ?>' . PHP_EOL . $code
         );
 
         return $cached_file;
+    }
+
+    /**
+     * Write the compiled artifact so no reader can ever observe a partial one.
+     *
+     * The previous `file_put_contents($path, $code, LOCK_EX)` looked safe and was not. `LOCK_EX`
+     * excludes other *writers*; it does nothing about a reader, and the reader here is `require`,
+     * which takes no lock at all. Worse, `file_put_contents` TRUNCATES before writing, so the file
+     * passes through a **zero-byte** state on every recompile — and a `require` landing in that
+     * window yields an empty render with no error anywhere.
+     *
+     * That is not theoretical. It reached production as a password-reset email that was correctly
+     * addressed and correctly titled with **no body**, because the subject is set separately from
+     * the rendered template; and because `isFresh()` then judged the truncated file newer than its
+     * source, the empty artifact was served as valid from then on.
+     *
+     * Writing to a sibling temp file and renaming fixes it: `rename()` over an existing path is
+     * atomic on the same filesystem, so a reader sees either the old complete file or the new
+     * complete file. The temp file is deliberately created in the SAME directory — a rename across
+     * filesystems is a copy, which is not atomic and would reintroduce exactly this window.
+     */
+    protected static function writeAtomically(string $path, string $contents): void
+    {
+        $temp = $path . '.' . getmypid() . '.' . bin2hex(random_bytes(4)) . '.tmp';
+
+        if (file_put_contents($temp, $contents) === false) {
+            @unlink($temp);
+            throw new ViewCompilationException($path, 'the compiled template could not be written');
+        }
+
+        if (@rename($temp, $path)) {
+            return;
+        }
+
+        // A rename can still lose on Windows if another process holds the destination open at that
+        // instant. Falling back to a direct write keeps rendering working — it is the behaviour
+        // that shipped before — and the zero-byte guard in isFresh() catches the artifact if this
+        // write is the one that gets interrupted.
+        @unlink($temp);
+
+        if (file_put_contents($path, $contents, LOCK_EX) === false) {
+            throw new ViewCompilationException($path, 'the compiled template could not be written');
+        }
     }
 
     /** Map a template name to a flat, collision-resistant compiled filename. */
@@ -104,7 +147,22 @@ class Twig
         return str_replace(['/', '\\', '.blade.php', '.html', '.php'], ['_', '_', '', '', ''], $file) . '.php';
     }
 
-    /** A compiled file is fresh iff caching is on, it exists, and it is newer than every source that fed it. */
+    /**
+     * A compiled file is fresh iff caching is on, it exists, it is not empty, and no source that
+     * fed it has been touched since it was written.
+     *
+     * Two of those conditions were missing, and each produced a cache that never healed.
+     *
+     * **Empty is never valid.** The check was existence and mtime only, so a truncated artifact —
+     * which a non-atomic write could leave behind — was *newer than its source* and therefore
+     * "fresh" for ever. A template that compiles to nothing is not a legitimate cache state, so a
+     * zero-byte artifact is treated as stale and recompiled rather than served.
+     *
+     * **`>=`, not `>`.** `filemtime()` has one-second resolution, so an edit made in the same
+     * second as the compile is not strictly newer and the change was silently missed — reliably,
+     * for the whole of that second, which is exactly how long an edit-and-refresh takes. Comparing
+     * with `>=` can recompile once unnecessarily; missing an edit costs someone an afternoon.
+     */
     protected static function isFresh(string $cached_file): bool
     {
         if (config('view.cache') === false) {
@@ -113,9 +171,13 @@ class Twig
         if (!file_exists($cached_file)) {
             return false;
         }
+        if (filesize($cached_file) === 0) {
+            return false;
+        }
+
         $compiledAt = filemtime($cached_file);
         foreach (self::$sources as $source) {
-            if (filemtime($source) > $compiledAt) {
+            if (filemtime($source) >= $compiledAt) {
                 return false;
             }
         }
