@@ -454,6 +454,22 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   built-in migration engine. (`5b458ee`)
 
 ### Added
+- **`BaseResponse::getBody()`.** `statusCode` had `status()` and `getStatusCode()`; `body` had only a
+  setter, so a middleware had to reflect into every response to post-process a payload. (`5753b82`)
+
+- **`datetime` and `date` casts, applied on output.** A model can now declare a timestamp column and
+  have it serialised as ISO-8601 with an offset (`date` emits a calendar day).
+
+  Output only, deliberately: `fill()` runs casts on writes too, so a write-path cast would risk
+  rewriting stored values rather than their presentation. The timezone is read from
+  `database.timezone`, falling back to `app.timezone` then UTC — timestamps are written by the
+  database's `NOW()`, so the framework cannot discover the stored zone and does not guess it.
+  (`5753b82`)
+
+- **`MailerResponse::successful()` / `failed()` / `throwIfFailed()`, and `Mailer::sendOrFail()`.**
+  `send()` returns an object, so `if (Mailer::send($subject))` is **always true** — including for a
+  message the server refused. (`5753b82`)
+
 - **`Command::line()` and `Command::newLine()`.** There was no output method named for printing, only
   the level-named `info()`/`error()`/`warn()` — so printing a table of numbers meant reaching for a
   log-level method, or writing to `STDOUT` by hand.
@@ -498,6 +514,33 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   longer than the lease. (`964bb61`)
 
 ### Fixed
+- **Setting a cookie no longer empties the response.** `sendHeaders()` passed its cookie callback
+  the cookie's *name* instead of the cookie, which raised a `TypeError` inside `send()` — after any
+  controller `try/catch` had returned, and before every other header. The throw took the remaining
+  headers and the whole body with it, so what reached the browser was a plausible **200 with an
+  empty body**. Any response calling `setCookie()` was affected. (`5753b82`)
+
+- **`env()` can see real environment variables.** It read `$_ENV` only — and PHP populates `$_ENV`
+  from the process environment just when `variables_order` contains `E`, which stock php.ini files
+  do not. So configuration injected by systemd, `docker run -e` or an orchestrator was invisible and
+  **every `env()` call returned its default**, with nothing to say so. It now reads `$_ENV`, then
+  `$_SERVER`, then `getenv()` — in that order, so a `.env` entry still wins. (`5753b82`)
+
+- **`whereRaw()` refuses a positional placeholder, by name.** It takes **named** bindings; a `?`
+  substituted nothing and PDO then reported *column index out of range*, which reads as a schema
+  problem rather than one character in a predicate.
+
+  ```php
+  ->whereRaw("REPLACE(slug,'-','') = :slug", ['slug' => $value])   // right
+  ->whereRaw("REPLACE(slug,'-','') = ?", [$value])                 // now refused, immediately
+  ```
+  (`5753b82`)
+
+- **A refused email leaves a trace.** `SmtpDriver` catches the provider's exception and reports it
+  in the returned `MailerResponse` rather than throwing — so a `try/catch` around `send()` is dead
+  code, and `if ($mail->send(...))` is true even for a rejected message. The driver now logs the
+  failure, so the provider's reason survives a caller that ignores the result. (`5753b82`)
+
 - **A compiled view that lands empty is no longer cached as valid for ever.** Compiled templates were
   written with `file_put_contents($path, $code, LOCK_EX)`. `LOCK_EX` keeps other *writers* out, but
   the reader is `require`, which takes no lock — and `file_put_contents` truncates before writing, so
