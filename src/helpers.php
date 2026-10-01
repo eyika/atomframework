@@ -330,9 +330,31 @@ if (! function_exists('env')) {
      * @param  mixed  $default
      * @return mixed
      */
+    /**
+     * Read a configuration value from the environment.
+     *
+     * Reads `$_ENV`, then `$_SERVER`, then `getenv()` — in that order, so a `.env` entry still wins.
+     *
+     * The last two used to be missing, which made a `.env` file effectively **mandatory**. PHP fills
+     * `$_ENV` from the real process environment only when `variables_order` contains `E`, and both
+     * stock `php.ini-production` and `php.ini-development` ship `GPCS`; phpdotenv 5's default
+     * adapters do not include `PutenvAdapter` either. So configuration injected the way a modern
+     * deployment injects it — systemd `Environment=`, `docker run -e`, a container orchestrator —
+     * was invisible, and EVERY `env()` call returned its default: wrong database, absent `APP_KEY`,
+     * no credentials, and not one error to say so.
+     *
+     * `getenv()` is consulted last because it is the least specific: a variable inherited from the
+     * shell should not quietly outrank the application's own `.env`.
+     */
     function env($key, $default = null)
     {
-        $value = $_ENV[$key] ?? $default;
+        $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+
+        // getenv() answers false for "not set", which is indistinguishable from a literal "false"
+        // only if we look at the string — so the absence check comes first.
+        if ($value === false || $value === null) {
+            return $default;
+        }
 
         if ($value === 'false')
             $value = false;

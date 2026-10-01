@@ -161,6 +161,10 @@ trait QueryBuilder
             return $this;
         }
 
+        // Named bindings only — see Connection::assertNamedRawBindings() for why a positional `?`
+        // cannot be supported here and why PDO's own error points somewhere else entirely.
+        \Eyika\Atom\Framework\Support\Database\Connection::assertNamedRawBindings($sql, $bind);
+
         $key = \Eyika\Atom\Framework\Support\Database\Connection::RAW_WHERE_KEY;
         $existing = $this->bind_or_filter[$key] ?? ['sql' => '', 'bind' => []];
         $n = count($existing['bind']);
@@ -1479,9 +1483,54 @@ trait QueryBuilder
 
         foreach ($items as $item) {
             if (!$ignore_null || ($ignore_null && !is_null($this->{$item})))
-                $result[$item] = $this->{$item};
+                $result[$item] = $this->formatForOutput($item, $this->{$item});
         }
 
         return $result;
+    }
+
+    /**
+     * Apply output-only casts — currently `datetime` and `date`.
+     *
+     * **Output only, deliberately.** `fill()` runs `castAttribute()` on WRITES as well as reads,
+     * which is why json/object casts need `serializeCastedValues()` to undo themselves before they
+     * reach the writer. A datetime cast on that path would risk rewriting stored values rather than
+     * only their presentation, so this runs where presentation happens and nowhere else.
+     *
+     * **About the timezone.** Timestamps in this framework are written by the DATABASE — the
+     * grammar's `now()` emits SQL `NOW()`/`CURRENT_TIMESTAMP` — so the stored instant is in the
+     * database server's zone, which the framework cannot discover. Inventing an offset here would
+     * be the same mistake as BUG-67, so the zone is read from configuration and the default is
+     * stated rather than guessed: `database.timezone`, else `app.timezone`, else `UTC`. If your
+     * server stores local time, set `database.timezone` and the emitted offset becomes correct.
+     */
+    private function formatForOutput(string $key, mixed $value): mixed
+    {
+        if ($value === null || !defined('static::casts') || !array_key_exists($key, static::casts)) {
+            return $value;
+        }
+
+        $cast = static::casts[$key];
+        if ($cast !== 'datetime' && $cast !== 'date') {
+            return $value;
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            $date = $value;
+        } else {
+            $zone = new \DateTimeZone(
+                (string) config('database.timezone', config('app.timezone', 'UTC'))
+            );
+
+            try {
+                $date = new \DateTimeImmutable((string) $value, $zone);
+            } catch (\Exception) {
+                return $value; // not a date we can read — hand it back untouched rather than guess
+            }
+        }
+
+        // ISO-8601 with an explicit offset, so the value is self-describing on the wire. A `date`
+        // is a calendar day and carries neither time nor offset -- see Blueprint::date().
+        return $cast === 'date' ? $date->format('Y-m-d') : $date->format('c');
     }
 }
