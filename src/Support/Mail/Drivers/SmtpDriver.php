@@ -62,6 +62,22 @@ class SmtpDriver implements MailerInterface
     }
 
     //Extend the send function
+    /**
+     * Record a send failure, defensively.
+     *
+     * Wrapped because this runs on the failure path: `logger()` resolves `config()`, and an error
+     * raised before configuration is loadable would otherwise fault inside the very handler meant
+     * to report it (the lesson of BUG-57). A failure to log must never replace the failure itself.
+     */
+    private static function logFailure(string $subject, string $reason): void
+    {
+        try {
+            logger()->error('mail: send failed', ['subject' => $subject, 'reason' => $reason]);
+        } catch (\Throwable) {
+            error_log("mail: send failed [{$subject}]: {$reason}");
+        }
+    }
+
     public function send(string $subject, string $body): MailerResponse
     {
         $r = false;
@@ -77,8 +93,23 @@ class SmtpDriver implements MailerInterface
             $this->mailer->msgHTML($body);
             $r = $this->mailer->send();
 
+            if (!$r) {
+                // PHPMailer answered false without raising. Record it for the same reason as the
+                // catch below: this object is the only copy of the reason, and a caller who ignores
+                // it leaves nothing behind at all.
+                self::logFailure($subject, 'the mail provider refused the message');
+            }
+
             return new MailerResponse($r, $this->mailer->getLastMessageID());
         } catch (Exception $e) {
+            // The exception is deliberately NOT rethrown — the contract is a MailerResponse — but it
+            // must not vanish either. `send()` returns an object, so `if ($mail->send(...))` is
+            // always true, and a caller who writes that reports success for a message the server
+            // REFUSED. Logging here means the failure has a symptom even then: without it the one
+            // copy of the provider's reason died microseconds after it was produced, and the mail
+            // log showed only our own "sending ..." line with nothing beneath it.
+            self::logFailure($subject, $e->getMessage());
+
             return new MailerResponse($r, null, $e->getMessage(), $e);
         } finally {
             // The Mailer facade keeps a single static PHPMailer instance
