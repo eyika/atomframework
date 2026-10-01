@@ -498,6 +498,25 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   longer than the lease. (`964bb61`)
 
 ### Fixed
+- **A compiled view that lands empty is no longer cached as valid for ever.** Compiled templates were
+  written with `file_put_contents($path, $code, LOCK_EX)`. `LOCK_EX` keeps other *writers* out, but
+  the reader is `require`, which takes no lock — and `file_put_contents` truncates before writing, so
+  the file passed through a **zero-byte state on every recompile**. `isFresh()` then compared only
+  existence and mtime, so a truncated artifact was newer than its source and counted as fresh
+  permanently; `make()` returned `''` with nothing raised.
+
+  In production that means a correctly-addressed, correctly-titled email with **no body**, because
+  the subject is set separately from the template — and it stays broken until the cache is cleared
+  by hand.
+
+  Compiled templates are now written to a sibling temp file and `rename()`d over it, which is
+  atomic, and a zero-byte artifact is treated as **stale**, so the cache heals instead of
+  re-failing. (`1885728`)
+
+- **A view edited in the same second as its last compile is no longer missed.** `filemtime()` has
+  one-second resolution and the staleness check used a strict `>`, so an edit made inside that second
+  was silently ignored — which is exactly how fast an edit-and-refresh is. (`1885728`)
+
 - **`Command::option()` no longer rewrites your default.** It was typed `null|string`, so
   `option('workers', 32)` handed back the string `"32"` and `option('force', false)` handed back
   `""` — falsy by luck rather than by contract. A default now comes back as you wrote it, and a
