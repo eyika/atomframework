@@ -127,23 +127,90 @@ class CustomHeadersTest extends TestCase
     }
 
     /**
-     * SES v1's SendEmail action has no field for arbitrary headers. Failing loudly is the point:
-     * silently sending without List-Unsubscribe is the exact outcome this feature prevents, and
-     * it would only surface later as throttling.
+     * The SES driver runs on the SES v2 `SendEmail` API precisely so it CAN carry headers: v2
+     * added `Content.Simple.Message.Headers`, the field v1's SendEmail lacked. A header set on the
+     * driver must land in that list as a `{Name, Value}` entry — so `List-Unsubscribe` is actually
+     * sent rather than refused (the v1 driver's old behaviour) or silently dropped.
+     *
+     * Asserted on the request the driver builds, not on a live send, so there is no AWS round-trip.
      */
-    public function test_the_ses_driver_refuses_rather_than_dropping_headers(): void
+    public function test_the_ses_driver_carries_a_header_into_the_v2_request(): void
     {
-        $ses = new SesDriver([
+        $params = $this->sesParams(
+            headers: ['List-Unsubscribe' => '<https://example.com/u>'],
+            subject: 'Subject',
+            body: '<p>body</p>'
+        );
+
+        $this->assertSame(
+            [['Name' => 'List-Unsubscribe', 'Value' => '<https://example.com/u>']],
+            $params['Content']['Simple']['Headers'],
+            'the header must reach Content.Simple.Message.Headers as a {Name, Value} entry'
+        );
+    }
+
+    /** The one-click pair both ride in the v2 Headers list. */
+    public function test_the_ses_driver_carries_the_one_click_pair(): void
+    {
+        $params = $this->sesParams(
+            headers: [
+                'List-Unsubscribe' => '<https://example.com/u>, <mailto:u@example.com>',
+                'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click',
+            ],
+            subject: 'Subject',
+            body: 'body'
+        );
+
+        $names = array_column($params['Content']['Simple']['Headers'], 'Value', 'Name');
+
+        $this->assertArrayHasKey('List-Unsubscribe', $names);
+        $this->assertSame('List-Unsubscribe=One-Click', $names['List-Unsubscribe-Post']);
+    }
+
+    /** No headers set → no Headers key, so a plain send is left untouched. */
+    public function test_the_ses_driver_omits_the_headers_field_when_none_are_set(): void
+    {
+        $params = $this->sesParams(headers: [], subject: 'Subject', body: 'body');
+
+        $this->assertArrayNotHasKey('Headers', $params['Content']['Simple']);
+    }
+
+    /** A configuration set is attached only when configured, and omitted otherwise. */
+    public function test_the_ses_driver_attaches_the_configuration_set_when_configured(): void
+    {
+        $withSet = $this->sesParams(headers: [], subject: 'S', body: 'b', config: [
+            'key' => 'k', 'secret' => 's', 'region' => 'us-east-1', 'from' => 'a@example.com',
+            'configuration_set' => 'my-config-set',
+        ]);
+        $this->assertSame('my-config-set', $withSet['ConfigurationSetName']);
+
+        $withoutSet = $this->sesParams(headers: [], subject: 'S', body: 'b');
+        $this->assertArrayNotHasKey('ConfigurationSetName', $withoutSet);
+    }
+
+    /**
+     * Build an SES v2 request the way the driver would, reaching the protected param-builder by
+     * reflection so no AWS client call is made.
+     *
+     * @param array<string, string> $headers
+     * @param array<string, mixed>|null $config
+     * @return array<string, mixed>
+     */
+    private function sesParams(array $headers, string $subject, string $body, ?array $config = null): array
+    {
+        $ses = new SesDriver($config ?? [
             'key' => 'k', 'secret' => 's', 'region' => 'us-east-1', 'from' => 'a@example.com',
         ]);
 
-        $response = $ses->to('b@example.com')
-                        ->header('List-Unsubscribe', '<https://example.com/u>')
-                        ->send('Subject', 'body');
+        $ses->to('b@example.com');
+        if ($headers) {
+            $ses->headers($headers);
+        }
 
-        $this->assertFalse($response->success);
-        $this->assertStringContainsString('cannot send custom headers', (string) $response->error);
-        $this->assertStringContainsString('List-Unsubscribe', (string) $response->error);
+        $method = (new ReflectionClass(SesDriver::class))->getMethod('buildParams');
+        $method->setAccessible(true);
+
+        return $method->invoke($ses, $subject, $body);
     }
 
     /** Every driver must satisfy the contract, or a transport swap breaks at runtime. */
