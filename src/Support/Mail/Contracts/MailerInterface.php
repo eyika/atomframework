@@ -13,9 +13,9 @@ interface MailerInterface
      * Required for bulk mail: Gmail and Yahoo have required `List-Unsubscribe` plus
      * `List-Unsubscribe-Post: List-Unsubscribe=One-Click` since February 2024.
      *
-     * Not every transport can carry arbitrary headers — the SES v1 `SendEmail` API cannot, and
-     * that driver throws at send time rather than dropping them, since a silently omitted
-     * compliance header is exactly the failure this exists to prevent.
+     * Every bundled transport carries arbitrary headers — the SES driver does so on the SES v2
+     * `SendEmail` API (`Content.Simple.Message.Headers`), which is why it runs on v2 rather than
+     * v1, whose `SendEmail` action had no field for them.
      */
     public function header(string $name, string $value): MailerInterface;
 

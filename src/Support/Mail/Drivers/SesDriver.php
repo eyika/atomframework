@@ -3,12 +3,28 @@ namespace Eyika\Atom\Framework\Support\Mail\Drivers;
 
 use Eyika\Atom\Framework\Support\Mail\Concerns\CollectsCustomHeaders;
 
-use Aws\Ses\SesClient;
+use Aws\SesV2\SesV2Client;
 use Aws\Exception\AwsException;
 use Exception;
 use Eyika\Atom\Framework\Support\Mail\Contracts\MailerInterface;
 use Eyika\Atom\Framework\Support\Mail\Contracts\MailerResponse;
 
+/**
+ * Amazon SES driver, on the SES **v2** API (`SendEmail`, api version 2019-09-27).
+ *
+ * v2 is used rather than v1 specifically so the driver can carry the things the v1 `SendEmail`
+ * action had no field for:
+ *   - **Custom headers** — `Content.Simple.Message.Headers`, a list of `{Name, Value}`. This is
+ *     what makes `List-Unsubscribe` / `List-Unsubscribe-Post` deliverable, the bulk-mail
+ *     compliance pair Gmail and Yahoo have required since February 2024. The v1 driver had to
+ *     refuse these sends outright; v2 sends them.
+ *   - **Configuration sets** — `ConfigurationSetName`, set from the `configuration_set` config key
+ *     when present, so event publishing / dedicated IPs / suppression lists apply to the send.
+ *
+ * SES still reserves a handful of header names it sets itself (From, To, Subject, …) and rejects
+ * them in the Headers list; we pass the caller's headers through and let SES be the authority on
+ * which are allowed, so a disallowed header fails loudly at send time rather than being dropped.
+ */
 class SesDriver implements MailerInterface
 {
     use CollectsCustomHeaders;
@@ -27,8 +43,8 @@ class SesDriver implements MailerInterface
 
         $this->config = $config;
 
-        // Initialize the SES Client with configuration settings
-        $this->client = new SesClient([
+        // Initialize the SES v2 Client with configuration settings
+        $this->client = new SesV2Client([
             'version' => 'latest',
             'region' => $config['region'],
             'credentials' => [
@@ -56,28 +72,22 @@ class SesDriver implements MailerInterface
         return $this;
     }
 
-    public function send($subject, $body): MailerResponse
+    /**
+     * Map the collected state into the SES v2 `SendEmail` request shape. Kept separate from the
+     * send itself so the mapping — especially custom headers and the configuration set — is
+     * verifiable without an AWS round-trip.
+     *
+     * @return array<string, mixed>
+     */
+    protected function buildParams(string $subject, string $body): array
     {
-        try {
-            // The SES v1 SendEmail action has no field for arbitrary headers — only SendRawEmail,
-            // which takes a pre-built MIME message, can carry them. Fail loudly rather than
-            // sending without: a silently dropped List-Unsubscribe is precisely the outcome
-            // header support exists to prevent, and it would only surface later as throttling.
-            if ($this->customHeaders) {
-                throw new Exception(
-                    'The SES driver cannot send custom headers ('
-                    . implode(', ', array_keys($this->customHeaders))
-                    . ') — the SendEmail API has no field for them. Use the SMTP, Mailgun or '
-                    . 'Postmark driver for mail that requires List-Unsubscribe.'
-                );
-            }
-
-            $params = [
-                'Source' => $this->from ?? $this->config['from'],
-                'Destination' => [
-                    'ToAddresses' => $this->tos,
-                ],
-                'Message' => [
+        $params = [
+            'FromEmailAddress' => $this->from ?? $this->config['from'],
+            'Destination' => [
+                'ToAddresses' => $this->tos,
+            ],
+            'Content' => [
+                'Simple' => [
                     'Subject' => [
                         'Data' => $subject,
                     ],
@@ -90,11 +100,38 @@ class SesDriver implements MailerInterface
                         ],
                     ],
                 ],
-            ];
-            if (!empty($this->replyTos)) {
-                $params['ReplyToAddresses'] = $this->replyTos;
+            ],
+        ];
+
+        if (!empty($this->replyTos)) {
+            $params['ReplyToAddresses'] = $this->replyTos;
+        }
+
+        // Custom headers ride in Content.Simple.Message.Headers as a {Name, Value} list — the v2
+        // field the v1 SendEmail action lacked. The trait has already rejected any CR/LF, so the
+        // only remaining gatekeeper is SES's own reserved-name check.
+        if ($this->customHeaders) {
+            $headers = [];
+            foreach ($this->customHeaders as $name => $value) {
+                $headers[] = ['Name' => $name, 'Value' => $value];
             }
-            $result = $this->client->sendEmail($params);
+            $params['Content']['Simple']['Headers'] = $headers;
+        }
+
+        // Configuration set is optional; attach it only when configured so a plain account that
+        // has never created one still sends.
+        $configurationSet = $this->config['configuration_set'] ?? null;
+        if (!empty($configurationSet)) {
+            $params['ConfigurationSetName'] = $configurationSet;
+        }
+
+        return $params;
+    }
+
+    public function send($subject, $body): MailerResponse
+    {
+        try {
+            $result = $this->client->sendEmail($this->buildParams($subject, $body));
 
             // Return a standardized response structure
             return new MailerResponse(true, $result->get('MessageId'), null);
