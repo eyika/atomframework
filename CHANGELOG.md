@@ -6,6 +6,21 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
 
 ## [Unreleased]
 
+### Fixed
+- **`where()` filters on an encrypted column now resolve — so login works for a model that
+  encrypts `email`.** A model listing a column in `const encrypted` keeps a keyed-HMAC
+  `<col>_hash` replica so the column stays queryable by value, and the builder rewrites an equality
+  filter onto that replica. But `where()` qualifies its column to `table.column` (for join
+  disambiguation) while the rewrite matched only the *bare* column name, so a `where('email', …)`
+  filter was never rewritten: it compared the ciphertext column against a plaintext value and
+  matched nothing. This affected every `where()`-built read/update/delete on such a column, most
+  visibly the Eloquent auth driver (`where('email', …)->first(false)`), so **every login failed**
+  for a user who plainly existed. `findBy()`/`findByArray()` were unaffected — they assign the key
+  directly, bypassing the qualifier. The rewrite now reduces each key to its bare column to match,
+  and preserves the `table.` qualifier and any `__dupN` marker on the replica key. No application
+  change is required, and a consuming app that added an auth-driver override to work around this can
+  drop it. (`5685588`)
+
 ### Changed
 - **The SES mail driver now runs on the SES v2 API, so it can send custom headers.** It was on
   SES v1, whose `SendEmail` action has no field for arbitrary headers — so it *refused* any send
