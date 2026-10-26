@@ -31,6 +31,15 @@ moving `dev-main` (and `dev`) branch — no semver tags yet. Entries reference t
   lists. No change for callers, and the `ses:SendEmail` IAM permission is the same on v2. (`a6fdfcb`)
 
 ### Security
+- **Blade no longer leaks the compiled-file path on a view error outside `local`.** BladeOne's
+  `showError()` defaults to not throwing: on an error it discards the half-rendered page and
+  *echoes* `BladeOne Error [...]` straight into the response. For a compile-write failure — an
+  unwritable compile directory — that text is an **absolute server path**, and because it is
+  echoed it bypasses `app.debug`, the exception handler and any controller `try/catch`, disclosing
+  the engine name and a filesystem path to the client. The Blade wrapper now sets `throwOnError`
+  whenever `app.env` is not `local`, so such a failure throws a catchable exception that the handler
+  renders generically (details hidden when `app.debug` is off); `local` keeps the inline error for
+  debugging, and an unset env fails safe to throwing. No application change needed. (`11cb391`)
 - **SVG is now served with a script-neutralising CSP.** `X-Content-Type-Options: nosniff` cannot help
   SVG — `image/svg+xml` is *honoured* rather than sniffed, so an SVG navigated to directly is a
   scriptable document on your origin. `svg` stays on the asset allowlist, because apps legitimately
