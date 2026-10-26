@@ -42,6 +42,16 @@ class Blade extends BladeOne
         $this->setBaseUrl(config('app.url'));
 
         parent::__construct($templatePath, $compiledPath, $mode);
+
+        // Outside `local`, make view/compile failures THROW a catchable exception (handled by the
+        // framework ExceptionHandler, which renders a generic message when `app.debug` is off)
+        // instead of BladeOne's default showError() behaviour: ob_get_clean() wipes the
+        // half-rendered page and it ECHOES "BladeOne Error [...]" carrying the absolute
+        // compiled-file path straight into the response. That echo bypasses `app.debug`, the
+        // exception handler and any controller try/catch, so a compile failure (e.g. an unwritable
+        // compile dir) leaks the engine name and an absolute server path to the client. In `local`
+        // the inline error is kept for debugging. Defaults to throwing when the env is unset.
+        $this->throwOnError = config('app.env') !== 'local';
     }
 
     public function instance()
